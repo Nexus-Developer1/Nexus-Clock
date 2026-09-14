@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use App\Services\Tempos\ResolvedorTarifa;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -13,7 +16,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        //
+        // Memória de tarifas por pedido (ou por job): começa vazia em cada um.
+        $this->app->scoped(ResolvedorTarifa::class);
     }
 
     public function boot(): void
@@ -21,5 +25,13 @@ class AppServiceProvider extends ServiceProvider
         DB::prohibitDestructiveCommands(
             ! in_array(config('database.connections.'.config('database.default').'.database'), self::BASES_DESCARTAVEIS, true)
         );
+
+        // Permissões dos tempos. O papel (admin/técnico) vem do portal (acessos.papel); reabrir exige
+        // além disso estar na lista explícita config('tempos.pode_reabrir').
+        Gate::define('tempos-ver-todos', fn (User $utilizador) => $utilizador->ehAdminTempos());
+        Gate::define('tempos-editar-todos', fn (User $utilizador) => $utilizador->ehAdminTempos());
+        Gate::define('tempos-fechar-mes', fn (User $utilizador) => $utilizador->ehAdminTempos());
+        Gate::define('tempos-reabrir', fn (User $utilizador) => $utilizador->podeReabrirTempos());
+        Gate::define('tempos-exportar', fn (User $utilizador) => $utilizador->ehAdminTempos());
     }
 }
