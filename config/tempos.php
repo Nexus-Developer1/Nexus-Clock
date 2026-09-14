@@ -17,4 +17,9 @@ return [
     // Duração máxima de um registo (um dia inteiro). Igual à constraint da tabela.
     'duracao_maxima_seg' => 86400,
 
+    // As tabelas da Nexus Infra (clientes, contratos, intervenções…) são só de leitura aqui. Só os
+    // testes e o seeder da base de desenvolvimento ligam isto, para criarem dados de exemplo.
+    // NUNCA ligar em produção.
+    'escrever_tabelas_da_nexus_infra' => false,
+
 ];

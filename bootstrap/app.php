@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\ExigeAcessoAplicacao;
+use App\Http\Middleware\GarantirContaActiva;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,11 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'acesso' => \App\Http\Middleware\ExigeAcessoAplicacao::class,
+            'acesso' => ExigeAcessoAplicacao::class,
         ]);
 
         // Quem ficar com a conta desativada é posto fora no pedido seguinte.
-        $middleware->web(append: [\App\Http\Middleware\GarantirContaActiva::class]);
+        $middleware->web(append: [GarantirContaActiva::class]);
 
         // Sem sessão, vai-se ao portal fazer o login (esta aplicação não tem login próprio).
         $middleware->redirectGuestsTo(fn () => config('app.portal_url'));
