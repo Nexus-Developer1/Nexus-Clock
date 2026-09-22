@@ -133,7 +133,7 @@ class ResumoTemposTest extends TestCase
 
     public function test_pagina_tecnico_so_ve_as_suas_horas_sem_valores(): void
     {
-        $this->actingAs($this->ana)->get('/relatorios/resumo')->assertOk()->assertSee('Resumo — Nexus Tempos', false);
+        $this->actingAs($this->ana)->get('/relatorios/resumo')->assertOk()->assertSee('Resumo — Nexus Suporte', false);
 
         Livewire::actingAs($this->ana)->withQueryParams(['membros' => [(string) $this->rui->id]])->test(Resumo::class)
             ->assertSee('4:00:00') // total da Ana, apesar do filtro

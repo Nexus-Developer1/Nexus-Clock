@@ -1,10 +1,10 @@
--- Regista o Nexus Tempos no portal (uma vez): a aplicação com a chave `tempos` e o acesso das
--- pessoas — quem é admin na Nexus IFE fica admin nos Tempos, quem é técnico fica técnico.
+-- Regista o Nexus Suporte no portal (uma vez): a aplicação com a chave `tempos` e o acesso das
+-- pessoas — quem é admin na Nexus IFE fica admin no Suporte, quem é técnico fica técnico.
 -- Corre no fim do instalar.sh (pode repetir-se; não duplica). O URL leva a barra final para não
 -- passar pelo 301 do Apache, que perde o :9443.
 
 insert into aplicacoes (chave, nome, descricao, url, icone, ordem, activa, created_at, updated_at)
-select 'tempos', 'Nexus Tempos', 'Registo de horas dos técnicos',
+select 'tempos', 'Nexus Suporte', 'Registo de horas dos técnicos',
        'https://infra.nexus-solutions.pt:9443/tempos/', 'grafico', 3, true, now(), now()
 where not exists (select 1 from aplicacoes where chave = 'tempos');
 

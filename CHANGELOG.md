@@ -1,6 +1,6 @@
 # Changelog
 
-Registo de alterações do **Nexus Tempos**. Mais recente no topo.
+Registo de alterações do **Nexus Suporte**. Mais recente no topo.
 Categorias: 🔒 Segurança · 🧰 Funcionalidade · 🎨 UI/Marca · 🧹 Limpeza · 🛠️ Infra
 _(itens de infra vivem no servidor e não têm commit)._
 
@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-22
 
+- 🎨 **Passa a chamar-se Nexus Suporte** — a pedido: o nome visível deixa de ser «Nexus Tempos» em todo o lado — títulos das páginas, marca por baixo do logótipo (sidebar, página pública e emails), cabeçalho do mobile, as 17 migalhas de pão e o `APP_NAME` (que é também o nome de quem envia os emails). No portal, a linha da aplicação passou a «Nexus Suporte». Por dentro fica tudo `tempos` — URL `/tempos`, chave no portal, tabelas, gates e namespaces — que renomear isso obrigava a mexer na base partilhada e no vhost por uma etiqueta. Em PT-PT o nome passa a singular: «o Suporte», não «os Tempos». Notas §34. 265 testes.
 - 🧰 **Clientes: gerir deixa de ser só dos admins** — a pedido ("eu tou como técnico e não tenho essa funcionalidade… para já não é preciso tar a restringir isso tudo"): o gate `tempos-gerir-clientes` passa a valer para toda a gente, por isso o botão «Novo cliente», a janela de alterar e o «Mais opções» (arquivar, restaurar, apagar) aparecem também aos técnicos. Nada mais abriu: equipa, projetos, tarifas, despesas e fecho do mês continuam só para admins. Voltar a fechar é uma linha no `AppServiceProvider`. Notas §33. 265 testes.
 - 🛠️ **Deploy por `git pull`** — `/var/www/nexus-tempos` deixa de ser um tar descompactado e passa a checkout git de `feature/tempos`, com remote SSH e chave de deploy só de leitura, como já era na Nexus Ops. Atualizar passa a ser `git pull --ff-only` + `artisan` (nunca `optimize` nem `route:cache`, que partem a instalação na subpasta `/tempos`); o `instalar.sh` fica só para instalações de raiz. Estado anterior guardado em `/var/lib/nexus-apps/app-tempos/nexus-tempos-antes-conversao-20260922-1548.tar.gz`. As pastas levaram `chmod g+s` (root) para os ficheiros criados pelo git herdarem o grupo `www-data`; sem isso o próximo `pull` deixava o CSS em 403. Notas §32.
 - 🧰 **Página «Novo cliente»** — a pedido: botão no canto superior direito da página Clientes que abre `/clientes/novo` com o formulário completo (nome, email, emails em cópia, morada, nota, moeda), em vez de acrescentar só pelo nome. Os campos ficam num partial partilhado com a janela de alterar; `GestorClientes::criar` passa a receber todos os dados. Só admin entra (403 para técnicos). Notas §31. 265 testes.

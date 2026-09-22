@@ -240,6 +240,6 @@ class ProjetosTest extends TestCase
             ->call('exportar')
             ->assertForbidden();
 
-        $this->actingAs($this->ana)->get('/projetos')->assertOk()->assertSee('Projetos — Nexus Tempos', false);
+        $this->actingAs($this->ana)->get('/projetos')->assertOk()->assertSee('Projetos — Nexus Suporte', false);
     }
 }

@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "nexus/tempos",
     "type": "project",
-    "description": "Nexus Tempos — registo de horas dos técnicos (suite Nexus).",
+    "description": "Nexus Suporte — registo de horas dos técnicos (suite Nexus).",
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {

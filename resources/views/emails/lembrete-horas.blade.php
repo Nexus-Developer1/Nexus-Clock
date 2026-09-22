@@ -17,7 +17,7 @@
                     <tr>
                         <td style="padding:28px 36px 6px;">
                             <div style="font-size:22px; font-weight:800; color:#16a34a; line-height:1;">Nexus Infra</div>
-                            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#9ca3af; margin-top:3px;">Tempos</div>
+                            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#9ca3af; margin-top:3px;">Suporte</div>
                         </td>
                     </tr>
 
@@ -31,7 +31,7 @@
                                 Se faltam horas por registar, aproveite para as acrescentar.
                             </p>
 
-                            @include('emails._botao', ['url' => $url, 'texto' => 'Abrir os Tempos'])
+                            @include('emails._botao', ['url' => $url, 'texto' => 'Abrir o Suporte'])
                         </td>
                     </tr>
 

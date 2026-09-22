@@ -1,6 +1,6 @@
-# Nexus Tempos
+# Nexus Suporte
 
-Registo de horas dos técnicos da Nexus Solutions, por projeto e cliente próprios dos Tempos:
+Registo de horas dos técnicos da Nexus Solutions, por projeto e cliente próprios do Suporte:
 horas incluídas por contrato, excedentes, tarifas, margem e export de faturação (CSV + PDF)
 para lançamento manual no ERP.
 

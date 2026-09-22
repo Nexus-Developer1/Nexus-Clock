@@ -17,7 +17,7 @@
                     <tr>
                         <td style="padding:28px 36px 6px;">
                             <div style="font-size:22px; font-weight:800; color:#16a34a; line-height:1;">Nexus Infra</div>
-                            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#9ca3af; margin-top:3px;">Tempos</div>
+                            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#9ca3af; margin-top:3px;">Suporte</div>
                         </td>
                     </tr>
 
@@ -66,7 +66,7 @@
 
                     <tr>
                         <td style="padding:0 36px 28px; font-size:12px; line-height:1.5; color:#9ca3af;">
-                            Envio automático de um relatório partilhado nos Tempos.
+                            Envio automático de um relatório partilhado no Suporte.
                         </td>
                     </tr>
                 </table>

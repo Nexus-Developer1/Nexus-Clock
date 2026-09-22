@@ -1,4 +1,4 @@
-{{-- Campos de um cliente dos Tempos, partilhados pela página «Novo cliente» e pela janela de
+{{-- Campos de um cliente do Suporte, partilhados pela página «Novo cliente» e pela janela de
      alterar da listagem. Espera: $formulario (nome, email, emails_cc, morada, nota, moeda) e $moedas.
      O primeiro campo tem x-ref="nome", para quem inclui isto lhe dar o foco. --}}
 <div>

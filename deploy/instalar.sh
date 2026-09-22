@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Instala ou atualiza o Nexus Tempos no servidor da suite (infra.nexus-solutions.pt), em /tempos,
+# Instala ou atualiza o Nexus Suporte no servidor da suite (infra.nexus-solutions.pt), em /tempos,
 # ao lado do portal e do Knowledgebase. Idempotente: corre-se na primeira instalação e em cada
 # atualização.
 #
@@ -129,7 +129,7 @@ if ! grep -q "Alias /tempos" "$CONF"; then
 import sys
 p, app = sys.argv[1], sys.argv[2]
 s = open(p, encoding='utf-8').read()
-bloco = f'''    # ---- Nexus Tempos (registo de horas) ----
+bloco = f'''    # ---- Nexus Suporte (registo de horas) ----
     Alias /tempos {app}/public
     <Directory "{app}/public">
         Options -Indexes +FollowSymLinks
@@ -188,7 +188,7 @@ done
 passo "Worker da fila e scheduler"
 cat > /etc/systemd/system/nexus-tempos-worker.service <<EOF
 [Unit]
-Description=Nexus Tempos Queue Worker
+Description=Nexus Suporte Queue Worker
 After=network.target redis-server.service
 
 [Service]

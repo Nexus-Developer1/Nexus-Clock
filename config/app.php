@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Nexus Tempos'),
+    'name' => env('APP_NAME', 'Nexus Suporte'),
 
     // Chave com que esta aplicação está registada no portal (tabela `aplicacoes`). É por ela
     // que se pergunta se a pessoa tem acesso. Tem de bater certo com a chave lá registada.

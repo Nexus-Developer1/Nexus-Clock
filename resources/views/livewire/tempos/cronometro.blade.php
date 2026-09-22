@@ -2,7 +2,7 @@
 @use('App\Livewire\Concerns\FormularioRegisto')
 
 <div>
-    <x-topbar :breadcrumb="['Tempos', 'Cronómetro']" />
+    <x-topbar :breadcrumb="['Suporte', 'Cronómetro']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-7xl">

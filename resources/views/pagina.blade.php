@@ -1,6 +1,6 @@
 {{-- Página ainda por fazer: só o título. Recebe $ativo, $titulo e, opcionalmente, $seccao (breadcrumb). --}}
 <x-layouts.app :ativo="$ativo" :titulo="$titulo">
-    <x-topbar :breadcrumb="array_values(array_filter(['Tempos', $seccao ?? null, $titulo]))" />
+    <x-topbar :breadcrumb="array_values(array_filter(['Suporte', $seccao ?? null, $titulo]))" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-7xl">

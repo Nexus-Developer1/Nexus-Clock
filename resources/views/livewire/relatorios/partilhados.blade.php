@@ -1,5 +1,5 @@
 <div>
-    <x-topbar :breadcrumb="['Tempos', 'Relatórios', 'Partilhados']" />
+    <x-topbar :breadcrumb="['Suporte', 'Relatórios', 'Partilhados']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-7xl">
@@ -114,7 +114,7 @@
                         <label class="campo-label" for="partilhado-visibilidade">Visibilidade</label>
                         <select id="partilhado-visibilidade" wire:model="formulario.publico" class="campo-select">
                             <option value="1">Público — qualquer pessoa com o link</option>
-                            <option value="0">Privado — só quem tem acesso aos Tempos</option>
+                            <option value="0">Privado — só quem tem acesso ao Suporte</option>
                         </select>
                     </div>
                     <div class="space-y-3">

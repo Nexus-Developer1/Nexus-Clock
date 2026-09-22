@@ -1,5 +1,5 @@
 <div>
-    <x-topbar :breadcrumb="[['label' => 'Tempos'], ['label' => 'Clientes', 'url' => route('clientes')], 'Novo cliente']" />
+    <x-topbar :breadcrumb="[['label' => 'Suporte'], ['label' => 'Clientes', 'url' => route('clientes')], 'Novo cliente']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-2xl">

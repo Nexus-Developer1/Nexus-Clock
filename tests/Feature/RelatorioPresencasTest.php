@@ -103,7 +103,7 @@ class RelatorioPresencasTest extends TestCase
 
     public function test_tecnico_so_ve_a_sua_linha(): void
     {
-        $this->actingAs($this->ana)->get('/relatorios/presencas')->assertOk()->assertSee('Presenças — Nexus Tempos', false);
+        $this->actingAs($this->ana)->get('/relatorios/presencas')->assertOk()->assertSee('Presenças — Nexus Suporte', false);
 
         Livewire::actingAs($this->ana)->withQueryParams(['membros' => [(string) $this->rui->id]])->test(Presencas::class)
             ->assertSee('Ana Martins')

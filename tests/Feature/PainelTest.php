@@ -125,7 +125,7 @@ class PainelTest extends TestCase
 
         $this->actingAs($this->ana)->get(route('painel'))
             ->assertOk()
-            ->assertSee('Painel — Nexus Tempos', false)
+            ->assertSee('Painel — Nexus Suporte', false)
             ->assertSee('1:00:00')
             ->assertDontSee('Obra B')
             ->assertDontSeeHtml('aria-label="De quem"');

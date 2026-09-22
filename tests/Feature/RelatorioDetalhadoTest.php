@@ -100,7 +100,7 @@ class RelatorioDetalhadoTest extends TestCase
         $meu = $this->registo($this->ana, $this->hospital, '2026-09-14', 3600, ['descricao' => 'Meu trabalho']);
         $alheio = $this->registo($this->rui, $this->hospital, '2026-09-14', 7200, ['descricao' => 'Trabalho do Rui']);
 
-        $this->actingAs($this->ana)->get('/relatorios/detalhado')->assertOk()->assertSee('Detalhado — Nexus Tempos', false);
+        $this->actingAs($this->ana)->get('/relatorios/detalhado')->assertOk()->assertSee('Detalhado — Nexus Suporte', false);
 
         Livewire::actingAs($this->ana)->test(Detalhado::class)
             ->assertSee('Meu trabalho')

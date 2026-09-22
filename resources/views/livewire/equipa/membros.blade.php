@@ -9,7 +9,7 @@
 @endphp
 
 <div>
-    <x-topbar :breadcrumb="['Tempos', 'Equipa', $limitados ? 'Limitados' : 'Membros']" />
+    <x-topbar :breadcrumb="['Suporte', 'Equipa', $limitados ? 'Limitados' : 'Membros']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-7xl">
@@ -168,7 +168,7 @@
                     @elseif ($limitados)
                         <x-estado-vazio icone="pessoa" titulo="Sem membros limitados" />
                     @else
-                        <x-estado-vazio icone="pessoas" titulo="Ninguém com acesso aos Tempos" />
+                        <x-estado-vazio icone="pessoas" titulo="Ninguém com acesso ao Suporte" />
                     @endif
                 @else
                     <div class="relative overflow-x-auto rounded-b-2xl">

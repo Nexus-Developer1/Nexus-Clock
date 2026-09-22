@@ -183,7 +183,7 @@ class RelatorioAtribuicoesTest extends TestCase
 
     public function test_tecnico_so_ve_as_suas_e_nao_gere(): void
     {
-        $this->actingAs($this->ana)->get('/relatorios/atribuicoes')->assertOk()->assertSee('Atribuições — Nexus Tempos', false);
+        $this->actingAs($this->ana)->get('/relatorios/atribuicoes')->assertOk()->assertSee('Atribuições — Nexus Suporte', false);
 
         Livewire::actingAs($this->ana)->withQueryParams(['membros' => [(string) $this->rui->id], 'sem_tempo' => '1'])->test(Atribuicoes::class)
             ->assertSee('Ana Martins')

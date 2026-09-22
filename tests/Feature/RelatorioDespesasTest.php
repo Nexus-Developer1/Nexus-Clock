@@ -295,7 +295,7 @@ class RelatorioDespesasTest extends TestCase
         $minha = $this->despesa($this->ana, ['nota' => 'Minha']);
         $doRui = $this->despesa($this->rui, ['nota' => 'Do Rui']);
 
-        $this->actingAs($this->ana)->get('/relatorios/despesas')->assertOk()->assertSee('Despesas — Nexus Tempos', false);
+        $this->actingAs($this->ana)->get('/relatorios/despesas')->assertOk()->assertSee('Despesas — Nexus Suporte', false);
 
         Livewire::actingAs($this->ana)->withQueryParams(['membros' => [(string) $this->rui->id]])->test(Despesas::class)
             ->assertSee('Minha')

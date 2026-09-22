@@ -40,7 +40,7 @@ class MenuPaginasTest extends TestCase
 
         foreach ($paginas as $rota => $titulo) {
             $this->get(route($rota))->assertOk()
-                ->assertSee('<title>'.$titulo.' — Nexus Tempos</title>', false)
+                ->assertSee('<title>'.$titulo.' — Nexus Suporte</title>', false)
                 ->assertSee('aria-current="page"', false);
         }
     }

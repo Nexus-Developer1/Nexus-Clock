@@ -31,7 +31,7 @@ class SuiteAcessoTest extends TestCase
     {
         $tecnico = $this->tecnico();
 
-        $this->actingAs($tecnico)->get('/')->assertOk()->assertSee('Nexus Tempos');
+        $this->actingAs($tecnico)->get('/')->assertOk()->assertSee('Nexus Suporte');
     }
 
     public function test_aplicacao_desativada_no_portal_nao_deixa_entrar(): void

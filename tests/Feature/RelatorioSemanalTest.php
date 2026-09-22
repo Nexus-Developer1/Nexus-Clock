@@ -101,7 +101,7 @@ class RelatorioSemanalTest extends TestCase
 
     public function test_tecnico_so_ve_as_suas_horas_sem_valores(): void
     {
-        $this->actingAs($this->ana)->get('/relatorios/semanal')->assertOk()->assertSee('Semanal — Nexus Tempos', false);
+        $this->actingAs($this->ana)->get('/relatorios/semanal')->assertOk()->assertSee('Semanal — Nexus Suporte', false);
 
         Livewire::actingAs($this->ana)->withQueryParams(['mostrar' => 'ambos'])->test(Semanal::class)
             ->assertSet('mostrar', 'tempo')

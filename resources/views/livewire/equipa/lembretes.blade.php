@@ -15,7 +15,7 @@
 @endphp
 
 <div>
-    <x-topbar :breadcrumb="['Tempos', 'Equipa', 'Lembretes']" />
+    <x-topbar :breadcrumb="['Suporte', 'Equipa', 'Lembretes']" />
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-7xl">

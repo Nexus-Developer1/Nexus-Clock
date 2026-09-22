@@ -169,7 +169,7 @@ class CronometroPaginaTest extends TestCase
             'inicio' => CarbonImmutable::parse('2026-09-17 08:00:00'), 'fim' => null, 'duracao_seg' => 0,
         ]);
 
-        $this->actingAs($this->ana)->get('/')->assertOk()->assertSee('Cronómetro — Nexus Tempos', false);
+        $this->actingAs($this->ana)->get('/')->assertOk()->assertSee('Cronómetro — Nexus Suporte', false);
 
         $this->pagina()
             ->assertSet('descricao', 'A decorrer')

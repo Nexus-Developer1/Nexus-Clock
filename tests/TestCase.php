@@ -53,7 +53,7 @@ abstract class TestCase extends BaseTestCase
         if ($papel !== null) {
             $aplicacaoId = DB::table('aplicacoes')->where('chave', config('app.chave'))->value('id')
                 ?? DB::table('aplicacoes')->insertGetId([
-                    'chave' => config('app.chave'), 'nome' => 'Tempos', 'url' => 'http://localhost', 'activa' => true,
+                    'chave' => config('app.chave'), 'nome' => 'Suporte', 'url' => 'http://localhost', 'activa' => true,
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             DB::table('acessos')->insert([

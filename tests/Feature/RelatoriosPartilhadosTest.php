@@ -160,7 +160,7 @@ class RelatoriosPartilhadosTest extends TestCase
 
         $this->get('/partilhado/'.$equipa->token)
             ->assertOk()
-            ->assertSee('<title>Equipa — Nexus Tempos</title>', false)
+            ->assertSee('<title>Equipa — Nexus Suporte</title>', false)
             ->assertSee('partilhado por Suporte Nexus')
             ->assertSee('3:00:00')
             ->assertSee('Rui Costa')
@@ -220,7 +220,7 @@ class RelatoriosPartilhadosTest extends TestCase
         $daAna = $this->partilhar($this->ana, ['nome' => 'Relatório da Ana']);
         $doAdmin = $this->partilhar($this->admin, ['nome' => 'Relatório do admin', 'email_ativo' => true, 'email_destinatarios' => 'x@y.pt']);
 
-        $this->actingAs($this->ana)->get('/relatorios/partilhados')->assertOk()->assertSee('Partilhados — Nexus Tempos', false);
+        $this->actingAs($this->ana)->get('/relatorios/partilhados')->assertOk()->assertSee('Partilhados — Nexus Suporte', false);
 
         Livewire::actingAs($this->ana)->test(Partilhados::class)
             ->assertSee('Relatório da Ana')

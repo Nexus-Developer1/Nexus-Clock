@@ -1,4 +1,4 @@
-# CLAUDE.md — Nexus Tempos
+# CLAUDE.md — Nexus Suporte
 
 Aplicação da suite Nexus (como a Knowledgebase e o Portal) para registo de horas dos técnicos.
 Ler antes de mexer: `README.md`, `docs/modulo-tempos.md` (especificação) e
@@ -7,6 +7,10 @@ Ler antes de mexer: `README.md`, `docs/modulo-tempos.md` (especificação) e
 ## Invariantes
 
 - **PT-PT em tudo**: UI, mensagens, comentários, commits. Nunca PT-BR.
+- **O nome visível é «Nexus Suporte»** (mudou de «Nexus Tempos» a 2026-09-22, notas §34). Por dentro
+  continua tudo `tempos` e assim fica: rota `/tempos`, chave `tempos` no portal, tabelas, gates
+  `tempos-*`, `App\Services\Tempos`, `migrations_tempos`, repositório e `/var/www/nexus-tempos`.
+  Só se troca o que o utilizador lê. Em PT-PT o nome é singular: «o Suporte», não «os Suportes».
 - **Base partilhada com a Nexus Infra** (`C:\Users\dev02\nexus-ops`): tabelas próprias, migrações em
   `migrations_tempos`. Nunca alterar a estrutura de tabelas da Nexus Infra ou do portal — propor
   e esperar aprovação. Nunca `migrate:fresh`/`db:wipe` fora de `tempos_dev`/`tempos_testing`.

@@ -36,7 +36,7 @@
     <div class="flex items-start justify-between px-2">
         <div>
             <img src="{{ asset('img/nexus-1.png') }}" alt="Nexus" class="h-7 w-auto">
-            <div class="mt-2 text-[11px] font-medium uppercase tracking-[0.22em] text-white/40">Tempos</div>
+            <div class="mt-2 text-[11px] font-medium uppercase tracking-[0.22em] text-white/40">Suporte</div>
         </div>
         <button @click="sidebarAberta = false" aria-label="Fechar menu" class="flex h-9 w-9 items-center justify-center rounded-lg text-white/60 transition hover:bg-white/10 hover:text-white lg:hidden">
             <x-icone nome="fechar" traco="2" class="h-5 w-5" />

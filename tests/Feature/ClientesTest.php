@@ -123,7 +123,7 @@ class ClientesTest extends TestCase
 
     public function test_pagina_de_criar_grava_todos_os_campos_e_volta_a_listagem(): void
     {
-        $this->actingAs($this->admin)->get(route('clientes.novo'))->assertOk()->assertSee('Novo cliente — Nexus Tempos', false);
+        $this->actingAs($this->admin)->get(route('clientes.novo'))->assertOk()->assertSee('Novo cliente — Nexus Suporte', false);
 
         Livewire::actingAs($this->admin)->test(Novo::class)
             // Sem nome não grava.
