@@ -53,6 +53,16 @@ A rota `/dev/entrar` só existe com `APP_ENV=local` numa base descartável.
 **CSS:** Tailwind 3 com os tokens da Nexus Infra, compilado para `public/css/app.css`, que vai no
 repositório. Depois de mexer em vistas: `npm install` (uma vez) e `npm run css`.
 
+## Dados de demonstração
+
+```bash
+php artisan tempos:demo            # enche as páginas com dados falsos (só tabelas dos Tempos)
+php artisan tempos:demo --apagar   # apaga exatamente o que o comando criou
+```
+
+Serve em qualquer base, incluindo produção: usa as pessoas e os clientes que já existem na Nexus
+Infra e não escreve nas tabelas dela. Notas §29.
+
 ## Instalar no servidor
 
 Corre em `infra.nexus-solutions.pt` em `/tempos`, ao lado do portal e do Knowledgebase, com o

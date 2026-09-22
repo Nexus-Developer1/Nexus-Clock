@@ -1,0 +1,166 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\AtribuicaoTempo;
+use App\Models\CategoriaDespesaTempo;
+use App\Models\Cliente;
+use App\Models\ClienteTempo;
+use App\Models\Contrato;
+use App\Models\DespesaTempo;
+use App\Models\GrupoEquipa;
+use App\Models\Intervencao;
+use App\Models\MembroEquipa;
+use App\Models\ProjetoTempo;
+use App\Models\RegistoTempo;
+use App\Models\TaxaMembro;
+use App\Models\User;
+use App\Services\Tempos\GravadorRegistos;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
+
+// Comando tempos:demo — dados de demonstração só nas tabelas dos Tempos, em cima das pessoas e dos
+// clientes que já existem na Nexus Infra, e apagados exatamente (e só eles) com --apagar.
+class DadosDemoTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $admin;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Carbon::setTestNow('2026-09-22 14:00:00'); // terça-feira, 15:00 em Lisboa
+        Storage::fake('local');
+
+        $this->admin = $this->admin();
+        $this->tecnico();
+        $this->tecnico();
+        $this->utilizador(null); // sem acesso aos Tempos: não recebe horas
+
+        $cliente = $this->cliente('Hospital Real');
+        $contrato = $this->contrato($cliente, 'CT-REAL');
+        $this->intervencao($cliente, $contrato);
+        $this->cliente('Cliente sem contrato');
+    }
+
+    public function test_cria_dados_em_todas_as_tabelas_dos_tempos_e_so_nelas(): void
+    {
+        $antes = $this->contagensDaNexusInfra();
+
+        $this->artisan('tempos:demo')->assertExitCode(0);
+
+        $this->assertSame($antes, $this->contagensDaNexusInfra(), 'as tabelas da Nexus Infra não podem mudar');
+        $this->assertSame(3, ClienteTempo::count());
+        $this->assertSame(6, ProjetoTempo::count());
+        $this->assertSame(1, ProjetoTempo::arquivados()->count());
+        $this->assertSame(3, MembroEquipa::count());
+        $this->assertSame(6, TaxaMembro::count());
+        $this->assertSame(2, GrupoEquipa::count());
+        $this->assertSame(10, DespesaTempo::count());
+        $this->assertSame(7, CategoriaDespesaTempo::count(), 'usa as categorias da migração, não cria novas');
+        $this->assertSame(5, AtribuicaoTempo::count());
+        $this->assertGreaterThan(200, RegistoTempo::count());
+        $this->assertTrue(Storage::disk('local')->exists('dados-demo.json'));
+    }
+
+    public function test_registos_respeitam_as_regras_do_gravador(): void
+    {
+        $this->artisan('tempos:demo')->assertExitCode(0);
+
+        $semAcesso = User::where('nome', 'like', 'Pessoa de teste %')->whereNotIn('id', User::comAcessoAosTempos()->select('id'))->first();
+        $this->assertSame(0, RegistoTempo::where('tecnico_id', $semAcesso->id)->count());
+
+        $gravador = app(GravadorRegistos::class);
+        $clientes = Cliente::pluck('id')->all();
+
+        foreach (RegistoTempo::all() as $r) {
+            $this->assertContains($r->cliente_id, $clientes);
+            $this->assertNotNull($r->projeto_id);
+            $this->assertSame([], $gravador->errosDeLigacao($r->cliente_id, $r->contrato_id, $r->intervencao_id), 'registo '.$r->id);
+            if ($r->fim) {
+                $this->assertSame($r->duracao_seg, (int) $r->fim->diffInSeconds($r->inicio, true));
+                $this->assertLessThanOrEqual(3 * 3600, $r->duracao_seg);
+                $this->assertLessThanOrEqual(Carbon::now(), $r->fim, 'nada no futuro');
+            }
+        }
+
+        // Há registos com contrato e com intervenção (as ligações à Nexus Infra aparecem preenchidas).
+        $this->assertGreaterThan(0, RegistoTempo::whereNotNull('contrato_id')->count());
+        $this->assertGreaterThan(0, RegistoTempo::whereNotNull('intervencao_id')->count());
+        $this->assertSame(Contrato::first()->id, RegistoTempo::whereNotNull('contrato_id')->first()->contrato_id);
+        $this->assertSame(Intervencao::first()->id, RegistoTempo::whereNotNull('intervencao_id')->first()->intervencao_id);
+
+        // Um cronómetro a correr para quem administra; ninguém passa das 9 h por dia.
+        $aCorrer = RegistoTempo::whereNull('fim')->get();
+        $this->assertCount(1, $aCorrer);
+        $this->assertSame($this->admin->id, $aCorrer[0]->tecnico_id);
+
+        $maximo = RegistoTempo::whereNotNull('fim')
+            ->selectRaw("tecnico_id, (inicio at time zone 'Europe/Lisbon')::date as dia, sum(duracao_seg) as total")
+            ->groupBy('tecnico_id', 'dia')->orderByDesc('total')->first();
+        $this->assertLessThanOrEqual(9 * 3600, (int) $maximo->total);
+    }
+
+    public function test_nao_corre_duas_vezes_sem_apagar(): void
+    {
+        $this->artisan('tempos:demo')->assertExitCode(0);
+        $registos = RegistoTempo::count();
+
+        $this->artisan('tempos:demo')->assertExitCode(1);
+        $this->assertSame($registos, RegistoTempo::count());
+    }
+
+    public function test_apagar_remove_exatamente_o_que_criou(): void
+    {
+        // Dados a sério que já lá estavam e têm de ficar.
+        $cliente = Cliente::first();
+        $meu = $this->registo($this->admin, $cliente, '2026-09-21', 3600, ['descricao' => 'Registo a sério']);
+        CategoriaDespesaTempo::where('nome', 'Material')->delete(); // uma categoria em falta: o comando cria-a e apaga-a depois
+        $categorias = CategoriaDespesaTempo::pluck('id')->all();
+        $projeto = ProjetoTempo::create(['nome' => 'Projeto a sério']);
+        $antes = $this->contagensDaNexusInfra();
+
+        $this->artisan('tempos:demo')->assertExitCode(0);
+        $this->assertSame(7, CategoriaDespesaTempo::count(), 'só cria as categorias que faltam');
+
+        $this->artisan('tempos:demo --apagar')->assertExitCode(0);
+
+        $this->assertSame($antes, $this->contagensDaNexusInfra());
+        $this->assertSame([$meu->id], RegistoTempo::withTrashed()->pluck('id')->all());
+        $this->assertSame([$projeto->id], ProjetoTempo::withTrashed()->pluck('id')->all());
+        $this->assertSame($categorias, CategoriaDespesaTempo::pluck('id')->all());
+        $this->assertSame(0, ClienteTempo::withTrashed()->count());
+        $this->assertSame(0, DespesaTempo::withTrashed()->count());
+        $this->assertSame(0, AtribuicaoTempo::count());
+        $this->assertSame(0, TaxaMembro::count());
+        $this->assertSame(0, GrupoEquipa::count());
+        $this->assertSame(0, DB::table('grupo_membro')->count());
+        $this->assertSame(0, DB::table('projeto_membro')->count());
+        $this->assertSame(3, MembroEquipa::count(), 'as linhas da equipa são as pessoas a sério: ficam');
+        $this->assertFalse(Storage::disk('local')->exists('dados-demo.json'));
+
+        // Apagar sem haver nada é inofensivo, e depois pode-se criar de novo.
+        $this->artisan('tempos:demo --apagar')->assertExitCode(0);
+        $this->artisan('tempos:demo')->assertExitCode(0);
+    }
+
+    public function test_sem_clientes_na_nexus_infra_recusa(): void
+    {
+        Cliente::query()->update(['ativo' => false]);
+
+        $this->artisan('tempos:demo')->assertExitCode(1);
+        $this->assertSame(0, RegistoTempo::count());
+        $this->assertSame(0, ProjetoTempo::count());
+    }
+
+    /** @return array<string, int> */
+    private function contagensDaNexusInfra(): array
+    {
+        return collect(['utilizadores', 'acessos', 'clientes', 'contratos', 'intervencoes', 'equipamentos', 'locais', 'auditoria'])
+            ->mapWithKeys(fn (string $t) => [$t => DB::table($t)->count()])->all();
+    }
+}
