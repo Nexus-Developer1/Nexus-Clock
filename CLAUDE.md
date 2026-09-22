@@ -25,6 +25,11 @@ Ler antes de mexer: `README.md`, `docs/modulo-tempos.md` (especificação) e
 - Serviços em `app/Services/Tempos`, componentes Livewire em `app/Livewire/<Área>`.
 - Permissões: papel do portal (`acessos.papel`) + Gates `tempos-*` no `AppServiceProvider`.
 - Auditoria: `App\Services\Auditor::registar()` → tabela `auditoria` da Nexus Infra.
+- UI: layout, sidebar, `x-topbar`, `x-toast-sucesso` e classes (`cartao`, `botao-primario`,
+  `campo-input`…) iguais às da Nexus Infra. Tailwind 3 pela CLI: depois de mexer em vistas, `npm run css`
+  e commitar `public/css/app.css`.
+- A lógica da folha de horas vive em `App\Services\Tempos\FolhaSemanal`. As páginas foram retiradas a
+  2026-09-14 (notas §15); o estado anterior está na tag `tempos-completo`.
 - Testes: Feature tests em PostgreSQL (`tempos_testing`), sem factories — `Model::create` e
   auxiliares no `Tests\TestCase`.
 - Commits `Área: descrição` em PT-PT, com entrada no `CHANGELOG.md`. Sem push sem pedido.

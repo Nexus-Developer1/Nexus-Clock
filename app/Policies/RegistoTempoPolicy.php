@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\RegistoTempo;
 use App\Models\SemanaTempo;
 use App\Models\User;
+use App\Services\Tempos\Faturacao\MesesFechados;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -14,7 +15,8 @@ use Illuminate\Support\Facades\Gate;
  *   4. Faturado → ninguém (só se anula, por admin, com registo na auditoria).
  *   3. Fechado no fecho mensal → só admin com permissão explícita de reabrir.
  *   1. De outro técnico → só admin.
- *   2. Semana submetida → o técnico não mexe; o admin sim. Reaberta volta a ser editável.
+ *   2. Semana submetida → o técnico não mexe; o admin sim. Aprovada → ninguém, até ser reaberta.
+ *      Rejeitada e reaberta voltam a ser editáveis.
  *
  * Numa alteração verifica-se o registo como ESTAVA e como FICA: mudar um registo para outro dia
  * ou outro técnico não pode servir para o tirar de uma semana submetida, nem para o meter numa.
@@ -60,7 +62,9 @@ class RegistoTempoPolicy
             return false;
         }
 
-        if ($registo->fechado_em !== null) {
+        // Regras 3 e 12: fechado no fecho mensal — o registo, ou o mês do seu dia (vale também para
+        // registos novos ou mudados para um mês fechado).
+        if ($registo->fechado_em !== null || ($registo->inicio !== null && app(MesesFechados::class)->estaFechado($registo->dia()))) {
             return Gate::forUser($utilizador)->allows('tempos-reabrir');
         }
 
@@ -70,11 +74,10 @@ class RegistoTempoPolicy
             return false;
         }
 
-        if ($podeTodos) {
-            return true;
-        }
+        $estado = SemanaTempo::estadoDe((int) $registo->tecnico_id, $registo->dia());
 
-        return ! SemanaTempo::estadoDe((int) $registo->tecnico_id, $registo->dia())->bloqueiaTecnico();
+        // Aprovada fecha a semana a todos; para a corrigir, reabre-se.
+        return $podeTodos ? ! $estado->bloqueiaTodos() : ! $estado->bloqueiaTecnico();
     }
 
     private function comoEstava(RegistoTempo $registo): RegistoTempo

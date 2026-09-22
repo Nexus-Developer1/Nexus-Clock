@@ -7,6 +7,7 @@ use Illuminate\Console\Command;
 use Illuminate\Database\Console\Migrations\FreshCommand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 // Ligação à suite: sem sessão vai-se ao portal; com sessão mas sem acesso aos tempos, volta-se à
@@ -28,7 +29,9 @@ class SuiteAcessoTest extends TestCase
 
     public function test_com_acesso_entra(): void
     {
-        $this->actingAs($this->tecnico())->get('/')->assertOk();
+        $tecnico = $this->tecnico();
+
+        $this->actingAs($tecnico)->get('/')->assertOk()->assertSee('Nexus Tempos');
     }
 
     public function test_aplicacao_desativada_no_portal_nao_deixa_entrar(): void
@@ -62,6 +65,12 @@ class SuiteAcessoTest extends TestCase
         $this->assertTrue($this->admin('Chefe@nxs.pt')->podeReabrirTempos());
         $this->assertFalse($this->admin()->podeReabrirTempos());
         $this->assertFalse($this->utilizador('tecnico', 'chefe2@nxs.pt')->podeReabrirTempos());
+    }
+
+    public function test_entrada_de_desenvolvimento_nao_existe_fora_de_local(): void
+    {
+        $this->assertFalse(Route::has('dev.entrar'));
+        $this->get('/dev/entrar')->assertNotFound();
     }
 
     public function test_migrate_fresh_recusa_fora_das_bases_descartaveis(): void

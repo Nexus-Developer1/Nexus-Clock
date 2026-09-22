@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    // Microsoft Graph (app-only) para os emails, pela mailbox Suporte@nxs.pt — as mesmas
+    // credenciais do Entra ID que a Nexus Infra e a Knowledgebase usam.
+    'microsoft_graph' => [
+        'tenant_id' => env('MS_GRAPH_TENANT_ID'),
+        'client_id' => env('MS_GRAPH_CLIENT_ID'),
+        'client_secret' => env('MS_GRAPH_CLIENT_SECRET'),
+        'sender' => env('MS_GRAPH_SENDER'),
+    ],
+
 ];

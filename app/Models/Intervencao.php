@@ -46,6 +46,19 @@ class Intervencao extends Model
         return $this->equipamento?->local?->cliente_id;
     }
 
+    /** Texto curto para listas e para a folha de horas: "#123 · Preventiva · Riello MST 80 · 12/09/2026". */
+    public function rotulo(): string
+    {
+        $equipamento = $this->equipamento;
+
+        return collect([
+            '#'.$this->id,
+            $this->tipo ? mb_convert_case((string) $this->tipo, MB_CASE_TITLE) : null,
+            $equipamento ? trim(($equipamento->fabricante ?? '').' '.($equipamento->modelo ?? '')) ?: $equipamento->numero_serie : null,
+            $this->data_inicio?->setTimezone(config('tempos.fuso'))->format('d/m/Y'),
+        ])->filter()->implode(' · ');
+    }
+
     public function estaConcluida(): bool
     {
         return $this->estado === self::ESTADO_CONCLUIDA;

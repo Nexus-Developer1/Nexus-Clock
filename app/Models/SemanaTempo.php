@@ -8,7 +8,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-// Estado da semana de um técnico na timesheet. Sem linha = rascunho.
+// Estado da semana de um técnico na timesheet (submissão e aprovação). Sem linha = rascunho.
 class SemanaTempo extends Model
 {
     protected $table = 'semanas_tempo';
@@ -16,7 +16,10 @@ class SemanaTempo extends Model
     protected $dateFormat = 'Y-m-d H:i:sP';
 
     /** @var list<string> */
-    protected $fillable = ['tecnico_id', 'semana_inicio', 'estado', 'submetida_em', 'reaberta_por'];
+    protected $fillable = [
+        'tecnico_id', 'semana_inicio', 'estado', 'submetida_em', 'reaberta_por',
+        'aprovada_em', 'aprovada_por', 'rejeitada_em', 'rejeitada_por', 'motivo_rejeicao',
+    ];
 
     /** @var array<string, mixed> */
     protected $attributes = [
@@ -30,6 +33,8 @@ class SemanaTempo extends Model
             'semana_inicio' => 'immutable_date',
             'estado' => EstadoSemanaTempo::class,
             'submetida_em' => 'immutable_datetime',
+            'aprovada_em' => 'immutable_datetime',
+            'rejeitada_em' => 'immutable_datetime',
         ];
     }
 
@@ -41,6 +46,16 @@ class SemanaTempo extends Model
     public function reabertaPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reaberta_por');
+    }
+
+    public function aprovadaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'aprovada_por');
+    }
+
+    public function rejeitadaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejeitada_por');
     }
 
     /** Segunda-feira da semana de um dia (data local). */

@@ -28,6 +28,7 @@ class RegistoTempo extends Model
         'tecnico_id',
         'cliente_id',
         'contrato_id',
+        'projeto_id',
         'intervencao_id',
         'inicio',
         'fim',
@@ -74,6 +75,12 @@ class RegistoTempo extends Model
     public function contrato(): BelongsTo
     {
         return $this->belongsTo(Contrato::class);
+    }
+
+    /** @return BelongsTo<ProjetoTempo, $this> */
+    public function projeto(): BelongsTo
+    {
+        return $this->belongsTo(ProjetoTempo::class, 'projeto_id')->withTrashed();
     }
 
     public function intervencao(): BelongsTo

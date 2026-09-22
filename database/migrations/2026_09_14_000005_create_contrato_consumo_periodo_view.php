@@ -31,9 +31,11 @@ return new class extends Migration
                   and r.duracao_seg is not null
             ),
             pacotes as (
-                select h.id, h.contrato_id, h.periodo, h.horas_incluidas, h.valido_de,
+                -- valido_ate = fim REAL (null = em aberto); horizonte = até onde gerar períodos quando está
+                -- em aberto (hoje ou o último registo). O horizonte nunca corta o fim de um período.
+                select h.id, h.contrato_id, h.periodo, h.horas_incluidas, h.valido_de, h.valido_ate,
                        coalesce(h.valido_ate, greatest(current_date, h.valido_de,
-                           (select max(x.dia) from registos x where x.contrato_id = h.contrato_id))) as valido_ate
+                           (select max(x.dia) from registos x where x.contrato_id = h.contrato_id))) as horizonte
                 from contrato_horas_incluidas h
                 where h.deleted_at is null
                   and h.contrato_id is not null
@@ -41,7 +43,7 @@ return new class extends Migration
             periodos as (
                 select p.id as contrato_horas_incluidas_id, p.contrato_id, p.horas_incluidas,
                        greatest(s.inicio::date, p.valido_de) as periodo_inicio,
-                       least((s.inicio + p.passo - interval '1 day')::date, p.valido_ate) as periodo_fim
+                       least((s.inicio + p.passo - interval '1 day')::date, coalesce(p.valido_ate, 'infinity'::date)) as periodo_fim
                 from (
                     select pacotes.*,
                            case periodo when 'mensal' then interval '1 month'
@@ -54,10 +56,10 @@ return new class extends Migration
                     where periodo <> 'total'
                 ) p
                 cross join lateral generate_series(
-                    date_trunc(p.unidade, p.valido_de::timestamp), p.valido_ate::timestamp, p.passo
+                    date_trunc(p.unidade, p.valido_de::timestamp), p.horizonte::timestamp, p.passo
                 ) as s(inicio)
                 union all
-                select id, contrato_id, horas_incluidas, valido_de, valido_ate
+                select id, contrato_id, horas_incluidas, valido_de, horizonte
                 from pacotes
                 where periodo = 'total'
             ),
@@ -66,7 +68,8 @@ return new class extends Migration
                 from registos r
                 where not exists (
                     select 1 from pacotes p
-                    where p.contrato_id = r.contrato_id and r.dia between p.valido_de and p.valido_ate
+                    where p.contrato_id = r.contrato_id and r.dia >= p.valido_de
+                      and (p.valido_ate is null or r.dia <= p.valido_ate)
                 )
             )
             select pe.contrato_id,

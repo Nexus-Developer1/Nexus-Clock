@@ -102,25 +102,44 @@ class CalculadorHorasIncluidas
             }
 
             $porDia = $this->consumoPorDia($contratoId, $periodos[0][0], end($periodos)[1]);
-            $transportado = 0;
 
-            foreach ($periodos as [$inicio, $fim]) {
+            $comConsumo = array_map(function (array $periodo) use ($porDia) {
+                [$inicio, $fim] = $periodo;
                 $doPeriodo = $porDia->filter(fn ($linha, string $dia) => $dia >= $inicio->toDateString() && $dia <= $fim->toDateString());
-                $faturavel = (int) $doPeriodo->sum('faturavel_seg');
-                $naoFaturavel = (int) $doPeriodo->sum('nao_faturavel_seg');
-                $incluidas = $horas->incluidasSeg();
 
-                $excedente = max(0, $faturavel - $incluidas - $transportado);
-                $sobra = $horas->transita ? max(0, $incluidas + $transportado - $faturavel) : 0;
+                return [$inicio, $fim, (int) $doPeriodo->sum('faturavel_seg'), (int) $doPeriodo->sum('nao_faturavel_seg')];
+            }, $periodos);
 
-                if ($fim->gte($de)) {
-                    $resultado[] = new PeriodoConsumo(
-                        $horas, $inicio, $fim, $incluidas, $transportado, $faturavel, $naoFaturavel, $excedente, $sobra,
-                    );
+            foreach (self::acumular($horas, $comConsumo) as $periodo) {
+                if ($periodo->fim->gte($de)) {
+                    $resultado[] = $periodo;
                 }
-
-                $transportado = $sobra;
             }
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Regras 9 e 10 aplicadas a uma sequência de períodos de UM conjunto de horas incluídas, pela
+     * ordem e desde o início da validade: transporte (só se transita) e excedente. Serve o cálculo a
+     * partir dos registos (resumo) e o dos relatórios a partir da view materializada.
+     *
+     * @param  iterable<array{0: CarbonImmutable, 1: CarbonImmutable, 2: int, 3: int}>  $periodos  [início, fim, faturável, não faturável]
+     * @return list<PeriodoConsumo>
+     */
+    public static function acumular(ContratoHorasIncluidas $horas, iterable $periodos): array
+    {
+        $resultado = [];
+        $transportado = 0;
+        $incluidas = $horas->incluidasSeg();
+
+        foreach ($periodos as [$inicio, $fim, $faturavel, $naoFaturavel]) {
+            $excedente = max(0, $faturavel - $incluidas - $transportado);
+            $sobra = $horas->transita ? max(0, $incluidas + $transportado - $faturavel) : 0;
+
+            $resultado[] = new PeriodoConsumo($horas, $inicio, $fim, $incluidas, $transportado, $faturavel, $naoFaturavel, $excedente, $sobra);
+            $transportado = $sobra;
         }
 
         return $resultado;

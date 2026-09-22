@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
@@ -72,6 +73,21 @@ class User extends Authenticatable
     private bool $acessoLido = false;
 
     private ?object $acessoEmMemoria = null;
+
+    /**
+     * Pessoas ativas com acesso a esta aplicação no portal (opcionalmente só com um papel).
+     */
+    public function scopeComAcessoAosTempos(Builder $query, ?string $papel = null): void
+    {
+        $query->where('ativo', true)->whereExists(function ($q) use ($papel) {
+            $q->from('acessos')
+                ->join('aplicacoes', 'aplicacoes.id', '=', 'acessos.aplicacao_id')
+                ->whereColumn('acessos.utilizador_id', 'utilizadores.id')
+                ->where('aplicacoes.chave', config('app.chave'))
+                ->where('aplicacoes.activa', true)
+                ->when($papel !== null, fn ($q) => $q->where('acessos.papel', $papel));
+        });
+    }
 
     /** Esquece o acesso lido (útil quando o acesso muda a meio do mesmo pedido, ex.: testes). */
     public function esquecerAcesso(): void

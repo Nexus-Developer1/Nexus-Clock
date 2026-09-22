@@ -41,12 +41,31 @@ php artisan test
 A migração `0001_01_01_000000_garantir_tabelas_partilhadas` cria as tabelas da Nexus Infra e do
 portal só quando não existem (bases vazias de desenvolvimento e testes). Em produção não faz nada.
 
+Para ver a aplicação localmente (sem o portal a correr):
+
+```bash
+php artisan serve --port=8001
+# abrir http://localhost:8001/dev/entrar e escolher uma pessoa do seeder
+```
+
+A rota `/dev/entrar` só existe com `APP_ENV=local` numa base descartável.
+
+**CSS:** Tailwind 3 com os tokens da Nexus Infra, compilado para `public/css/app.css`, que vai no
+repositório. Depois de mexer em vistas: `npm install` (uma vez) e `npm run css`.
+
 ## Instalar no servidor
 
-1. Copiar para `/var/www/nexus-tempos`, `php composer.phar install --no-dev -o`.
-2. `.env` a partir do `.env.example`, com as definições de sessão iguais às do portal e
-   `DB_DATABASE` a base da Nexus Infra.
-3. `php artisan migrate --force` (só cria as tabelas dos tempos).
-4. No portal: registar a aplicação com a chave `tempos` e dar acesso às pessoas (papel `admin`
-   ou `tecnico`).
-5. Scheduler (`php artisan schedule:run` no cron) — refresca o consumo dos contratos de noite.
+Corre em `infra.nexus-solutions.pt` em `/tempos`, ao lado do portal e do Knowledgebase, com o
+utilizador `app-tempos`, pool PHP-FPM próprio e a mesma base da Nexus Infra. Tudo está no script
+idempotente `deploy/instalar.sh` (primeira instalação e atualizações):
+
+```bash
+git archive --format=tar.gz -o nexus-tempos.tar.gz HEAD
+scp nexus-tempos.tar.gz deploy/instalar.sh deploy/portal.sql dev@192.168.1.69:
+ssh dev@192.168.1.69 sudo bash instalar.sh
+```
+
+Na primeira vez, registar a aplicação no portal e dar acesso (admin/técnico, copiado da Nexus IFE):
+`sudo -u postgres psql -d nexus_ops -f portal.sql`. O `.env` é gerado a partir do da Nexus Ops
+(base, sessão, Redis, email) e depois mantido; o worker é o serviço `nexus-tempos-worker` e o
+scheduler o cron do `app-tempos`.

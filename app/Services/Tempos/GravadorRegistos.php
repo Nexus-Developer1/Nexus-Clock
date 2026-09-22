@@ -6,9 +6,11 @@ use App\Enums\OrigemRegistoTempo;
 use App\Models\Cliente;
 use App\Models\Contrato;
 use App\Models\Intervencao;
+use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\User;
 use App\Services\Auditor;
+use App\Services\Tempos\Faturacao\MesesFechados;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +25,7 @@ use Illuminate\Validation\ValidationException;
  *   tecnico_id      por omissão, quem grava
  *   cliente_id      obrigatório
  *   contrato_id     do mesmo cliente
+ *   projeto_id      projeto dos Tempos ativo (opcional)
  *   intervencao_id  do mesmo cliente (e do mesmo contrato, se houver contrato)
  *   dia + duracao_seg     registo da timesheet: inicio = meia-noite local do dia
  *   inicio [+ fim]        registo com horas reais; sem fim = cronómetro a correr
@@ -122,7 +125,7 @@ class GravadorRegistos
     private function preencher(RegistoTempo $registo, array $dados): void
     {
         $registo->fill(collect($dados)->only([
-            'tecnico_id', 'cliente_id', 'contrato_id', 'intervencao_id',
+            'tecnico_id', 'cliente_id', 'contrato_id', 'projeto_id', 'intervencao_id',
             'faturavel', 'descricao', 'etiquetas', 'origem',
         ])->all());
 
@@ -174,28 +177,18 @@ class GravadorRegistos
                 : 'Uma duração não pode passar de 24 horas.';
         }
 
-        // Regra 6: contrato e intervenção têm de ser do cliente (e a intervenção, do contrato).
-        if ($registo->contrato_id) {
-            $contrato = Contrato::find($registo->contrato_id);
-            if (! $contrato) {
-                $erros['contrato_id'] = 'O contrato não existe.';
-            } elseif ($cliente && (int) $contrato->cliente_id !== $cliente->id) {
-                $erros['contrato_id'] = 'O contrato '.$contrato->numero.' não é deste cliente.';
-            }
+        if ($cliente) {
+            $erros += $this->errosDeLigacao($cliente->id, $registo->contrato_id, $registo->intervencao_id);
         }
 
-        if ($registo->intervencao_id) {
-            $intervencao = Intervencao::with('equipamento.local')->find($registo->intervencao_id);
-            $clienteDaIntervencao = $intervencao?->clienteId();
-
-            if (! $intervencao) {
-                $erros['intervencao_id'] = 'A intervenção não existe.';
-            } elseif ($clienteDaIntervencao === null) {
-                $erros['intervencao_id'] = 'A intervenção não tem cliente: o equipamento ainda não está associado a um local na Nexus Infra.';
-            } elseif ($cliente && $clienteDaIntervencao !== $cliente->id) {
-                $erros['intervencao_id'] = 'A intervenção não é deste cliente.';
-            } elseif ($registo->contrato_id && (int) $intervencao->contrato_id !== (int) $registo->contrato_id) {
-                $erros['intervencao_id'] = 'A intervenção não pertence a este contrato.';
+        // Projeto: tem de existir e, ao escolhê-lo, estar ativo (registos antigos de um projeto entretanto
+        // arquivado continuam editáveis).
+        if ($registo->projeto_id && $registo->isDirty('projeto_id')) {
+            $projeto = ProjetoTempo::find($registo->projeto_id);
+            if (! $projeto) {
+                $erros['projeto_id'] = 'O projeto não existe.';
+            } elseif ($projeto->estaArquivado()) {
+                $erros['projeto_id'] = 'O projeto «'.$projeto->nome.'» está arquivado.';
             }
         }
 
@@ -209,6 +202,44 @@ class GravadorRegistos
         }
     }
 
+    /**
+     * Regra 6: contrato e intervenção têm de ser do cliente (e a intervenção, do contrato).
+     * Público porque a folha de horas valida a combinação ao acrescentar uma linha, antes de haver
+     * registos.
+     *
+     * @return array<string, string> erros por campo (vazio = coerente)
+     */
+    public function errosDeLigacao(int $clienteId, ?int $contratoId, ?int $intervencaoId): array
+    {
+        $erros = [];
+
+        if ($contratoId) {
+            $contrato = Contrato::find($contratoId);
+            if (! $contrato) {
+                $erros['contrato_id'] = 'O contrato não existe.';
+            } elseif ((int) $contrato->cliente_id !== $clienteId) {
+                $erros['contrato_id'] = 'O contrato '.$contrato->numero.' não é deste cliente.';
+            }
+        }
+
+        if ($intervencaoId) {
+            $intervencao = Intervencao::with('equipamento.local')->find($intervencaoId);
+            $clienteDaIntervencao = $intervencao?->clienteId();
+
+            if (! $intervencao) {
+                $erros['intervencao_id'] = 'A intervenção não existe.';
+            } elseif ($clienteDaIntervencao === null) {
+                $erros['intervencao_id'] = 'A intervenção não tem cliente: o equipamento ainda não está associado a um local na Nexus Infra.';
+            } elseif ($clienteDaIntervencao !== $clienteId) {
+                $erros['intervencao_id'] = 'A intervenção não é deste cliente.';
+            } elseif ($contratoId && (int) $intervencao->contrato_id !== $contratoId) {
+                $erros['intervencao_id'] = 'A intervenção não pertence a este contrato.';
+            }
+        }
+
+        return $erros;
+    }
+
     private function outroCronometroACorrer(RegistoTempo $registo): bool
     {
         return RegistoTempo::query()
@@ -220,6 +251,11 @@ class GravadorRegistos
 
     private function gravar(RegistoTempo $registo): void
     {
+        // Gravado (com permissão de reabrir) num mês fechado: nasce fechado, para entrar na faturação.
+        if ($registo->fechado_em === null && app(MesesFechados::class)->estaFechado($registo->dia())) {
+            $registo->fechado_em = now();
+        }
+
         try {
             // Savepoint: se o índice único rebentar dentro de uma transação exterior, esta sobrevive.
             DB::transaction(fn () => $registo->save());

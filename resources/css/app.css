@@ -1,9 +1,278 @@
-@import 'tailwindcss';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
+/*
+ * Componentes reutilizáveis do design system — os mesmos da Nexus Infra (resources/css/app.css
+ * de lá), para as duas aplicações parecerem uma só. Compilar com `npm run css`.
+ */
+@layer base {
+    :root {
+        /* Linhas das horas na grelha do Calendário (a mesma cor das bordas). */
+        --linha-hora: #e5e7eb;
+    }
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    body {
+        @apply bg-fundo font-sans text-texto-forte antialiased;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+}
+
+@layer components {
+    /* ---- Campos de formulário ---- */
+    .campo-label {
+        @apply mb-2 block text-xs font-semibold uppercase tracking-wide text-texto-medio;
+    }
+
+    .campo-input {
+        @apply w-full rounded-lg border border-borda bg-white px-4 py-3 text-sm text-texto-forte
+            placeholder:text-texto-fraco
+            outline-none transition
+            focus:border-verde-500 focus:ring-2 focus:ring-verde-100;
+    }
+
+    .campo-select {
+        @apply campo-input appearance-none bg-no-repeat pr-10;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+        background-position: right 0.85rem center;
+        background-size: 1.05rem;
+    }
+
+    /* Campos nas barras de filtros (40 px, a altura dos botões) e nos cabeçalhos dos cartões (32 px). */
+    .campo-barra {
+        @apply h-10 py-0;
+    }
+
+    .campo-mini {
+        @apply h-8 py-0 pl-3 text-xs;
+    }
+
+    /* ---- Botões ---- */
+    /* Todos os botões com 40 px de altura; foco visível; desativados e "a trabalhar" esbatidos. */
+    .botao {
+        @apply inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verde-500 focus-visible:ring-offset-2
+            active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    }
+
+    .botao-primario {
+        @apply botao bg-verde-600 px-5 text-white shadow-botao hover:bg-verde-700;
+    }
+
+    .botao-secundario {
+        @apply botao border border-borda bg-white px-4 font-medium text-texto-forte hover:border-slate-300 hover:bg-fundo;
+    }
+
+    .botao-perigo {
+        @apply botao bg-perigo-600 px-5 text-white hover:bg-perigo-500;
+    }
+
+    /* Botão quadrado só com ícone, da altura dos outros (barras de ferramentas). */
+    .botao-quadrado {
+        @apply botao w-10 border border-borda bg-white font-medium text-texto-medio hover:bg-fundo hover:text-texto-forte;
+    }
+
+    /* Enquanto o Livewire trata o pedido que um botão (ou formulário) lançou: roda e não aceita cliques. */
+    .botao[data-loading],
+    .botao-icone[data-loading],
+    .pilula-botao[data-loading],
+    form[data-loading] button[type='submit'] {
+        @apply pointer-events-none opacity-70;
+    }
+
+    .botao[data-loading] > svg:first-child,
+    form[data-loading] button[type='submit'] > svg:first-child {
+        @apply hidden;
+    }
+
+    .botao[data-loading]::before,
+    form[data-loading] button[type='submit']::before {
+        content: '';
+        @apply h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent;
+    }
+
+    /* Janelas: o fundo aparece e a janela sobe um pouco. */
+    .janela-fundo {
+        animation: janela-fundo 0.15s ease-out;
+    }
+
+    .janela {
+        animation: janela 0.18s ease-out;
+    }
+
+    /* Barra de progresso no topo durante os pedidos do Livewire. */
+    .barra-carga {
+        @apply pointer-events-none fixed inset-x-0 top-0 z-[60] h-0.5 overflow-hidden opacity-0 transition-opacity duration-200;
+    }
+
+    .barra-carga::after {
+        content: '';
+        @apply absolute inset-y-0 w-1/3 rounded-full bg-verde-500;
+        animation: barra-carga 1s ease-in-out infinite;
+    }
+
+    .a-carregar .barra-carga {
+        @apply opacity-100;
+    }
+
+    /* ---- Etiquetas / badges de estado ---- */
+    .etiqueta {
+        @apply inline-flex items-center whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium;
+    }
+
+    /* ---- Cartões ---- */
+    .cartao {
+        @apply rounded-2xl border border-borda bg-superficie shadow-cartao;
+    }
+
+    /* ---- Navegação da sidebar ---- */
+    .nav-item {
+        @apply relative flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium
+            text-white/65 transition hover:bg-white/5 hover:text-white;
+    }
+
+    /* Deslocamento da sidebar: fino e discreto sobre o fundo escuro. */
+    .sidebar-deslocar {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    }
+
+    .sidebar-deslocar::-webkit-scrollbar {
+        @apply w-1.5;
+    }
+
+    .sidebar-deslocar::-webkit-scrollbar-thumb {
+        @apply rounded-full bg-white/15;
+    }
+
+    .sidebar-deslocar::-webkit-scrollbar-track {
+        @apply bg-transparent;
+    }
+
+    .nav-item-ativo {
+        @apply bg-sidebar-ativo text-verde-300 hover:bg-sidebar-ativo hover:text-verde-300;
+    }
+
+    /* ---- Página inicial: cartões grandes e pílulas ---- */
+    .painel-cartao {
+        @apply rounded-2xl border border-borda bg-superficie shadow-cartao;
+    }
+
+    .pilula {
+        @apply inline-flex items-center gap-2 rounded-full border border-borda bg-white px-3 py-1.5 text-xs font-medium text-texto-medio;
+    }
+
+    .pilula-botao {
+        @apply inline-flex items-center gap-2 rounded-full border border-borda bg-white px-4 py-2 text-sm font-medium text-texto-forte transition hover:border-verde-300 hover:bg-verde-50;
+    }
+
+    /* ---- Tabelas (todas as páginas) ---- */
+    .tabela {
+        @apply w-full text-sm;
+    }
+
+    .tabela thead th {
+        @apply whitespace-nowrap border-b border-borda bg-fundo/60 px-4 py-3 text-left text-xs font-medium text-texto-medio first:pl-6 last:pr-6;
+    }
+
+    .tabela tbody td {
+        @apply border-b border-borda px-4 py-3.5 align-middle first:pl-6 last:pr-6;
+    }
+
+    .tabela tbody tr:last-child td {
+        @apply border-b-0;
+    }
+
+    .tabela tbody tr {
+        @apply transition-colors hover:bg-fundo/70;
+    }
+
+    .tabela .num {
+        @apply whitespace-nowrap text-right tabular-nums;
+    }
+
+    /* ---- Botão só com ícone (redondo) ---- */
+    .botao-icone {
+        @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-borda bg-white text-texto-medio transition hover:border-verde-300 hover:bg-verde-50 hover:text-verde-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verde-500;
+    }
+
+    .botao-icone-perigo {
+        @apply botao-icone hover:border-perigo-200 hover:bg-perigo-100 hover:text-perigo-600;
+    }
+
+    /* ---- Controlo segmentado (Todas / Faturáveis, Equipa / Eu…) ---- */
+    .segmentos {
+        @apply inline-flex rounded-full border border-borda bg-white p-1 text-xs;
+    }
+
+    .segmento {
+        @apply rounded-full px-3 py-1.5 font-medium text-texto-medio transition hover:text-texto-forte;
+    }
+
+    .segmento-ativo {
+        @apply bg-verde-900 text-white hover:text-white;
+    }
+
+    /* ---- Folha de horas: célula de duração ---- */
+    .celula-horas {
+        @apply h-10 w-full rounded-lg border border-borda bg-fundo px-1 text-center text-sm tabular-nums
+            text-texto-forte outline-none transition placeholder:text-texto-fraco
+            hover:border-verde-300 hover:bg-white focus:border-verde-500 focus:bg-white focus:ring-2 focus:ring-verde-100
+            disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:hover:bg-transparent;
+    }
+
+    .celula-horas-preenchida {
+        @apply border-verde-200 bg-verde-50 font-semibold text-verde-800;
+    }
+}
+
+/* Impressão (relatórios): só o conteúdo, sem menu. */
+@media print {
+    aside,
+    body > div > div > header {
+        display: none !important;
+    }
+
+    body {
+        background: #fff;
+    }
+
+    .cartao {
+        break-inside: avoid;
+        box-shadow: none;
+    }
+}
+
+@keyframes janela-fundo {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes janela {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.985);
+    }
+}
+
+@keyframes barra-carga {
+    from {
+        left: -33%;
+    }
+
+    to {
+        left: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .janela,
+    .janela-fundo,
+    .barra-carga::after {
+        animation: none;
+    }
 }

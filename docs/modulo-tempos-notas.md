@@ -107,6 +107,542 @@ implementação. **Onde as duas discordarem, vale este documento.** Cada entrada
 ### Testes
 - Sem factories (a Nexus Infra não as usa): `Model::create` e auxiliares no `Tests\TestCase`.
 
-## 4. Pontos onde o PHC "faria sentido" (não implementados)
+## 4. Decisões da Fase 2 — folha de horas semanal (2026-09-14)
+
+### Nomes
+| Especificação | Implementação |
+|---|---|
+| `Timesheet\WeekGrid` | `Timesheet\Folha` (rota `/folha`), UI "Folha de horas" |
+| vista admin | `Timesheet\Semanas` (rota `/semanas`) |
+| — | serviço `Services\Tempos\FolhaSemanal` (toda a lógica da grelha) |
+| lembrete semanal | job `LembrarSemanasPorSubmeter` + notificação `SemanaPorSubmeter` |
+
+### Dados
+- **Tabela nova `linhas_semana`** (não estava no plano). Uma linha por técnico × semana × cliente/
+  contrato/intervenção, com descrição, faturável e etiquetas. Sem ela não havia onde guardar uma
+  linha acrescentada e ainda sem horas (desaparecia ao recarregar) nem uma linha persistente que o
+  técnico retirou (voltava a aparecer). As horas continuam só em `registos_tempo`.
+- Uma linha da semana vem de: `linhas_semana` (acrescentada/copiada) · registos na semana (ex.:
+  cronómetro, admin) · **persistente** (horas na semana anterior, vazia, a menos que retirada).
+- Horas registadas aparecem **sempre**, mesmo numa linha retirada.
+
+### Grelha
+- **Célula = soma dos registos daquele dia e daquela linha.** Com um registo, escrever altera-o; vazio
+  ou `0` apaga-o (soft delete). Com **vários registos** (ex.: cronómetro, Fase 6) a célula fica só de
+  leitura — altera-se registo a registo.
+- Descrição, faturável e etiquetas são **da linha**: mudar passa para todos os registos da linha na
+  semana, e as células novas herdam-nos. Etiquetas escrevem-se separadas por vírgulas.
+- **Retirar uma linha só sem horas** na semana (evita apagar horas sem querer).
+- Ordem das linhas: alfabética por cliente, depois contrato e intervenção.
+- Aviso de **mais de 10 h** no total do dia (fundo amarelo e dica), sem bloquear.
+- Um erro numa célula (ex.: "uma hora") fica junto dela, com o texto escrito, até ser corrigido.
+- Contrato e intervenção escolhem-se em listas filtradas pelo cliente; a intervenção mostra
+  `#id · tipo · equipamento · data` (as intervenções da Nexus Infra não têm título).
+
+### Copiar semana anterior
+- Copia **linhas e horas**, dia a dia, com os atributos da linha. **Não escreve por cima** de horas
+  que já existam nesta semana; copiar duas vezes não duplica. Linhas vazias acrescentadas na semana
+  anterior também vêm; linhas persistentes vazias não.
+
+### Submeter e reabrir
+- Submete **o próprio técnico ou um admin**. Não se submete uma semana que ainda não começou; a
+  semana corrente pode ser submetida (ex.: sexta à tarde).
+- Submeter preenche `submetido_em` nos registos da semana; reabrir limpa-o e **fica na auditoria**
+  (`tempo_semana_reaberta`). Regra 12 (fecho mensal impede submissão) fica para a Fase 5.
+- Vista **Semanas** (admin): todas as pessoas com acesso aos tempos, últimas 4/8/12/26 semanas.
+  **Em falta** = semana já acabada e não submetida; reaberta e não resubmetida mostra "Reaberta"
+  (e conta como em falta).
+
+### Lembrete
+- Segunda-feira às **09h de Lisboa**, a quem tem papel **`tecnico`** nos tempos e conta ativa, com a
+  semana anterior por submeter (inclui reabertas não resubmetidas e semanas sem horas). Admins não
+  recebem. Pela fila, com o transporte **Microsoft Graph copiado da Nexus Infra** (`MAIL_MAILER=graph`
+  em produção, mesmas credenciais `MS_GRAPH_*`).
+
+### Interface e desenvolvimento
+- Layout, sidebar, barra superior, cores e componentes **copiados da Nexus Infra** (mesmos tokens do
+  Tailwind). **Tailwind 3 pela CLI**, CSS compilado em `public/css/app.css` e commitado — sem Vite e
+  sem Node no servidor. Depois de mexer em vistas: `npm run css`.
+- **Entrada de desenvolvimento** `/dev/entrar`: sem o portal local não há como entrar. Só existe com
+  `APP_ENV=local` **e** base `tempos_dev`/`tempos_testing`; em produção e nos testes não existe (há
+  teste que o garante).
+
+## 5. Decisões da Fase 3 — relatórios (2026-09-14)
+
+### Nomes e acesso
+| Especificação | Implementação |
+|---|---|
+| `Reports\ContractUsage` | `Relatorios\Contrato` (`/relatorios/contratos/{contrato}`) + `Services\Tempos\Relatorios\RelatorioContrato` |
+| `Reports\ClientSummary` | `Relatorios\Cliente` (`/relatorios/clientes/{cliente}`) + `RelatorioCliente` |
+| `Reports\TechnicianSummary` | `Relatorios\Tecnicos` (`/relatorios/tecnicos`) + `RelatorioTecnicos` |
+| filtros comuns | `PeriodoRelatorio` + `FiltrosRelatorio` (query string partilhado por páginas e exportações) |
+
+- Nesta aplicação não há outros "relatórios", por isso as páginas ficaram em `App\Livewire\Relatorios`.
+- **Contrato e cliente: só quem vê os tempos de todos** (admin). **Técnico: só "As minhas horas"**
+  (o relatório de técnicos, sempre filtrado por ele — também nas exportações, mesmo forçando `?tecnico=`).
+
+### Relatório de contrato
+- **Períodos lidos da view materializada**; o transporte é acumulado em PHP desde o início de cada
+  validade, com a **mesma função** do cálculo direto (`CalculadorHorasIncluidas::acumular`). Há teste
+  que compara os dois num ano com três mudanças de horas incluídas.
+- **O detalhe (por técnico, por intervenção) vem dos registos e respeita os filtros**; o consumo das
+  horas incluídas é **sempre o do contrato inteiro** (os filtros não o mudam — está escrito na página).
+- Aparecem **inteiros** os períodos das horas incluídas que tocam no período do relatório (ex.: num
+  relatório de maio de um contrato trimestral aparece abril–junho).
+- Horas **fora de quaisquer horas incluídas** aparecem como "Sem horas incluídas", por mês, e **todo o
+  faturável conta como excedente** (coerente com a regra 13).
+- Totais: transportadas = as que **entram** no primeiro período; disponível = o do último período;
+  consumo % = faturável dentro das horas incluídas ÷ (incluídas + transportadas).
+- **Frescura:** mostra "atualizado em …" (hora do último refresco da view, guardada em cache pelo job);
+  o admin tem **Atualizar agora**, que refresca a view na hora.
+- Barra de consumo: verde até 80 %, amarelo até 100 %, vermelho acima.
+
+### Resumo de cliente e horas por técnico
+- O resumo de cliente usa **só o período** (os outros filtros ficam escondidos): contratos com horas
+  incluídas ou consumo no período, mais uma linha **Sem contrato** (faturável = excedente).
+- Horas por técnico: consulta agrupada aos registos (índice técnico + início), com cliente, contrato,
+  técnico, faturável, etiqueta e período livre.
+
+### Exportações
+- **CSV** para o Excel em português: separador `;`, UTF-8 com BOM, **horas decimais com vírgula**
+  (`1,50`). No contrato, uma só tabela com a coluna "Secção" (Período / Técnico / Intervenção).
+- **PDF** com o pacote `barryvdh/laravel-dompdf` 3.1 (o mesmo da Nexus Infra), A4 retrato, logótipo
+  embebido e os filtros ativos no cabeçalho. Durações sem arredondamento.
+
+### Correção à view da Fase 1
+- Nas horas incluídas **sem fim**, a view cortava o fim do período corrente no **dia de hoje** (ex.:
+  setembro terminava a 14/09) em vez de ir até ao fim do mês. Corrigido: o fim de um período só é
+  cortado pela validade real. **A migração da view foi editada no sítio** porque ainda não foi
+  instalada em lado nenhum; localmente é preciso `migrate:fresh`.
+- A view gera períodos em aberto só **até à data de hoje da base de dados** (ou o último registo).
+
+### Desempenho (critério de aceitação)
+- 40 contratos × 12 meses, **100 800 registos**: relatório de ano de um contrato em **43–149 ms**
+  (teste `RelatorioDesempenhoTest`, limite 1 s).
+
+### Ligação a partir da Nexus Infra (opção A, aprovada a 2026-09-14)
+- Nas fichas de contrato e de cliente da Nexus Infra há um botão **"Ver tempos"** que abre
+  `/relatorios/contratos/{id}` e `/relatorios/clientes/{id}`. Só para admin e **só com `TEMPOS_URL`**
+  no `.env` da Nexus Infra (sem ele, nada aparece). Não há resumo embebido: a Nexus Infra não lê as
+  tabelas dos tempos. Está na branch `feature/link-tempos` do `nexus-ops` (commits `015f1b9`, `0309156`).
+
+## 6. Decisões da Fase 4 — tarifas, horas incluídas e margem (2026-09-14)
+
+### Nomes e acesso
+| Especificação | Implementação |
+|---|---|
+| CRUD de `rates` | página **Tarifas** (`/tarifas`) + `Services\Tempos\GestorTarifas` |
+| CRUD de `contract_allowances` | **Horas incluídas** do contrato (`/contratos/{id}/horas-incluidas`) + `GestorHorasIncluidas` |
+| `Reports\Margin` | `Relatorios\Margem` (`/relatorios/margem`) + `RelatorioMargem` |
+| — | Gate `tempos-gerir-tarifas` (admin) para tarifas e horas incluídas |
+
+- "Acessível a partir da página do contrato": a página do contrato nesta aplicação é o relatório de
+  consumo — tem o botão **Horas incluídas e tarifas**. A partir daí cria-se uma tarifa já com o
+  contrato escolhido.
+
+### Tarifas
+- Valores escritos como em Portugal (`45,50`, `1.234,56 €`), guardados em cêntimos.
+- **Sobreposição no mesmo âmbito recusada** (incluindo validades em aberto); validades seguidas
+  (acaba a 30/06, a seguinte começa a 01/07) aceites; tarifas apagadas não contam.
+- Criar, alterar e apagar ficam na **auditoria** com o antes e o depois (pesam na faturação e na margem).
+- Listagem por omissão mostra **em vigor e futuras**; "todas" inclui as expiradas.
+- ⚠️ Alterar o preço de uma tarifa muda a margem e a faturação **de trás** (as horas usam a tarifa do
+  seu dia). Para mudar um preço a partir de uma data, **termina-se a tarifa e cria-se outra**. A Fase 5
+  (fecho mensal) deve impedir mexer em tarifas que cubram meses fechados.
+- O resolvedor passou a ler as tarifas **uma vez por pedido** e a resolver em memória (a margem resolve
+  milhares de combinações sem consultas); esquece-as quando uma tarifa é gravada no mesmo pedido.
+
+### Horas incluídas
+- **Uma só ativa por contrato em cada data** (validades sobrepostas recusadas) — a validação que a
+  especificação pedia "no request".
+- Aviso (não bloqueio) quando começam antes do início do contrato ou vão além do fim.
+- Arredondamento de faturação só nos valores 0, 5, 6, 10, 15, 30 ou 60 minutos.
+- A tarifa do excedente escolhe-se entre as do contrato, do cliente e as globais; vazia = a normal.
+- Gravar ou apagar **refresca a view de consumo** (os relatórios ficam certos logo) e fica na auditoria.
+
+### Margem
+- **Receita = horas faturáveis × preço/hora; custo = todas as horas × custo/hora**, com a tarifa do dia
+  de cada registo e a cadeia da regra 11.
+- **O custo vem da primeira tarifa da cadeia que tenha custo preenchido** (ex.: o contrato vende a 60 €
+  sem custo; o custo vem da tarifa do técnico ou da global). A especificação não dizia de onde vinha
+  o custo quando a tarifa de venda não o tem.
+- As horas incluídas **não mudam a receita**: todas as horas faturáveis valem o preço da tarifa (como a
+  especificação diz). A avença do contrato (`contratos.valor`) não entra.
+- Horas **sem tarifa de venda** ou **sem custo** não entram nos valores e aparecem à parte, para não
+  parecerem margem.
+- Por contrato, cliente ou técnico; **pior margem primeiro**; linhas negativas a vermelho e contagem no
+  resumo. Filtros: período, técnico, etiqueta (o de faturável não se aplica — o custo conta todas).
+- CSV e PDF como os outros relatórios.
+
+## 7. Decisões da Fase 5 — fecho mensal e exportação de faturação (2026-09-14)
+
+### Nomes e dados
+| Especificação | Implementação |
+|---|---|
+| `Billing\MonthClose` | página **Faturação** (`/faturacao`) + `Services\Tempos\Faturacao\{FechoMensal, CalculadorFaturacao, ExportadorFaturacao, MesesFechados}` |
+| `locked_at` · `invoiced_at` | `fechado_em` · `faturado_em` (já existiam) |
+| — | **tabela nova `meses_tempo`** (estado aberto/fechado, quem e quando fechou/reabriu) |
+| — | **tabela nova `exportacoes_faturacao`** (fotografia das linhas exportadas, anulação) + coluna `registos_tempo.exportacao_faturacao_id` |
+
+- A especificação não dizia onde guardar o estado do mês nem o que foi exportado. A **fotografia** garante
+  que o CSV e os PDF de um mês exportado são sempre os mesmos, mesmo que tarifas ou horas incluídas mudem.
+
+### Fecho (regra 12)
+- Só **meses acabados**; **sem buracos** (não se fecha agosto com horas de julho por fechar; não se reabre
+  julho com agosto fechado); **cronómetros a correr** com início no mês impedem o fecho.
+- O bloqueio vale pela **data**: criar ou mudar um registo para um dia de um mês fechado exige permissão
+  de reabrir, e esse registo **nasce fechado** (entra na faturação). Na folha, os dias de meses fechados
+  ficam desativados para quem não pode reabrir.
+- **Reabrir:** permissão explícita (`tempos-reabrir`) e **motivo**; na auditoria. Os registos já faturados
+  continuam fechados (regra 4).
+- As **condições dos meses fechados ficam bloqueadas**: tarifas e horas incluídas que valham nesses dias
+  não se criam, não mudam de preço/datas nesses dias e não se apagam. Termina-se no fim do último mês
+  fechado e cria-se outra a partir do mês seguinte (a mensagem diz isso).
+
+### O que se fatura (regra 13)
+- Só registos **faturáveis, fechados e por faturar**.
+- **Com horas incluídas: só o excedente, faturado à medida** — em cada mês fatura-se o excedente acumulado
+  no período até ao fim do mês, menos o que já foi faturado desse período em exportações anteriores.
+  Assim um trimestre ou um ano faturam o excedente no mês em que acontece, sem faturar duas vezes; e um
+  mês fechado mas não exportado é apanhado no seguinte.
+- Na faturação, **consumo e transporte usam as durações arredondadas** (arredondamento por registo,
+  segundo as horas incluídas) — os relatórios mostram sem arredondar, por isso podem diferir.
+- **Sem horas incluídas nesses dias: todas as horas**, arredondadas a **15 min para cima** (o valor por
+  omissão da especificação), **uma linha por preço** (tarifa de cada registo, com técnico).
+- **Sem contrato:** uma linha por cliente e preço, "Horas sem contrato — mês".
+- Preço do excedente: a **tarifa do excedente** escolhida nas horas incluídas (usada tal como escolhida),
+  senão contrato → cliente → global no último dia do período faturado (sem técnico: é um valor do contrato).
+- **Excedente não faturável** aparece na pré-visualização mas não se exporta.
+- **Sem tarifa** numa linha → a exportação é recusada com a indicação da linha.
+- Marcam-se como faturados os registos das linhas exportadas; registos de contratos sem excedente ficam só
+  fechados.
+- Descrições: "Horas excedentes contrato X — agosto de 2026", "Horas contrato X — …", "Horas sem contrato — …".
+
+### Exportação
+- Só com o mês **fechado**. **Voltar a exportar** exige confirmação explícita (caixa "Confirmo…"): a
+  exportação anterior é **anulada** (fica no histórico, com CSV), os registos voltam a "por faturar" e o
+  cálculo é refeito. Tudo na auditoria.
+- **CSV global** (Cliente, NIF, Nº cliente ERP, Contrato, Descrição, Horas, Preço/hora, Valor) e **PDF por
+  cliente** com o logótipo, sempre a partir da fotografia.
+- A página abre por omissão no **mês anterior**. Num mês aberto, a pré-visualização inclui o que ainda não
+  está fechado (avisa que pode mudar).
+
+### Correção na folha de horas
+- A mensagem "Não pode alterar esta folha de horas" numa célula ficava presa depois de gravar outra célula.
+  Agora só fica "por corrigir" o texto que ainda difere do valor gravado.
+
+### Continua por confirmar (usado por omissão)
+- **Arredondamento por registo** (e não sobre o total do mês).
+- **Período parcial com as horas todas** (sem proporcional).
+
+## 8. Página inicial (2026-09-14, a pedido — não estava na especificação)
+
+- Inspirada num mockup de dashboard (cartões grandes, números em destaque, cartão de cor forte,
+  gráfico de linhas, barras e anel de progresso), **com o ADN Nexus**: verde da marca em vez de laranja,
+  Poppins, fundo claro e o cartão do gráfico no verde-escuro da sidebar.
+- **Técnico:** a minha semana (horas, % faturável, dias úteis com horas), hoje (por cliente), cartão de
+  "semana anterior por submeter", gráfico de horas por dia contra a semana anterior (todas ou só
+  faturáveis), o meu mês por cliente, as minhas últimas semanas e o anel de faturável do mês.
+- **Quem gere:** por omissão vê a **equipa** (alterna para "Eu"); em vez do mês pessoal, vê as horas
+  incluídas a esgotar (período corrente, pela view materializada), a equipa na semana anterior (em falta
+  primeiro) e o fecho do mês anterior (percentagem de semanas submetidas e atalho para a faturação).
+- A **variação** compara com os **mesmos dias** da semana anterior até hoje (à quarta, seg–qua contra
+  seg–qua) — comparar com a semana anterior inteira dava −70 % todas as segundas.
+- Gráfico em SVG gerado no servidor (sem biblioteca), curva monótona (não inventa picos nem desce
+  abaixo de zero), cores **validadas para daltonismo e contraste** sobre o fundo escuro (verde
+  `#16A34A` esta semana, violeta `#8B5CF6` semana anterior), cruz de leitura com tooltip por rato e
+  teclado, legenda e tabela para leitores de ecrã.
+- `/` passa a ser a página inicial (antes redirecionava para a folha de horas).
+
+## 9. Pontos onde o PHC "faria sentido" (não implementados)
 
 - Nenhum até agora.
+
+## 10. Aprovação das semanas (2026-09-14, a pedido — ideia tirada do Clockify)
+
+- **Um só nível** (a especificação exclui aprovações multi-nível, não a aprovação). Estados novos em
+  `semanas_tempo`: `aprovada` e `rejeitada`, com `aprovada_em/por`, `rejeitada_em/por` e
+  `motivo_rejeicao`. Migração própria e reversível (a tabela é deste módulo).
+- **Aprovar** (quem gere, `tempos-editar-todos`): só uma semana submetida. **Aprovada fica fechada a
+  todos, admin incluído** — para corrigir, reabre-se (auditoria `tempo_semana_reaberta` com
+  `estava_aprovada`). Assim a aprovação quer dizer alguma coisa.
+- **Rejeitar**: só uma semana submetida, **motivo obrigatório**. Volta a ser editável pelo técnico,
+  limpa `submetido_em` dos registos, conta como **em falta** (e recebe o lembrete de segunda) e o
+  técnico recebe **email com o motivo** (pela fila). Voltar a submeter limpa a rejeição; o histórico
+  fica na auditoria (`tempo_semana_aprovada`, `tempo_semana_rejeitada`).
+- "Entregue" = submetida ou aprovada: é o que conta para o lembrete, a vista Semanas e a página inicial.
+- **Não se submete com um cronómetro a correr** nessa semana (as horas ainda não estão todas).
+- Vista **Semanas**: "Por aprovar" como indicador e filtro, aprovar/rejeitar/reabrir em cada célula e
+  **Aprovar todas** (as submetidas à vista). Na folha, o admin aprova ou rejeita a semana aberta.
+- O **fecho do mês avisa** (não bloqueia) quando há semanas desse mês por aprovar. Fechar sem aprovar
+  continua possível — a aprovação é controlo interno, não condição de faturação.
+
+## 11. Fase 6 — cronómetro (2026-09-14, a pedido)
+
+| Especificação | Implementação |
+|---|---|
+| `Timer\Bar` no layout global | `Cronometro\Barra` (no topo de todas as páginas, só quando corre) |
+| — | serviço `Services\Tempos\Cronometro` (iniciar, continuar, parar, descartar) |
+| — | página **Registos** (`/registos`, `Registos\Listagem`) com a barra completa de nova entrada |
+
+- **Estado no servidor**: registo com `inicio` à hora real e `fim` nulo (regra 5 garantida pela base de
+  dados e validada no `GravadorRegistos`). A barra sincroniza a cada **30 s** e logo que o cronómetro
+  muda noutro componente (evento `cronometro-alterado`); os segundos contam no navegador, corrigidos
+  pela diferença de relógio para o servidor.
+- **Iniciar com um a correr para o anterior** (troca de tarefa, como no Clockify) em vez de dar erro.
+- **Menos de 1 minuto ao parar = descartado** (arranque sem querer). **Mais de 24 h não para sozinho**:
+  corrige-se a hora nos Registos ou descarta-se.
+- O registo fica no **dia em que começou**, mesmo passando a meia-noite (decisão da especificação:
+  não se partem registos). Na folha soma-se à célula desse dia; com mais de um registo a célula fica
+  só de leitura (já decidido na Fase 2). A célula onde o cronómetro corre tem um ponto verde.
+- **Seleção rápida**: na folha, cada linha tem ▶ (só na própria folha, na semana de hoje); nos
+  Registos, os **6 trabalhos recentes** diferentes arrancam com um clique ou preenchem a barra.
+- **Não se submete uma semana com o cronómetro a correr** (§10).
+- O cronómetro é sempre de quem o inicia; quem gere não arranca cronómetros de outros.
+
+## 12. Registos e edição em massa (2026-09-14, a pedido — ideias tiradas do Clockify)
+
+- Página **Registos**: barra de nova entrada (cronómetro ou **à mão**, com início e fim ou só a
+  duração), recentes, filtros (hoje, esta semana, semana passada, este mês, datas, técnico, pesquisa)
+  e os registos **por dia**, com **continuar**, **duplicar**, **alterar** e **apagar**. Quem gere
+  escolhe o técnico ou "todos"; as horas à mão vão para o técnico escolhido. Máximo de 300 registos
+  por página (aviso para encurtar o período).
+- Entrada à mão com **fim antes do início** (ex.: 22:00–01:30) acaba no dia seguinte, e fica no dia em
+  que começou. Só com duração, grava-se como na folha (meia-noite do dia).
+- O cadeado de cada registo (faturado, mês fechado, semana submetida/aprovada) é só indicação; quem
+  decide é sempre a `RegistoTempoPolicy`.
+- **Edição em massa** (`Services\Tempos\EdicaoEmMassa`): faturável, descrição, acrescentar/retirar
+  etiquetas e contrato/intervenção (só com registos todos do mesmo cliente), ou apagar. **Tudo ou
+  nada**: um registo que não possa ser alterado (ou que falhe a regra 6) desfaz tudo e a mensagem diz
+  qual. Máximo de 500 de cada vez. Auditoria `tempo_registos_editados_em_massa` /
+  `tempo_registos_apagados_em_massa`.
+- A descrição, o faturável e as etiquetas continuam a ser "da linha" na folha; mudar em massa só
+  alguns registos de uma linha deixa-os diferentes dentro da mesma semana (a folha mostra os do
+  primeiro registo). É o preço de corrigir registo a registo.
+
+## 13. Alertas de horas (2026-09-14, a pedido — ideia tirada do Clockify)
+
+- `Services\Tempos\AlertasHoras`: numa semana, por técnico, **horas abaixo do mínimo semanal**
+  (`TEMPOS_HORAS_SEMANA_MINIMAS`, por omissão **35 h**; 0 desliga), **dias acima de 10 h** (o mesmo
+  limite do aviso da folha), semanas **por entregar** e **por aprovar**. Técnicos e, como na vista
+  Semanas, administradores só se registaram horas.
+- **Resumo por email a quem gere** (papel `admin`), segunda às **09h15** de Lisboa (depois do lembrete
+  aos técnicos das 09h): quatro números, quem tem alertas e porquê, botão para aprovar. **Só sai se
+  houver alguma coisa a assinalar.** Os números calculam-se quando o email sai da fila.
+- Na **vista Semanas**, as semanas acabadas abaixo do mínimo têm um ⚠ junto das horas.
+- Só avisa, nunca bloqueia: **férias e ausências não estão nos tempos** (fora de âmbito), por isso uma
+  semana curta pode ter explicação. O mínimo de 35 h é um ponto de partida — ajustar no `.env`.
+
+## 14. Resumo livre (2026-09-14, a pedido — ideia tirada do "Summary report" do Clockify)
+
+- Novo separador **Resumo livre** (`/relatorios/resumo`, `Relatorios\Resumo`, serviço
+  `Relatorios\RelatorioResumo`): agrupar por **cliente, contrato, técnico, intervenção, etiqueta, dia,
+  semana ou mês** e, opcionalmente, **depois por** outra dimensão. Faturável e não faturável por grupo,
+  % do total (e % do grupo nos subgrupos), gráfico de barras e CSV/PDF com os mesmos filtros.
+- **Técnicos também o veem**, só com as suas horas (os separadores deles são "As minhas horas" e
+  "Resumo"); a exportação impõe o mesmo. `/relatorios` continua a abrir onde abria.
+- **Por etiqueta, um registo com várias etiquetas conta em cada uma** (e sem etiquetas conta em "Sem
+  etiqueta"); os totais vêm sempre dos registos, não da soma dos grupos — a página e o PDF dizem-no.
+- Dimensões de **tempo** por ordem cronológica e **com os dias/semanas/meses sem horas a zero** (o
+  gráfico não salta); as outras do maior para o menor, com "Sem contrato/intervenção/etiqueta" no fim.
+  O gráfico por categoria mostra os 10 maiores (os restantes estão na tabela).
+- Gráfico em HTML (sem biblioteca): verde = faturável, cinzento = não faturável, legenda sempre à
+  vista, leitura dos valores ao passar o rato ou com o foco do teclado, e a tabela por baixo como
+  alternativa acessível.
+
+## 15. Páginas retiradas (2026-09-14, a pedido)
+
+O responsável técnico pediu para **apagar as 7 páginas** (Início, Folha de horas, Registos, Relatórios,
+Semanas, Tarifas, Faturação): o que é preciso afinal é algo muito mais simples. O estado completo
+ficou na tag **`tempos-completo`** (recuperável com `git checkout tempos-completo -- <caminho>`).
+
+- **Saiu:** todos os componentes Livewire e vistas das páginas (incluindo Horas incluídas de um
+  contrato e a barra do cronómetro), as exportações CSV/PDF e os PDF, os emails e as notificações
+  (lembrete de segunda, semana rejeitada, resumo a quem gere) e os respetivos jobs agendados, o
+  serviço da página inicial e os componentes visuais só dessas páginas. Os testes das páginas também.
+- **Ficou:** a ligação à suite (sessão do portal, acesso, layout, sidebar só com Início e uma página
+  inicial vazia), os componentes visuais genéricos (`x-cabecalho-pagina`, `x-kpi`, `x-icone`,
+  `x-avatar`, `x-estado-vazio`, `x-toast-sucesso`), a base de dados e as migrações, os modelos, a
+  policy e os **serviços com as regras de negócio** (GravadorRegistos, FolhaSemanal, Cronometro,
+  EdicaoEmMassa, tarifas, horas incluídas, relatórios, faturação, alertas), com os seus testes, e o
+  refresco noturno do consumo dos contratos.
+- Rejeitar uma semana já não envia email (a página para onde apontava deixou de existir).
+- As secções §4–§14 descrevem páginas que já não existem; mantêm-se como histórico das decisões.
+- Na Nexus Infra, o botão "Ver tempos" (branch `feature/link-tempos`, não integrada) aponta para o
+  relatório de contrato, que deixou de existir — não integrar essa branch como está.
+
+## 16. Menu com 5 páginas (2026-09-15, a pedido — como a sidebar do Clockify)
+
+- Menu: **Painel** (`/`), **Relatórios** com submenu (**Resumo**, **Detalhado**, **Semanal** —
+  os relatórios base do Clockify; a confirmar), **Projetos**, **Equipa** e **Clientes**. Nomes em
+  PT-PT e aspeto Nexus (não em maiúsculas como no Clockify).
+- As páginas estão **por fazer**: uma só vista (`resources/views/pagina.blade.php`) com cabeçalho e
+  estado vazio, servida por `Route::view`. Todas visíveis a quem tem acesso aos tempos.
+- **A decidir antes de fazer "Projetos":** a especificação diz que "não existe entidade projeto; o
+  equivalente é contrato/intervenção" (§5 de `modulo-tempos.md`). Ou os projetos são os contratos (e
+  intervenções) da Nexus Infra, ou são uma tabela nova deste módulo.
+
+## 17. Página Clientes (2026-09-15, a pedido — como a do Clockify)
+
+- **Lista própria dos Tempos** (escolha do responsável técnico): tabela nova `clientes_tempos`, modelo
+  `ClienteTempo`, serviço `GestorClientes`. **Não** são os clientes da Nexus Infra (`clientes`, que vêm
+  do ERP e aqui são só de leitura) nem têm ligação a eles; os registos de horas continuam a apontar
+  para os da Nexus Infra. Se um dia os registos passarem a usar estes clientes, é uma decisão à parte.
+- Campos: **nome** (obrigatório, único sem distinguir maiúsculas, espaços normalizados), **email**,
+  **emails em cópia** (até 3, `text[]`), **morada**, **nota** e **moeda** (EUR por omissão; lista EUR,
+  USD, GBP, CHF, BRL, AOA). A lista mostra Nome, Morada e Moeda, como na imagem.
+- Acrescenta-se só pelo nome (como no Clockify); o resto altera-se no formulário (lápis).
+- **Arquivar** tira da lista de ativos; **apagar só arquivados** (soft delete, o nome fica livre).
+  Ações num a um (menu ⋮) ou em vários (caixas de seleção), tudo ou nada. Auditoria
+  `tempo_cliente_criado/alterado/arquivado/restaurado/apagado`.
+- Só **admin** gere (`tempos-gerir-clientes`); o técnico vê a lista sem ações.
+
+## 18. Página Equipa (2026-09-15, a pedido — como a do Clockify)
+
+Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `/equipa/limitados`,
+`/equipa/grupos`, `/equipa/lembretes`). Decisões do responsável técnico:
+
+- **Membros plenos = pessoas com acesso aos Tempos no portal.** "Acrescentar membro" abre o portal;
+  aqui não se criam contas nem se dá acesso. Cada pessoa com acesso ganha uma linha em
+  `membros_equipa` na primeira vez que a página abre (papel inicial: Administrador se é admin no
+  portal, senão Membro). Quem perde o acesso deixa de aparecer (a linha fica).
+- **Limitados**: pessoas sem conta (nome e email opcional), criadas, alteradas e apagadas aqui. Por
+  agora não registam horas (os registos ligam-se a contas da suite) e não recebem lembretes.
+- **Papéis ao estilo do Clockify**, guardados aqui: Proprietário (só um; passar a propriedade faz
+  do anterior administrador; limitados não podem), Administrador, Gestor de projeto, Gestor de
+  equipa, Membro. **Por agora só informativos: as permissões continuam a vir do papel no portal.**
+- **Taxa faturável e taxa de custo por membro, com histórico** (`taxas_membros`): "Mudar" grava um
+  valor a partir de uma data (hoje por omissão); valor vazio = sem taxa a partir dessa data. São
+  independentes das `tarifas` antigas (por técnico/cliente/contrato), que ficaram sem página.
+- **Grupos** (`grupos_equipa`, nome único): criar, renomear, escolher membros (plenos e limitados),
+  apagar; "+ Grupo" em cada membro e "Pôr num grupo" para vários.
+- **Lembretes** (`lembretes_equipa`): "menos de X h no dia anterior / na semana anterior", nos dias da
+  semana e à hora escolhidos (Lisboa, hora certa), para todos os membros plenos ou só alguns grupos.
+  Job `EnviarLembretesEquipa` de hora a hora; cada lembrete sai no máximo uma vez por dia. O email
+  leva à página inicial (ainda não há página para registar horas).
+- Só admin gere (`tempos-gerir-equipa`). O técnico vê Membros, Limitados e Grupos **sem taxas e sem
+  ações**; Lembretes é só para admin. Exportação CSV dos membros. Tudo na auditoria.
+
+### Campos de trabalho e menu Filtros (2026-09-15, a pedido — como no Clockify)
+
+- O botão **Filtros** abre a lista de campos: Taxa faturável, Taxa de custo, Papel e Grupo (por
+  omissão) e ainda **Início da semana**, **Dias de trabalho**, **Capacidade diária** e **Gestor de
+  equipa atribuído**. Cada campo ligado aparece **como filtro e como coluna**; desligar limpa o filtro.
+  A escolha fica na sessão de quem está a ver ("Repor os campos por omissão" volta ao início). Os
+  técnicos não veem as taxas no menu.
+- Novas colunas em `membros_equipa` (migração própria): `inicio_semana` (1 = segunda, por omissão),
+  `dias_trabalho` (segunda a sexta por omissão, pelo menos um), `capacidade_diaria_seg` (duração
+  escrita à mão: 8, 7:30…; vazio = sem) e `gestor_id`. O **gestor atribuído tem de ter o papel Gestor
+  de equipa** e não pode ser o próprio; quem deixa esse papel perde as atribuições.
+- Alteram-se diretamente na tabela (só admin), com auditoria `tempo_membro_campo`. Por agora são só
+  informação — ainda não mudam lembretes nem cálculos.
+- Correção: o texto "Ações" só para leitores de ecrã escapava ao corte das tabelas largas e fazia a
+  página inteira deslizar para o lado; os contentores das tabelas passam a `relative`.
+
+### Menu alargado (2026-09-15, a pedido — como o do Clockify)
+
+- **Relatórios** passa a ter secções: **Tempo** (Resumo, Detalhado, Semanal, Partilhados),
+  **Equipa** (Presenças, Tarefas) e **Despesas** (Detalhado). Nova secção **Gerir** com Quiosques,
+  Aprovações, Projetos, Equipa, Clientes e Etiquetas. As páginas novas estão por fazer (cabeçalho e
+  estado vazio); a lista do menu desliza quando não cabe.
+- **A confirmar antes de fazer:** a especificação original deixava de fora quiosques e despesas; a
+  Nexus Infra já tem despesas (com aprovação). Antes de construir Quiosques, Aprovações de despesas
+  ou o relatório de Despesas, decidir se ficam aqui ou se se ligam ao que já existe na Nexus Infra.
+- **2026-09-15, a pedido:** retirados do menu o título Gerir, Quiosques, Aprovações e Etiquetas (e as
+  páginas vazias). Ficam Projetos, Equipa e Clientes.
+
+## 19. Página Painel (2026-09-15, a pedido — como o Dashboard do Clockify)
+
+- `/` passa a ser o Livewire `App\Livewire\Painel\Pagina`; os dados vêm de `App\Services\Tempos\PainelTempos::gerar()`.
+- ~~Projeto = contrato~~ — desde 2026-09-17 (§20) o Painel agrupa pelo projeto dos Tempos; o contrato ficou como agrupamento à parte. **Cliente = cliente da Nexus Infra** (o dos registos), não a lista própria de `clientes_tempos`.
+- Só registos terminados; o dia é a data local de `inicio`. Agrupar por etiqueta conta o registo em cada etiqueta (as percentagens somam sobre esse total); registos sem grupo aparecem como "Sem projeto/cliente/etiqueta".
+- Gráfico: os 5 grupos com mais horas têm cor fixa (#16a34a, #2a78d6, #eb6834, #7c3aed, #eda100, paleta validada para daltonismo) e o resto junta-se em "Outros" (cinzento). O amarelo tem pouco contraste: por isso há legenda e lista com nomes.
+- "Equipa" só para quem passa `tempos-ver-todos`; um técnico que ponha `?quem=equipa` no URL fica em "Só eu". Período no URL (`periodo=semana|mes`, `de=AAAA-MM-DD`), alinhado à segunda-feira ou ao dia 1.
+- 2026-09-17: comparação com o período anterior (a mesma semana/mês antes, para as mesmas pessoas), faturável com a regra dos relatórios (registo faturável e projeto faturável ou sem projeto), agrupar por membro só na Equipa, quadro "Atividade da equipa" (`PainelTempos::equipa`: cronómetro a correr = registo sem fim; último registo = o de `inicio` mais recente já terminado) e ligações para o Detalhado (`Pagina::ligacao`: leva o período e, em "Só eu" para quem gere, o filtro do próprio; o contrato não tem ligação porque o Detalhado não filtra por contrato).
+
+## 20. Página Projetos (2026-09-17, a pedido — como a do Clockify)
+
+- Decisões do utilizador: **lista própria** (não os contratos da Nexus Infra) e **autorização para acrescentar `registos_tempo.projeto_id`** (opcional, `ON DELETE SET NULL`).
+- Tabelas: `projetos_tempos` (nome único por cliente, sem distinguir maiúsculas; cliente de `clientes_tempos`; cor de uma lista fixa; público; faturável; `taxa_cent`; `estimativa_seg`; nota; arquivado; soft delete), `projeto_membro` (membros de projetos privados, de `membros_equipa`) e `projeto_favoritos` (por pessoa).
+- Escrita em `GestorProjetos` (gate `tempos-gerir-projetos`, só admin), com auditoria (`tempo_projeto_*`). Favoritos: qualquer pessoa, nos projetos que vê (sem auditoria).
+- Privado: veem-no os administradores e os membros escolhidos (`ProjetoTempo::visiveisPara`). Ainda **não** impede um técnico de registar num projeto privado de que não é membro — não há ainda página de registo; fica para quando houver.
+- Horas e valor (`HorasProjetos`): registos terminados e não anulados, de sempre. Valor só de registos faturáveis em projetos faturáveis, à taxa do projeto ou, sem ela, à taxa faturável do membro em vigor no dia do registo (sem taxa = 0). Sem arredondamento. Os técnicos não veem valores.
+- Progresso = registado ÷ estimativa; acima de 100 % fica a vermelho.
+- `GravadorRegistos` aceita `projeto_id`: tem de existir e, ao ser escolhido, não estar arquivado (registos antigos de um projeto arquivado continuam editáveis).
+- Moeda: os valores mostram-se em euros (as taxas são em €); a moeda do cliente ainda não entra nas contas.
+
+## 21. Relatório Resumo (2026-09-17, a pedido — como o "Summary report" do Clockify)
+
+- `/relatorios/resumo` é o Livewire `App\Livewire\Relatorios\Resumo`; os dados vêm de `App\Services\Tempos\ResumoTempos` (não confundir com `Services\Tempos\Relatorios\RelatorioResumo`, o resumo livre de §14, que ficou sem página). Os outros separadores (Detalhado, Semanal, Partilhados) continuam por fazer.
+- Só registos terminados e não anulados. **Faturável** = registo faturável e (sem projeto ou projeto faturável). **Valor** = faturável × (taxa do projeto ou taxa faturável do membro no dia); **custo** = todas as horas × taxa de custo do membro no dia; **lucro** = valor − custo. Sem arredondamento (é só na faturação).
+- Quem não passa `tempos-ver-todos` vê só as suas horas (o filtro Equipa é ignorado) e não vê valores.
+- Agrupar por etiqueta conta o registo em cada etiqueta (e em "Sem etiqueta" se não tiver nenhuma); os totais e o gráfico por faturabilidade não duplicam.
+- Períodos com mais de 62 dias mostram o gráfico por mês. Datas à escolha: no máximo um ano.
+- Cliente = cliente da Nexus Infra dos registos (como no Painel). O filtro só lista clientes que já têm registos.
+- Não fizemos: arredondamento (regra da suite), criar fatura, partilhar, tarefas e quiosques (não existem).
+
+## 22. Relatório Detalhado (2026-09-17, a pedido — como o "Detailed report" do Clockify)
+
+- `/relatorios/detalhado` é o Livewire `App\Livewire\Relatorios\Detalhado`; linhas de `ResumoTempos::registos()` (ids por ordem, com faturável, valor e custo) e totais de `ResumoTempos::totais()`. Período e filtros partilhados com o Resumo no trait `Relatorios\Concerns\PeriodoEFiltros` e nos partials `relatorios/_topo` e `relatorios/_filtros`.
+- Toda a escrita passa pelo `GravadorRegistos` (alterar, acrescentar, duplicar, apagar, anular) e pela `EdicaoEmMassa` (que passou a aceitar `projeto`: id, ou 0 para tirar). As regras de sempre aplicam-se: semana entregue, mês fechado e faturado bloqueiam; um faturado só se anula (admin, com motivo).
+- Acrescentar tempo: para si; quem passa `tempos-editar-todos` escolhe o membro ("Add time for others"). Com início e fim, o registo fica com horas reais (fim antes do início = dia seguinte); só com duração, fica à meia-noite do dia, como na folha de horas.
+- Auditoria de tempo: sem projeto, sem descrição, sem etiquetas e com mais de 8 h (`ResumoTempos::LONGO_SEG`). Não há ainda "sobrepostos".
+- O combobox de cliente (`livewire/partials/combobox-cliente` e o trait `PesquisaClientes`) voltou da tag `tempos-completo`.
+- Não fizemos: arredondamento, criar fatura, partilhar, tarefas e quiosques.
+
+## 23. Relatório Semanal (2026-09-17, a pedido — como o "Weekly report" do Clockify)
+
+- `/relatorios/semanal` é o Livewire `App\Livewire\Relatorios\Semanal`; a grelha vem de `ResumoTempos::grelha()`. Período e filtros em `PeriodoEFiltros`, como no Resumo e no Detalhado.
+- Colunas: um dia por coluna até 7 dias; por semana (segunda a domingo, cortada nas pontas do período) até 93 dias; por mês acima disso.
+- Valor = o mesmo do Resumo (faturável, à taxa do projeto ou do membro no dia). Só quem passa `tempos-ver-todos` escolhe "Mostrar valor"; os outros veem só tempo.
+- Por etiqueta, o registo conta em cada etiqueta; os totais por coluna vêm de uma consulta sem etiquetas e não duplicam.
+- A cor das células é um só tom (verde) do claro ao escuro, pela proporção do maior valor das linhas de 1.º nível, com legenda "menos → mais"; o número está sempre escrito.
+- Cada célula liga ao Detalhado com as datas da coluna, os filtros ativos e o grupo/subgrupo da linha (contrato não, por o Detalhado não filtrar por contrato).
+- Não fizemos: arredondamento, criar fatura, partilhar, tarefas e quiosques.
+
+## 24. Relatório Presenças (2026-09-17, a pedido — como o "Attendance report" do Clockify)
+
+- `/relatorios/presencas` é o Livewire `App\Livewire\Relatorios\Presencas`; as linhas vêm de `App\Services\Tempos\Presencas` (calculadas em PHP: pessoas × dias do período).
+- Pessoas: quem tem acesso aos Tempos (os membros limitados não têm registos). Quem não passa `tempos-ver-todos` vê só a sua linha.
+- **Capacidade** = `membros_equipa.capacidade_diaria_seg` nos `dias_trabalho` da pessoa; sem capacidade definida usa `tempos.capacidade_diaria_horas` (8 h, como o Clockify). Fora dos dias de trabalho a capacidade é 0 e todo o trabalho conta como extra.
+- **Entrada/saída** = primeiro início e último fim dos registos com horas reais (cronómetro ou início/fim indicados); os registos só com duração (folha de horas) contam no trabalho mas não têm horas. **Pausas** = (saída − entrada) − duração desses registos.
+- **Ausências ("Time off")**: não existem nos Tempos; ficou de fora. Os filtros por intervalo de cada coluna do Clockify ficaram resumidos no filtro "Situação".
+- Separadores de Equipa: Presenças e Tarefas (Tarefas continua página vazia; não há tarefas nos Tempos). O partial `relatorios/_topo` aceita `$separadores`.
+
+## 25. Relatórios partilhados (2026-09-17, a pedido — como o "Share report" do Clockify)
+
+- Só o **Resumo** se partilha por agora (`RelatorioPartilhado::TIPOS`). A tabela nova `relatorios_partilhados` guarda o link (`token`, 40 caracteres aleatórios), o nome, a visibilidade, "sempre atual", "bloquear datas", os parâmetros do relatório (período, filtros, agrupamentos, cores, valor, ordem) e o agendamento por email.
+- Escrita em `GestorPartilhados` (qualquer pessoa com acesso cria; alterar, novo link e apagar = quem criou ou quem passa `tempos-gerir-equipa`), com auditoria (`tempo_relatorio_partilhado*`).
+- `/partilhado/{token}` (`Relatorios\Partilhado`, subclasse do `Resumo`, layout `layouts.publico`, `throttle:60,1`): **calculado com as permissões de quem partilhou** — um técnico só partilha as suas horas; quem vê a equipa partilha a equipa com valores. Quem abre não muda filtros nem o valor mostrado (custo/lucro ficam de fora); só muda o período se não estiver bloqueado. Público = sem sessão; privado = sessão da suite com acesso aos Tempos (sem sessão vai ao portal). Se quem partilhou perder o acesso ou for desativado, o link dá 404.
+- "Sempre atual" abre na semana/mês/ano corrente (não se aplica a datas à escolha). "Bloquear datas" fixa o período (o guardado ou o corrente).
+- Envio por email (`EnviarRelatoriosPartilhados`, de hora a hora): à hora escolhida (Lisboa), todos os dias, às segundas ou no dia 1; uma vez por dia; totais, os 8 grupos principais e o link. Os destinatários não precisam de conta, por isso só envie para quem pode ver os números: um link público por email fica tão aberto como o próprio email.
+- O `PeriodoEFiltros` ganhou `autor()`/`autorVeEquipa()` (por omissão, quem tem sessão), que o partilhado substitui.
+- Não fizemos: partilhar Detalhado e Semanal (a mesma peça serve quando for pedido) e "Create invoice".
+
+## 26. Relatório Atribuições (2026-09-17, a pedido — como o "Assignments report" do Clockify)
+
+- Decisão do utilizador: as horas **agendadas** vêm de **atribuições novas** (tabela `atribuicoes_tempos`: pessoa, projeto, de, até, `horas_dia_seg`, `fins_de_semana`, nota), não das estimativas dos projetos nem da capacidade. Sem partilha por agora.
+- Como não há tarefas nos Tempos, a página "Tarefas" passou a chamar-se **Atribuições** (`relatorios.atribuicoes`; o endereço antigo redireciona).
+- Escrita em `GestorAtribuicoes` (gate `tempos-gerir-equipa`), com auditoria (`tempo_atribuicao_*`): membro com acesso aos Tempos, projeto não arquivado (uma atribuição de um projeto entretanto arquivado continua editável), até um ano, 0:01 a 24:00 por dia.
+- `RelatorioAtribuicoes`: agendado = dias da atribuição dentro do período (só úteis, salvo "incluir fins de semana") × horas por dia; registado = registos terminados **com projeto** dessa pessoa nesse projeto no período. Cliente = cliente do projeto (`clientes_tempos`), não o cliente da Nexus Infra dos registos.
+- Estado: sem agendado nem registado = sem tempo; só registado = sem atribuição; registado > agendado = acima; igual = cumprida; nada registado e a atribuição ainda não começou = por começar; atribuição já terminada e abaixo = abaixo; resto = em curso. Os grupos usam as mesmas regras sobre a soma.
+- Não há calendário de agendamento ("Schedule") como no Clockify; as atribuições criam-se e alteram-se na própria página.
+
+## 27. Relatório Despesas (2026-09-17, a pedido — como o "Expense report" do Clockify)
+
+- Decisão do utilizador: **despesas próprias dos Tempos** (tabelas `categorias_despesa_tempos` e `despesas_tempos`), separadas das despesas da Nexus Infra. Valores em cêntimos (`valor_cent`), projeto opcional (`projetos_tempos`), apagar = soft delete.
+- Escrita em `GestorDespesas`, com auditoria (`tempo_despesa_*`, `tempo_categoria_despesa_*`). Gate novo `tempos-gerir-despesas` (admin): lançar para outros, alterar qualquer despesa, aprovar, rejeitar (motivo obrigatório), voltar a pendente e gerir categorias. Os restantes lançam e alteram as suas enquanto não estiverem aprovadas; se alterarem uma rejeitada, volta a pendente.
+- Categorias: 7 iniciais criadas pela migração (Combustíveis, Portagens e estacionamento, Refeições, Alojamento, Transportes, Material, Outras despesas); nome único sem distinguir maiúsculas; uma categoria (ou projeto) arquivada continua válida nas despesas que já a tinham, mas não serve para novas.
+- **Recibos** no disco `local` (privado), pasta `recibos-despesas`; PDF, JPG, PNG, WEBP ou HEIC até 10 MB; só se descarregam por `/despesas/{despesa}/recibo` (dono ou quem gere). O ZIP dos recibos junta até 2000 despesas mostradas, com nomes `data_pessoa_valor_id_nome`.
+- `RelatorioDespesas`: filtro Cliente = cliente do projeto (`clientes_tempos`); "Sem projeto" = projeto 0.
+- Não fizemos: despesas com quantidade × taxa por unidade (categorias "por unidade" do Clockify), faturar despesas e partilhar este relatório.
+
+## 28. Cronómetro e Calendário (2026-09-18, a pedido — como o "Time tracker" e o "Calendar" do Clockify)
+
+- Faltava a página de **registar horas no dia a dia**: desde 14/09 (§15) só se acrescentava tempo pela janela do relatório Detalhado. O serviço `Cronometro` (Fase 6) já existia e estava sem página; ganhou `projeto_id` (os projetos dos Tempos, §20).
+- `/` passa a ser o Cronómetro (`App\Livewire\Tempos\Cronometro`) e o Painel passa para `/painel`. O `LembreteHoras` passa a apontar para o Cronómetro. Decisão do utilizador: entrar na aplicação cai no cronómetro, como no Clockify.
+- **Cronómetro**: o estado vive no servidor (um registo com `fim` nulo), por isso segue entre separadores e computadores; o relógio da barra é só contagem no browser a partir do início. Enquanto corre, mexer na barra grava no registo (`sincronizar()`); se a gravação falhar, a barra fica como está e o erro aparece ao parar. Parar com menos de um minuto descarta (regra do serviço). **O cliente da Nexus Infra continua obrigatório em qualquer registo** (`GravadorRegistos`), por isso não se começa sem cliente.
+- **Calendário** (`/calendario`): a posição dos blocos é calculada em PHP (minuto de início, altura e colunas dos sobrepostos); os registos só com duração (sem horas reais) ficam numa faixa por cima do dia. Arrastar numa coluna chama `novo()` com o dia e as horas já preenchidos; o fim nunca passa das 23:45 e um bloco que atravesse a meia-noite é cortado às 24:00 (o registo em si não se parte).
+- As duas páginas mostram **só as horas de quem está a ver** (não há vista de equipa, como no Clockify).
+- O formulário de registo (acrescentar, alterar, duplicar, apagar, ler as horas escritas) saiu do Detalhado para o trait `App\Livewire\Concerns\FormularioRegisto` e a janela para `livewire/partials/formulario-registo`; o combobox de cliente passou a aceitar uma segunda pesquisa na mesma página (`$prop`, `$metodo`, `$lista`).
+- Não fizemos: folha semanal em grelha (o serviço `FolhaSemanal` continua sem página) e arrastar para mover ou esticar um bloco já existente — altera-se pela janela.

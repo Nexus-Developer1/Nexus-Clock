@@ -133,9 +133,14 @@ class DatabaseSeeder extends Seeder
                     }
                 }
 
-                // Semanas antigas submetidas; as duas últimas ficam em rascunho.
+                // Semanas antigas aprovadas, as de há 3–4 semanas por aprovar; as duas últimas em rascunho.
                 if ($semana > 2) {
-                    SemanaTempo::create(['tecnico_id' => $tecnico->id, 'semana_inicio' => $segunda, 'estado' => EstadoSemanaTempo::Submetida, 'submetida_em' => $segunda->addDays(7)]);
+                    $aprovada = $semana > 4;
+                    SemanaTempo::create([
+                        'tecnico_id' => $tecnico->id, 'semana_inicio' => $segunda, 'submetida_em' => $segunda->addDays(7),
+                        'estado' => $aprovada ? EstadoSemanaTempo::Aprovada : EstadoSemanaTempo::Submetida,
+                        'aprovada_em' => $aprovada ? $segunda->addDays(8) : null,
+                    ]);
                 }
             }
         }
