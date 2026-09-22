@@ -19,40 +19,18 @@
                     <input type="text" wire:model.blur="descricao" class="campo-input campo-barra w-full min-w-[14rem] text-base lg:flex-1" placeholder="Em que está a trabalhar?" aria-label="Descrição">
 
                     <div class="flex w-full flex-wrap items-center gap-3 lg:w-auto">
-                        <div class="w-full min-w-0 sm:w-48">
-                            @include('livewire.partials.combobox-cliente', [
-                                'idCampo' => 'barra-cliente',
-                                'prop' => 'barraBusca',
-                                'metodo' => 'selecionarClienteBarra',
-                                'lista' => $clientesBarra,
-                                'placeholder' => 'Cliente',
-                                'classe' => 'campo-barra',
-                            ])
-                        </div>
-
-                        <select wire:model.live="barraProjeto" class="campo-select campo-barra w-full sm:w-44" aria-label="Projeto">
+                        <select wire:model.live="barraProjeto" class="campo-select campo-barra w-full sm:w-56" aria-label="Projeto">
                             <option value="">Sem projeto</option>
                             @foreach ($projetos as $p)
-                                <option value="{{ $p->id }}">{{ $p->nome }}</option>
+                                <option value="{{ $p->id }}">{{ $p->nome }}{{ $p->cliente ? ' · '.$p->cliente->nome : '' }}</option>
                             @endforeach
                         </select>
 
                         <div class="relative flex items-center gap-1" x-data="{ aberto: false }" @click.outside="aberto = false" @keydown.escape="aberto = false">
-                            <button type="button" @click="aberto = ! aberto" class="botao-quadrado {{ $barraEtiquetas !== '' || $barraContrato !== '' ? '!border-verde-300 !bg-verde-50 !text-verde-700' : '' }}" title="Contrato e etiquetas" aria-label="Contrato e etiquetas"><x-icone nome="etiqueta" /></button>
-                            <div x-show="aberto" x-cloak class="absolute right-0 top-11 z-30 w-72 space-y-3 rounded-xl border border-borda bg-white p-4 shadow-lg">
-                                <div>
-                                    <label class="campo-label" for="barra-contrato">Contrato</label>
-                                    <select id="barra-contrato" wire:model.live="barraContrato" class="campo-select" @disabled(! $barraCliente)>
-                                        <option value="">Sem contrato</option>
-                                        @foreach ($contratosBarra as $id => $numero)
-                                            <option value="{{ $id }}">{{ $numero }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="campo-label" for="barra-etiquetas">Etiquetas</label>
-                                    <input id="barra-etiquetas" type="text" wire:model.blur="barraEtiquetas" class="campo-input" placeholder="Separadas por vírgulas">
-                                </div>
+                            <button type="button" @click="aberto = ! aberto" class="botao-quadrado {{ $barraEtiquetas !== '' ? '!border-verde-300 !bg-verde-50 !text-verde-700' : '' }}" title="Etiquetas" aria-label="Etiquetas"><x-icone nome="etiqueta" /></button>
+                            <div x-show="aberto" x-cloak class="absolute right-0 top-11 z-30 w-72 rounded-xl border border-borda bg-white p-4 shadow-lg">
+                                <label class="campo-label" for="barra-etiquetas">Etiquetas</label>
+                                <input id="barra-etiquetas" type="text" wire:model.blur="barraEtiquetas" class="campo-input" placeholder="Separadas por vírgulas">
                             </div>
 
                             <button type="button" wire:click="$toggle('barraFaturavel')" class="botao-quadrado {{ $barraFaturavel ? '!border-verde-300 !bg-verde-50 !text-verde-700' : '' }}" title="{{ $barraFaturavel ? 'Faturável' : 'Não faturável' }}" aria-label="{{ $barraFaturavel ? 'Faturável' : 'Não faturável' }}" aria-pressed="{{ $barraFaturavel ? 'true' : 'false' }}"><x-icone nome="euro" /></button>
@@ -115,10 +93,11 @@
                                     <button type="button" wire:click="editar({{ $r->id }})" class="min-w-0 flex-1 text-left">
                                         <div class="truncate text-sm font-medium text-texto-forte">{{ $r->descricao ?: 'Sem descrição' }}</div>
                                         <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-texto-medio">
-                                            <span class="truncate">{{ $r->cliente?->nome ?? 'Sem cliente' }}</span>
-                                            @if ($r->contrato) <span class="text-texto-fraco">· {{ $r->contrato->numero }}</span> @endif
                                             @if ($r->projeto)
                                                 <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: {{ $r->projeto->cor }}"></span>{{ $r->projeto->nome }}</span>
+                                                @if ($r->projeto->cliente) <span class="text-texto-fraco">· {{ $r->projeto->cliente->nome }}</span> @endif
+                                            @else
+                                                <span class="text-texto-fraco">Sem projeto</span>
                                             @endif
                                             @foreach ($r->etiquetas as $etiqueta)
                                                 <span class="rounded-full bg-fundo px-2 py-0.5 text-[11px] text-texto-medio">{{ $etiqueta }}</span>

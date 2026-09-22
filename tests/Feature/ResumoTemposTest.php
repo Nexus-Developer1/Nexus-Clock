@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Relatorios\Resumo;
 use App\Models\Cliente;
+use App\Models\ClienteTempo;
 use App\Models\MembroEquipa;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
@@ -51,8 +52,9 @@ class ResumoTemposTest extends TestCase
 
         $this->hospital = $this->cliente('Hospital');
         $this->banco = $this->cliente('Banco');
-        $this->obra = ProjetoTempo::create(['nome' => 'Obra', 'taxa_cent' => 6000]);
-        $this->interno = ProjetoTempo::create(['nome' => 'Interno', 'faturavel' => false]);
+        // O cliente dos relatórios é o cliente (dos Tempos) do projeto: a obra é do Hospital, o interno do Banco.
+        $this->obra = ProjetoTempo::create(['nome' => 'Obra', 'taxa_cent' => 6000, 'cliente_id' => ClienteTempo::create(['nome' => 'Hospital'])->id]);
+        $this->interno = ProjetoTempo::create(['nome' => 'Interno', 'faturavel' => false, 'cliente_id' => ClienteTempo::create(['nome' => 'Banco'])->id]);
 
         $membro = fn (User $u) => MembroEquipa::where('utilizador_id', $u->id)->sole()->id;
         TaxaMembro::create(['membro_id' => $membro($this->ana), 'tipo' => 'faturavel', 'valor_cent' => 4000, 'valido_de' => '2026-01-01']);
@@ -100,8 +102,8 @@ class ResumoTemposTest extends TestCase
 
         // Cores pelo 1.º agrupamento.
         $c = $this->gerar(g1: 'cliente', cor: 'grupo');
-        $this->assertSame(['Hospital', 'Banco'], array_column($c['grupos'], 'nome'));
-        $this->assertSame([(string) $this->hospital->id => 5400, (string) $this->banco->id => 7200, 'outros' => 0], $c['barras'][1]['partes']);
+        $this->assertSame(['Sem cliente', 'Hospital', 'Banco'], array_column($c['grupos'], 'nome'));
+        $this->assertSame([(string) $this->obra->cliente_id => 1800, (string) $this->interno->cliente_id => 3600, 'outros' => 7200], $c['barras'][1]['partes']);
     }
 
     public function test_filtros(): void
@@ -109,7 +111,9 @@ class ResumoTemposTest extends TestCase
         $total = fn (array $f) => $this->gerar($f)['total'];
 
         $this->assertSame(1800, $total(['membros' => [$this->rui->id]]));
-        $this->assertSame(7200, $total(['clientes' => [$this->banco->id]]));
+        $this->assertSame(3600, $total(['clientes' => [$this->interno->cliente_id]]));
+        $this->assertSame(7200, $total(['clientes' => [0]])); // sem cliente = sem projeto ou projeto sem cliente
+        $this->assertSame(7200 + 5400, $total(['clientes' => [0, $this->obra->cliente_id]]));
         $this->assertSame(7200 + 3600, $total(['projetos' => [0, $this->interno->id]]));
         $this->assertSame(3600, $total(['etiquetas' => ['noite', 'nada']]));
         $this->assertSame(10800, $total(['estado' => 'faturavel']));

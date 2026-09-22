@@ -2,8 +2,7 @@
 
 namespace App\Services\Tempos;
 
-use App\Models\Cliente;
-use App\Models\Contrato;
+use App\Models\ClienteTempo;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\User;
@@ -25,7 +24,6 @@ class ResumoTempos
     public const AGRUPAMENTOS = [
         'projeto' => 'Projeto',
         'cliente' => 'Cliente',
-        'contrato' => 'Contrato',
         'membro' => 'Membro',
         'etiqueta' => 'Etiqueta',
         'descricao' => 'Descrição',
@@ -240,7 +238,7 @@ class ResumoTempos
     {
         return [
             'membros' => User::comAcessoAosTempos()->orderBy('nome')->pluck('nome', 'id')->all(),
-            'clientes' => Cliente::withTrashed()->whereIn('id', RegistoTempo::query()->select('cliente_id')->distinct())->orderBy('nome')->pluck('nome', 'id')->all(),
+            'clientes' => [0 => 'Sem cliente'] + ClienteTempo::withTrashed()->whereIn('id', ProjetoTempo::withTrashed()->whereNotNull('cliente_id')->select('cliente_id'))->orderByRaw('lower(nome)')->pluck('nome', 'id')->all(),
             'projetos' => [0 => 'Sem projeto'] + ProjetoTempo::visiveisPara($quem)->orderByRaw('arquivado_em is not null, lower(nome)')->pluck('nome', 'id')->all(),
             'etiquetas' => DB::table('registos_tempo')->whereNull('deleted_at')->selectRaw('distinct unnest(etiquetas) as e')->orderBy('e')->pluck('e')->mapWithKeys(fn ($e) => [$e => $e])->all(),
         ];
@@ -313,7 +311,14 @@ class ResumoTempos
             ->leftJoin($taxa('faturavel', 'tf'), DB::raw('true'), '=', DB::raw('true'))
             ->leftJoin($taxa('custo', 'tc'), DB::raw('true'), '=', DB::raw('true'))
             ->when($membros !== null, fn ($q) => $q->whereIn('registos_tempo.tecnico_id', $membros))
-            ->when(($filtros['clientes'] ?? []) !== [], fn ($q) => $q->whereIn('registos_tempo.cliente_id', $filtros['clientes']))
+            // Cliente = o cliente (dos Tempos) do projeto do registo; 0 = sem cliente (sem projeto ou projeto sem cliente).
+            ->when(($filtros['clientes'] ?? []) !== [], fn ($q) => $q->where(function ($w) use ($filtros) {
+                $ids = array_values(array_filter($filtros['clientes']));
+                $w->whereIn('pt.cliente_id', $ids ?: [-1]);
+                if (in_array(0, $filtros['clientes'], true)) {
+                    $w->orWhereNull('pt.cliente_id');
+                }
+            }))
             ->when($projetos !== [], fn ($q) => $q->where(function ($w) use ($projetos) {
                 $ids = array_values(array_filter($projetos));
                 $w->whereIn('registos_tempo.projeto_id', $ids ?: [-1]);
@@ -344,8 +349,7 @@ class ResumoTempos
         $fuso = DB::getPdo()->quote(config('tempos.fuso'));
 
         return match ($agrupar) {
-            'cliente' => "coalesce(registos_tempo.cliente_id::text, '')",
-            'contrato' => "coalesce(registos_tempo.contrato_id::text, '')",
+            'cliente' => "coalesce(pt.cliente_id::text, '')",
             'membro' => "coalesce(registos_tempo.tecnico_id::text, '')",
             'etiqueta' => "unnest(case when cardinality(registos_tempo.etiquetas) = 0 then array[''::text] else registos_tempo.etiquetas end)",
             'descricao' => "coalesce(nullif(trim(registos_tempo.descricao), ''), '')",
@@ -359,8 +363,7 @@ class ResumoTempos
     {
         $ids = $chaves->filter(fn ($c) => $c !== '')->unique()->values();
         $nomes = match ($agrupar) {
-            'cliente' => Cliente::withTrashed()->whereIn('id', $ids)->pluck('nome', 'id')->all(),
-            'contrato' => Contrato::withTrashed()->whereIn('id', $ids)->pluck('numero', 'id')->all(),
+            'cliente' => ClienteTempo::withTrashed()->whereIn('id', $ids)->pluck('nome', 'id')->all(),
             'membro' => User::whereIn('id', $ids)->pluck('nome', 'id')->all(),
             'etiqueta', 'descricao' => $ids->mapWithKeys(fn ($e) => [$e => $e])->all(),
             'dia' => $ids->mapWithKeys(fn ($d) => [$d => ucfirst(CarbonImmutable::parse($d)->translatedFormat('D, d/m/Y'))])->all(),
@@ -370,7 +373,6 @@ class ResumoTempos
         $nomes = collect($nomes)->mapWithKeys(fn ($n, $k) => [(string) $k => (string) $n])->all();
         $nomes[''] = match ($agrupar) {
             'cliente' => 'Sem cliente',
-            'contrato' => 'Sem contrato',
             'membro' => 'Sem membro',
             'etiqueta' => 'Sem etiqueta',
             'descricao' => 'Sem descrição',

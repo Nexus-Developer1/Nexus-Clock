@@ -73,7 +73,7 @@ class Calendario extends Component
             ->doTecnico(auth()->user())
             ->whereNotNull('fim')
             ->whereBetween('inicio', [$inicio->utc(), $fim->utc()])
-            ->with(['cliente:id,nome', 'projeto:id,nome,cor'])
+            ->with(['projeto:id,nome,cor,cliente_id', 'projeto.cliente:id,nome'])
             ->orderBy('inicio')
             ->limit(500)
             ->get()

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Painel\Pagina;
 use App\Models\Cliente;
+use App\Models\ClienteTempo;
 use App\Models\Contrato;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
@@ -50,8 +51,9 @@ class PainelTest extends TestCase
         $this->banco = $this->cliente('Banco Atlântico');
         $this->ctHospital = $this->contrato($this->hospital, 'CT-H');
         $this->ctBanco = $this->contrato($this->banco, 'CT-B');
-        $this->obraH = ProjetoTempo::create(['nome' => 'Obra H']);
-        $this->obraB = ProjetoTempo::create(['nome' => 'Obra B']);
+        // O cliente do painel é o cliente (dos Tempos) do projeto.
+        $this->obraH = ProjetoTempo::create(['nome' => 'Obra H', 'cliente_id' => ClienteTempo::create(['nome' => 'Hospital da Luz'])->id]);
+        $this->obraB = ProjetoTempo::create(['nome' => 'Obra B', 'cliente_id' => ClienteTempo::create(['nome' => 'Banco Atlântico'])->id]);
     }
 
     private function gerar(?User $quem, string $agrupar = 'projeto', string $de = '2026-09-14', string $ate = '2026-09-20'): array
@@ -80,10 +82,7 @@ class PainelTest extends TestCase
         $this->assertSame([66.7, 33.3], array_column($dados['grupos'], 'percentagem'));
 
         $this->assertSame('Manutenção', $dados['atividades'][0]['descricao']);
-        $this->assertSame('Obra H · CT-H · Hospital da Luz', $dados['atividades'][0]['detalhe']);
-
-        // Por contrato continua disponível.
-        $this->assertSame(['CT-H', 'CT-B'], array_column($this->gerar($this->ana, 'contrato')['grupos'], 'nome'));
+        $this->assertSame('Obra H · Hospital da Luz', $dados['atividades'][0]['detalhe']);
         $this->assertSame(5400, $dados['atividades'][0]['segundos']);
 
         // Equipa: soma o Rui; o banco passa a ser o principal.
@@ -94,13 +93,13 @@ class PainelTest extends TestCase
 
     public function test_agrupar_por_cliente_e_por_etiqueta_com_grupo_sem_etiqueta(): void
     {
-        $this->registo($this->ana, $this->hospital, '2026-09-14', 3600, ['etiquetas' => ['urgente', 'noturno']]);
-        $this->registo($this->ana, $this->banco, '2026-09-15', 1800, ['etiquetas' => ['urgente']]);
+        $this->registo($this->ana, $this->hospital, '2026-09-14', 3600, ['projeto_id' => $this->obraH->id, 'etiquetas' => ['urgente', 'noturno']]);
+        $this->registo($this->ana, $this->banco, '2026-09-15', 1800, ['projeto_id' => $this->obraB->id, 'etiquetas' => ['urgente']]);
         $this->registo($this->ana, $this->banco, '2026-09-15', 600);
 
         $porCliente = $this->gerar($this->ana, 'cliente');
-        $this->assertSame(['Hospital da Luz', 'Banco Atlântico'], array_column($porCliente['grupos'], 'nome'));
-        $this->assertNull($porCliente['topProjeto']);
+        $this->assertSame(['Hospital da Luz', 'Banco Atlântico', 'Sem cliente'], array_column($porCliente['grupos'], 'nome'));
+        $this->assertSame(['nome' => 'Hospital da Luz', 'segundos' => 3600], $porCliente['topCliente']);
 
         $porEtiqueta = collect($this->gerar($this->ana, 'etiqueta')['grupos'])->pluck('segundos', 'nome')->all();
         $this->assertSame(['urgente' => 5400, 'noturno' => 3600, 'Sem etiqueta' => 600], $porEtiqueta);
@@ -109,10 +108,10 @@ class PainelTest extends TestCase
     public function test_mais_de_cinco_grupos_juntam_se_em_outros(): void
     {
         foreach (range(1, 7) as $n) {
-            $this->registo($this->ana, $this->cliente('Cliente '.$n), '2026-09-14', 600 * $n);
+            $this->registo($this->ana, $this->hospital, '2026-09-14', 600 * $n, ['projeto_id' => ProjetoTempo::create(['nome' => 'Projeto '.$n])->id]);
         }
 
-        $dados = $this->gerar($this->ana, 'cliente');
+        $dados = $this->gerar($this->ana, 'projeto');
 
         $this->assertCount(PainelTempos::GRUPOS_COM_COR, $dados['series']);
         $this->assertCount(7, $dados['grupos']);

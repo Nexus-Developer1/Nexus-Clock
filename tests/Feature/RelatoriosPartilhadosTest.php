@@ -8,6 +8,8 @@ use App\Livewire\Relatorios\Partilhados;
 use App\Livewire\Relatorios\Resumo;
 use App\Models\Auditoria;
 use App\Models\Cliente;
+use App\Models\ClienteTempo;
+use App\Models\ProjetoTempo;
 use App\Models\RelatorioPartilhado;
 use App\Models\User;
 use App\Notifications\RelatorioPartilhadoEmail;
@@ -60,9 +62,10 @@ class RelatoriosPartilhadosTest extends TestCase
         $this->hospital = $this->cliente('Hospital');
         $this->gestor = app(GestorPartilhados::class);
 
-        $this->registo($this->ana, $this->hospital, '2026-09-08', 3600);  // semana passada
-        $this->registo($this->rui, $this->hospital, '2026-09-08', 7200);  // semana passada
-        $this->registo($this->ana, $this->hospital, '2026-09-15', 1800);  // esta semana
+        $obra = ProjetoTempo::create(['nome' => 'Obra', 'cliente_id' => ClienteTempo::create(['nome' => 'Hospital'])->id]);
+        $this->registo($this->ana, $this->hospital, '2026-09-08', 3600, ['projeto_id' => $obra->id]);  // semana passada
+        $this->registo($this->rui, $this->hospital, '2026-09-08', 7200, ['projeto_id' => $obra->id]);  // semana passada
+        $this->registo($this->ana, $this->hospital, '2026-09-15', 1800, ['projeto_id' => $obra->id]);  // esta semana
     }
 
     private function partilhar(User $quem, array $dados = [], array $parametros = []): RelatorioPartilhado

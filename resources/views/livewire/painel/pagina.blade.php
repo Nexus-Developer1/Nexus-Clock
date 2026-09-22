@@ -22,12 +22,12 @@
     $perimetro = 2 * M_PI * $raio;
     $somaFatias = max(1, (int) $fatias->sum('segundos'));
 
-    // Ligação de um grupo ao Detalhado (o contrato não tem filtro lá).
+    // Ligação de um grupo ao Detalhado.
     $ligacaoGrupo = fn (string $chave) => match (true) {
-        $chave === 'outros', $agrupar === 'contrato' => null,
+        $chave === 'outros' => null,
         $agrupar === 'projeto' => $ligacao(['projetos' => [(int) $chave]]),
-        $chave === '' => null,
         $agrupar === 'cliente' => $ligacao(['clientes' => [(int) $chave]]),
+        $chave === '' => null,
         $agrupar === 'membro' => $ligacao(['membros' => [(int) $chave]]),
         default => $ligacao(['etiquetas' => [$chave]]),
     };
@@ -234,7 +234,7 @@
                         <ol class="grid grid-cols-1 gap-x-10 px-5 py-1 {{ $comEquipa ? '' : 'md:grid-flow-col md:grid-cols-2 md:[grid-template-rows:repeat(var(--linhas),auto)]' }}" style="--linhas: {{ $linhasAtividades }}">
                             @foreach ($atividades as $i => $a)
                                 @php
-                                    $url = $ligacao(['descricao' => $a['descricao'], 'projetos' => [$a['projeto_id'] ?? 0], 'clientes' => $a['cliente_id'] ? [$a['cliente_id']] : null]);
+                                    $url = $ligacao(['descricao' => $a['descricao'], 'projetos' => [$a['projeto_id'] ?? 0]]);
                                 @endphp
                                 <li class="flex items-center gap-4 py-3 {{ $loop->last ? '' : 'border-b border-borda' }} {{ ! $comEquipa && ($i + 1) % $linhasAtividades === 0 ? 'md:border-b-0' : '' }}">
                                     <span class="w-5 shrink-0 text-right text-xs tabular-nums text-texto-fraco">{{ $i + 1 }}</span>

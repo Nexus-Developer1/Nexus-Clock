@@ -2,8 +2,7 @@
 
 namespace App\Services\Tempos;
 
-use App\Models\Cliente;
-use App\Models\Contrato;
+use App\Models\ClienteTempo;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\User;
@@ -19,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  */
 class PainelTempos
 {
-    public const AGRUPAMENTOS = ['projeto' => 'Projeto', 'cliente' => 'Cliente', 'contrato' => 'Contrato', 'etiqueta' => 'Etiqueta', 'membro' => 'Membro'];
+    public const AGRUPAMENTOS = ['projeto' => 'Projeto', 'cliente' => 'Cliente', 'etiqueta' => 'Etiqueta', 'membro' => 'Membro'];
 
     // Grupos com cor própria no gráfico; os restantes juntam-se em "Outros".
     public const GRUPOS_COM_COR = 5;
@@ -34,22 +33,23 @@ class PainelTempos
     {
         $agrupar = isset(self::AGRUPAMENTOS[$agrupar]) ? $agrupar : 'projeto';
 
+        // O cliente é o do projeto (clientes dos Tempos): entra pela junção com projetos_tempos.
         $base = fn () => RegistoTempo::query()->terminados()->noPeriodo($de, $ate)
             ->when($tecnicoId, fn ($q) => $q->doTecnico($tecnicoId))
-            ->toBase();
+            ->toBase()
+            ->leftJoin('projetos_tempos as pt', 'pt.id', '=', 'registos_tempo.projeto_id');
 
         $totais = $this->totais($tecnicoId, $de, $ate);
 
         // Por grupo e por dia (subconsulta: a etiqueta usa unnest).
         [$expressao, $bindings] = match ($agrupar) {
-            'cliente' => ['cliente_id::text', []],
-            'contrato' => ['contrato_id::text', []],
-            'membro' => ['tecnico_id::text', []],
-            'etiqueta' => ['unnest(case when cardinality(etiquetas) = 0 then array[null::text] else etiquetas end)', []],
-            default => ['projeto_id::text', []],
+            'cliente' => ['pt.cliente_id::text', []],
+            'membro' => ['registos_tempo.tecnico_id::text', []],
+            'etiqueta' => ['unnest(case when cardinality(registos_tempo.etiquetas) = 0 then array[null::text] else registos_tempo.etiquetas end)', []],
+            default => ['registos_tempo.projeto_id::text', []],
         };
-        $sub = $base()->select('duracao_seg')
-            ->selectRaw('(inicio at time zone ?)::date as dia', [config('tempos.fuso')])
+        $sub = $base()->select('registos_tempo.duracao_seg')
+            ->selectRaw('(registos_tempo.inicio at time zone ?)::date as dia', [config('tempos.fuso')])
             ->selectRaw($expressao.' as grupo', $bindings);
         $linhas = DB::query()->fromSub($sub, 'r')
             ->selectRaw('dia, grupo, sum(duracao_seg) as segundos')
@@ -81,8 +81,8 @@ class PainelTempos
         return [
             'total' => $totais['total'],
             'faturavel' => $totais['faturavel'],
-            'topProjeto' => $this->topo($base(), 'projeto_id', fn ($ids) => ProjetoTempo::withTrashed()->whereIn('id', $ids)->pluck('nome', 'id')),
-            'topCliente' => $this->topo($base(), 'cliente_id', fn ($ids) => Cliente::withTrashed()->whereIn('id', $ids)->pluck('nome', 'id')),
+            'topProjeto' => $this->topo($base(), 'registos_tempo.projeto_id', fn ($ids) => ProjetoTempo::withTrashed()->whereIn('id', $ids)->pluck('nome', 'id')),
+            'topCliente' => $this->topo($base(), 'pt.cliente_id', fn ($ids) => ClienteTempo::withTrashed()->whereIn('id', $ids)->pluck('nome', 'id')),
             'dias' => $dias,
             'maximoDia' => (int) collect($dias)->max('total'),
             'grupos' => $grupos,
@@ -151,7 +151,7 @@ class PainelTempos
     private function topo(Builder $query, string $coluna, callable $nomesDe): ?array
     {
         $linha = $query->whereNotNull($coluna)->groupBy($coluna)
-            ->selectRaw($coluna.' as id, sum(duracao_seg) as segundos')
+            ->selectRaw($coluna.' as id, sum(registos_tempo.duracao_seg) as segundos')
             ->orderByDesc('segundos')->first();
 
         if (! $linha) {
@@ -164,19 +164,17 @@ class PainelTempos
     /** @return list<array{descricao: string, detalhe: string, segundos: int}> */
     private function atividades(Builder $query, int $limite): array
     {
-        $linhas = $query->groupBy('descricao', 'projeto_id', 'contrato_id', 'cliente_id')
-            ->selectRaw('descricao, projeto_id, contrato_id, cliente_id, sum(duracao_seg) as segundos')
-            ->orderByDesc('segundos')->orderBy('descricao')->limit($limite)->get();
+        $linhas = $query->groupBy('registos_tempo.descricao', 'registos_tempo.projeto_id', 'pt.cliente_id')
+            ->selectRaw('registos_tempo.descricao, registos_tempo.projeto_id, pt.cliente_id, sum(registos_tempo.duracao_seg) as segundos')
+            ->orderByDesc('segundos')->orderBy('registos_tempo.descricao')->limit($limite)->get();
 
         $projetos = ProjetoTempo::withTrashed()->whereIn('id', $linhas->pluck('projeto_id')->filter())->pluck('nome', 'id');
-        $contratos = Contrato::withTrashed()->whereIn('id', $linhas->pluck('contrato_id')->filter())->pluck('numero', 'id');
-        $clientes = Cliente::withTrashed()->whereIn('id', $linhas->pluck('cliente_id')->filter())->pluck('nome', 'id');
+        $clientes = ClienteTempo::withTrashed()->whereIn('id', $linhas->pluck('cliente_id')->filter())->pluck('nome', 'id');
 
         return $linhas->map(fn ($l) => [
             'descricao' => (string) $l->descricao,
             'detalhe' => collect([
                 $l->projeto_id ? $projetos[$l->projeto_id] ?? null : null,
-                $l->contrato_id ? $contratos[$l->contrato_id] ?? null : null,
                 $l->cliente_id ? $clientes[$l->cliente_id] ?? null : null,
             ])->filter()->implode(' · '),
             'segundos' => (int) $l->segundos,
@@ -190,8 +188,7 @@ class PainelTempos
     {
         $ids = $chaves->filter(fn ($c) => $c !== null && $c !== '')->unique()->values();
         $nomes = match ($agrupar) {
-            'cliente' => Cliente::withTrashed()->whereIn('id', $ids)->pluck('nome', 'id')->all(),
-            'contrato' => Contrato::withTrashed()->whereIn('id', $ids)->pluck('numero', 'id')->all(),
+            'cliente' => ClienteTempo::withTrashed()->whereIn('id', $ids)->pluck('nome', 'id')->all(),
             'membro' => User::whereIn('id', $ids)->pluck('nome', 'id')->all(),
             'etiqueta' => $ids->mapWithKeys(fn ($e) => [$e => $e])->all(),
             default => ProjetoTempo::withTrashed()->whereIn('id', $ids)->pluck('nome', 'id')->all(),
@@ -200,7 +197,6 @@ class PainelTempos
         $nomes = collect($nomes)->mapWithKeys(fn ($n, $k) => [(string) $k => (string) $n])->all();
         $nomes[''] = match ($agrupar) {
             'cliente' => 'Sem cliente',
-            'contrato' => 'Sem contrato',
             'membro' => 'Sem membro',
             'etiqueta' => 'Sem etiqueta',
             default => 'Sem projeto',

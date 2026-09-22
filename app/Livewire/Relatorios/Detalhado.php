@@ -173,14 +173,14 @@ class Detalhado extends Component
                 $linhas[] = array_merge([
                     $r->dia()->format('d/m/Y'), $horas ? $local($r->inicio) : '', $horas ? $local($r->fim) : '',
                     Horas::decimal($r->duracao_seg), PainelTempos::hms((int) $r->duracao_seg),
-                    $r->tecnico?->nome ?? '', $r->cliente?->nome ?? '', $r->contrato?->numero ?? '', $r->projeto?->nome ?? '',
+                    $r->tecnico?->nome ?? '', $r->projeto?->cliente?->nome ?? '', $r->projeto?->nome ?? '',
                     (string) $r->descricao, implode(', ', $r->etiquetas), $l->fat ? 'Sim' : 'Não',
                 ], $comValor ? [Dinheiro::decimal($this->valorDe($l))] : []);
             }
         });
 
         return Csv::resposta('detalhado-'.$de->format('Ymd').'-'.$ate->format('Ymd').'.csv', array_merge(
-            ['Dia', 'Início', 'Fim', 'Duração (h)', 'Duração', 'Membro', 'Cliente', 'Contrato', 'Projeto', 'Descrição', 'Etiquetas', 'Faturável'],
+            ['Dia', 'Início', 'Fim', 'Duração (h)', 'Duração', 'Membro', 'Cliente', 'Projeto', 'Descrição', 'Etiquetas', 'Faturável'],
             $comValor ? [$this->rotuloValor().' (€)'] : [],
         ), $linhas);
     }
@@ -241,7 +241,7 @@ class Detalhado extends Component
     /** @return Collection<int, RegistoTempo> por id */
     private function modelos(array $ids): Collection
     {
-        return RegistoTempo::with(['tecnico:id,nome', 'cliente:id,nome', 'contrato:id,numero', 'projeto:id,nome,cor,arquivado_em'])
+        return RegistoTempo::with(['tecnico:id,nome', 'projeto:id,nome,cor,arquivado_em,cliente_id', 'projeto.cliente:id,nome'])
             ->whereKey($ids)->get()->keyBy('id');
     }
 

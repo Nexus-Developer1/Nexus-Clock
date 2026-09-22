@@ -12,7 +12,6 @@ use App\Services\Tempos\FolhaSemanal;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 // Fase 6 — cronómetro: estado no servidor, um só a correr por técnico (regra 5), trocar de tarefa
@@ -136,13 +135,11 @@ class CronometroTest extends TestCase
             [$novo->cliente_id, $novo->contrato_id, $novo->descricao, $novo->faturavel, $novo->etiquetas]);
     }
 
-    public function test_sem_cliente_nao_arranca(): void
+    public function test_arranca_sem_cliente_da_nexus_infra(): void
     {
-        try {
-            $this->cronometro->iniciar($this->tecnico, []);
-            $this->fail('Sem cliente não devia arrancar.');
-        } catch (ValidationException $e) {
-            $this->assertSame('Indique o cliente.', $e->errors()['cliente_id'][0]);
-        }
+        $registo = $this->cronometro->iniciar($this->tecnico, []);
+
+        $this->assertSame([null, null, null], [$registo->cliente_id, $registo->contrato_id, $registo->fim]);
+        $this->assertSame($registo->id, $this->cronometro->aCorrer($this->tecnico)?->id);
     }
 }

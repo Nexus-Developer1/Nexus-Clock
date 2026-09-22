@@ -193,11 +193,17 @@ class TempoRegistoValidacaoTest extends TestCase
 
     // --- Validações base ---
 
-    public function test_cliente_e_obrigatorio(): void
+    public function test_cliente_da_nexus_infra_e_opcional_mas_contrato_e_intervencao_precisam_dele(): void
     {
-        $erro = $this->apanharErro(fn () => $this->gravador->criar($this->tecnico(), ['dia' => '2026-09-08', 'duracao_seg' => 3600]));
+        $registo = $this->gravador->criar($this->tecnico(), ['dia' => '2026-09-08', 'duracao_seg' => 3600]);
+        $this->assertSame([null, null, null, 3600], [$registo->cliente_id, $registo->contrato_id, $registo->intervencao_id, $registo->duracao_seg]);
 
-        $this->assertSame('Indique o cliente.', $erro['cliente_id'][0]);
+        $contrato = $this->contrato($this->cliente());
+        $erro = $this->apanharErro(fn () => $this->gravador->criar($this->tecnico(), ['contrato_id' => $contrato->id, 'dia' => '2026-09-08', 'duracao_seg' => 3600]));
+        $this->assertSame('Indique o cliente do contrato ou da intervenção.', $erro['cliente_id'][0]);
+
+        $erro = $this->apanharErro(fn () => $this->gravador->criar($this->tecnico(), ['cliente_id' => 999999, 'dia' => '2026-09-08', 'duracao_seg' => 3600]));
+        $this->assertSame('O cliente não existe.', $erro['cliente_id'][0]);
     }
 
     public function test_duracao_acima_de_24_horas_e_recusada(): void

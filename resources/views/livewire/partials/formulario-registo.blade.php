@@ -1,5 +1,5 @@
 {{-- Janela de acrescentar/alterar um registo de tempo (trait App\Livewire\Concerns\FormularioRegisto).
-     Espera: $editarId, $formulario, $membrosDoNovo, $clientesFiltrados, $contratos, $projetosDoFormulario. --}}
+     Espera: $editarId, $formulario, $membrosDoNovo, $projetosDoFormulario. --}}
 @if ($editarId !== null)
     <div class="janela-fundo fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-10" wire:keydown.escape="fecharFormulario" role="dialog" aria-modal="true" aria-labelledby="titulo-registo">
         <div class="absolute inset-0" wire:click="fecharFormulario"></div>
@@ -29,30 +29,12 @@
                     <input id="registo-descricao" type="text" wire:model="formulario.descricao" class="campo-input" placeholder="Em que trabalhou?">
                 </div>
 
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        <label class="campo-label" for="registo-cliente">Cliente <span class="text-perigo-500">*</span></label>
-                        @include('livewire.partials.combobox-cliente', ['idCampo' => 'registo-cliente', 'placeholder' => 'Pesquisar cliente'])
-                        @error('formulario.cliente_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="campo-label" for="registo-contrato">Contrato</label>
-                        <select id="registo-contrato" wire:model="formulario.contrato_id" class="campo-select" @disabled(! ($formulario['cliente_id'] ?? null))>
-                            <option value="">Sem contrato</option>
-                            @foreach ($contratos as $id => $numero)
-                                <option value="{{ $id }}">{{ $numero }}</option>
-                            @endforeach
-                        </select>
-                        @error('formulario.contrato_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-
                 <div>
                     <label class="campo-label" for="registo-projeto">Projeto</label>
                     <select id="registo-projeto" wire:model="formulario.projeto_id" class="campo-select">
                         <option value="">Sem projeto</option>
                         @foreach ($projetosDoFormulario as $p)
-                            <option value="{{ $p->id }}">{{ $p->nome }}</option>
+                            <option value="{{ $p->id }}">{{ $p->nome }}{{ $p->cliente ? ' · '.$p->cliente->nome : '' }}</option>
                         @endforeach
                     </select>
                     @error('formulario.projeto_id') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror

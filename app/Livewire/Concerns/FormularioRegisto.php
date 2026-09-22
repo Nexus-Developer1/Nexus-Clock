@@ -3,8 +3,6 @@
 namespace App\Livewire\Concerns;
 
 use App\Enums\OrigemRegistoTempo;
-use App\Models\Cliente;
-use App\Models\Contrato;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\User;
@@ -23,14 +21,10 @@ use InvalidArgumentException;
  */
 trait FormularioRegisto
 {
-    use PesquisaClientes;
-
     // null = fechado, 0 = novo, id = alterar.
     public ?int $editarId = null;
 
-    public string $clienteBusca = '';
-
-    /** @var array{tecnico_id: string, cliente_id: int|null, contrato_id: string, projeto_id: string, dia: string, hora_inicio: string, hora_fim: string, duracao: string, descricao: string, faturavel: bool, etiquetas: string} */
+    /** @var array{tecnico_id: string, projeto_id: string, dia: string, hora_inicio: string, hora_fim: string, duracao: string, descricao: string, faturavel: bool, etiquetas: string} */
     public array $formulario = [];
 
     public ?string $erro = null;
@@ -41,9 +35,8 @@ trait FormularioRegisto
         $this->erro = null;
         $this->resetErrorBag();
         $this->editarId = 0;
-        $this->clienteBusca = '';
         $this->formulario = $valores + [
-            'tecnico_id' => (string) auth()->id(), 'cliente_id' => null, 'contrato_id' => '', 'projeto_id' => '',
+            'tecnico_id' => (string) auth()->id(), 'projeto_id' => '',
             'dia' => $this->hojeLocal()->toDateString(), 'hora_inicio' => '', 'hora_fim' => '', 'duracao' => '',
             'descricao' => '', 'faturavel' => true, 'etiquetas' => '',
         ];
@@ -51,7 +44,7 @@ trait FormularioRegisto
 
     public function editar(int $id): void
     {
-        $registo = RegistoTempo::with('cliente')->findOrFail($id);
+        $registo = RegistoTempo::findOrFail($id);
         Gate::authorize('view', $registo);
         $local = fn (?CarbonImmutable $d) => $d?->setTimezone(config('tempos.fuso'));
         $horas = self::temHorasReais($registo);
@@ -59,11 +52,8 @@ trait FormularioRegisto
         $this->erro = null;
         $this->resetErrorBag();
         $this->editarId = $registo->id;
-        $this->clienteBusca = (string) $registo->cliente?->nome;
         $this->formulario = [
             'tecnico_id' => (string) $registo->tecnico_id,
-            'cliente_id' => $registo->cliente_id,
-            'contrato_id' => (string) $registo->contrato_id,
             'projeto_id' => (string) $registo->projeto_id,
             'dia' => $registo->dia()->toDateString(),
             'hora_inicio' => $horas ? $local($registo->inicio)->format('H:i') : '',
@@ -77,22 +67,8 @@ trait FormularioRegisto
 
     public function fecharFormulario(): void
     {
-        $this->reset(['editarId', 'formulario', 'clienteBusca']);
+        $this->reset(['editarId', 'formulario']);
         $this->resetErrorBag();
-    }
-
-    public function selecionarCliente(int $id): void
-    {
-        $cliente = Cliente::find($id);
-        $this->formulario['cliente_id'] = $cliente?->id;
-        $this->formulario['contrato_id'] = '';
-        $this->clienteBusca = $cliente?->nome ?? '';
-    }
-
-    public function updatedClienteBusca(): void
-    {
-        $this->formulario['cliente_id'] = null;
-        $this->formulario['contrato_id'] = '';
     }
 
     public function guardar(): void
@@ -106,8 +82,6 @@ trait FormularioRegisto
 
         try {
             $dados = [
-                'cliente_id' => $f['cliente_id'],
-                'contrato_id' => $f['contrato_id'] !== '' ? (int) $f['contrato_id'] : null,
                 'projeto_id' => $f['projeto_id'] !== '' ? (int) $f['projeto_id'] : null,
                 'descricao' => trim($f['descricao']) ?: null,
                 'faturavel' => (bool) $f['faturavel'],
@@ -147,10 +121,7 @@ trait FormularioRegisto
 
             app(GravadorRegistos::class)->criar(auth()->user(), [
                 'tecnico_id' => $modelo->tecnico_id,
-                'cliente_id' => $modelo->cliente_id,
-                'contrato_id' => $modelo->contrato_id,
                 'projeto_id' => $modelo->projeto_id && ! ProjetoTempo::find($modelo->projeto_id)?->estaArquivado() ? $modelo->projeto_id : null,
-                'intervencao_id' => $modelo->intervencao_id,
                 'descricao' => $modelo->descricao,
                 'faturavel' => $modelo->faturavel,
                 'etiquetas' => $modelo->etiquetas,
@@ -184,24 +155,21 @@ trait FormularioRegisto
     }
 
     /**
-     * O que a vista do formulário precisa (membros, clientes da pesquisa, contratos e projetos).
+     * O que a vista do formulário precisa (membros e projetos).
      *
      * @return array<string, mixed>
      */
     protected function dadosDoFormulario(): array
     {
         $aberto = $this->editarId !== null;
-        $clienteId = $this->formulario['cliente_id'] ?? null;
         $projetoAtual = (int) ($this->formulario['projeto_id'] ?? 0);
 
         return [
             'membrosDoNovo' => Gate::allows('tempos-editar-todos')
                 ? User::comAcessoAosTempos()->orderBy('nome')->pluck('nome', 'id')->all()
                 : [auth()->id() => auth()->user()->nome],
-            'clientesFiltrados' => $aberto ? $this->pesquisarClientes($this->clienteBusca) : collect(),
-            'contratos' => $clienteId ? Contrato::where('cliente_id', $clienteId)->orderByDesc('data_inicio')->pluck('numero', 'id')->all() : [],
             'projetosDoFormulario' => $aberto
-                ? ProjetoTempo::visiveisPara(auth()->user())->where(fn ($q) => $q->whereNull('arquivado_em')->orWhere('id', $projetoAtual))->orderByRaw('lower(nome)')->get(['id', 'nome', 'cor'])
+                ? ProjetoTempo::visiveisPara(auth()->user())->where(fn ($q) => $q->whereNull('arquivado_em')->orWhere('id', $projetoAtual))->with('cliente:id,nome')->orderByRaw('lower(nome)')->get(['id', 'nome', 'cor', 'cliente_id'])
                 : collect(),
         ];
     }

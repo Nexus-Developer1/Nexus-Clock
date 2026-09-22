@@ -43,11 +43,8 @@ class CronometroPaginaTest extends TestCase
 
     public function test_comecar_grava_o_que_esta_na_barra_e_parar_fecha_o_registo(): void
     {
-        $cliente = $this->cliente('Hospital');
-
         $pagina = $this->pagina()
             ->set('descricao', 'Manutenção dos servidores')
-            ->call('selecionarClienteBarra', $cliente->id)
             ->set('barraProjeto', (string) $this->obra->id)
             ->set('barraEtiquetas', 'remoto, urgente')
             ->call('comecar')
@@ -74,32 +71,27 @@ class CronometroPaginaTest extends TestCase
 
     public function test_cronometro_de_menos_de_um_minuto_e_descartado_e_descartar_apaga(): void
     {
-        $cliente = $this->cliente('Hospital');
-
-        $this->pagina()->call('selecionarClienteBarra', $cliente->id)->call('comecar')->call('parar')
+        $this->pagina()->call('comecar')->call('parar')
             ->assertSee('Cronómetro descartado: durou menos de um minuto.');
         $this->assertSame(0, RegistoTempo::count());
 
-        $this->pagina()->call('selecionarClienteBarra', $cliente->id)->call('comecar')->call('descartar')
+        $this->pagina()->call('comecar')->call('descartar')
             ->assertSee('Cronómetro descartado.');
         $this->assertSame(0, RegistoTempo::count());
     }
 
-    public function test_sem_cliente_nao_comeca(): void
+    public function test_comeca_sem_projeto_nem_descricao(): void
     {
-        $this->pagina()->set('descricao', 'Sem cliente')->call('comecar')
-            ->assertSet('erro', 'Indique o cliente.');
+        $this->pagina()->call('comecar')->assertSet('erro', null)->assertSee('Parar');
 
-        $this->assertSame(0, RegistoTempo::count());
+        $registo = RegistoTempo::sole();
+        $this->assertSame([null, null, null, null], [$registo->projeto_id, $registo->descricao, $registo->cliente_id, $registo->fim]);
     }
 
     public function test_modo_manual_acrescenta_as_horas_indicadas(): void
     {
-        $cliente = $this->cliente('Hospital');
-
         $this->pagina()
             ->set('modo', 'manual')
-            ->call('selecionarClienteBarra', $cliente->id)
             ->set('descricao', 'Visita')
             ->set('manualInicio', '09:00')
             ->set('manualFim', '')
@@ -172,9 +164,8 @@ class CronometroPaginaTest extends TestCase
 
     public function test_pagina_abre_na_raiz_e_retoma_o_cronometro_a_correr(): void
     {
-        $cliente = $this->cliente('Hospital');
         RegistoTempo::create([
-            'tecnico_id' => $this->ana->id, 'cliente_id' => $cliente->id, 'descricao' => 'A decorrer',
+            'tecnico_id' => $this->ana->id, 'projeto_id' => $this->obra->id, 'descricao' => 'A decorrer',
             'inicio' => CarbonImmutable::parse('2026-09-17 08:00:00'), 'fim' => null, 'duracao_seg' => 0,
         ]);
 
@@ -182,7 +173,7 @@ class CronometroPaginaTest extends TestCase
 
         $this->pagina()
             ->assertSet('descricao', 'A decorrer')
-            ->assertSet('barraBusca', 'Hospital')
+            ->assertSet('barraProjeto', (string) $this->obra->id)
             ->assertSee('Parar');
     }
 }

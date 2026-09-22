@@ -6,24 +6,21 @@ use App\Models\AtribuicaoTempo;
 use App\Models\CategoriaDespesaTempo;
 use App\Models\Cliente;
 use App\Models\ClienteTempo;
-use App\Models\Contrato;
 use App\Models\DespesaTempo;
 use App\Models\GrupoEquipa;
-use App\Models\Intervencao;
 use App\Models\MembroEquipa;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\TaxaMembro;
 use App\Models\User;
-use App\Services\Tempos\GravadorRegistos;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-// Comando tempos:demo — dados de demonstração só nas tabelas dos Tempos, em cima das pessoas e dos
-// clientes que já existem na Nexus Infra, e apagados exatamente (e só eles) com --apagar.
+// Comando tempos:demo — dados de demonstração só nas tabelas dos Tempos, em cima das pessoas que já
+// existem na Nexus Infra, e apagados exatamente (e só eles) com --apagar.
 class DadosDemoTest extends TestCase
 {
     use RefreshDatabase;
@@ -41,10 +38,7 @@ class DadosDemoTest extends TestCase
         $this->tecnico();
         $this->utilizador(null); // sem acesso aos Tempos: não recebe horas
 
-        $cliente = $this->cliente('Hospital Real');
-        $contrato = $this->contrato($cliente, 'CT-REAL');
-        $this->intervencao($cliente, $contrato);
-        $this->cliente('Cliente sem contrato');
+        $this->cliente('Hospital Real'); // da Nexus Infra: fica intacto e fora dos registos
     }
 
     public function test_cria_dados_em_todas_as_tabelas_dos_tempos_e_so_nelas(): void
@@ -67,32 +61,22 @@ class DadosDemoTest extends TestCase
         $this->assertTrue(Storage::disk('local')->exists('dados-demo.json'));
     }
 
-    public function test_registos_respeitam_as_regras_do_gravador(): void
+    public function test_registos_sao_dos_tempos_sem_ligacao_a_nexus_infra(): void
     {
         $this->artisan('tempos:demo')->assertExitCode(0);
 
         $semAcesso = User::where('nome', 'like', 'Pessoa de teste %')->whereNotIn('id', User::comAcessoAosTempos()->select('id'))->first();
         $this->assertSame(0, RegistoTempo::where('tecnico_id', $semAcesso->id)->count());
 
-        $gravador = app(GravadorRegistos::class);
-        $clientes = Cliente::pluck('id')->all();
-
         foreach (RegistoTempo::all() as $r) {
-            $this->assertContains($r->cliente_id, $clientes);
+            $this->assertSame([null, null, null], [$r->cliente_id, $r->contrato_id, $r->intervencao_id], 'registo '.$r->id);
             $this->assertNotNull($r->projeto_id);
-            $this->assertSame([], $gravador->errosDeLigacao($r->cliente_id, $r->contrato_id, $r->intervencao_id), 'registo '.$r->id);
             if ($r->fim) {
                 $this->assertSame($r->duracao_seg, (int) $r->fim->diffInSeconds($r->inicio, true));
                 $this->assertLessThanOrEqual(3 * 3600, $r->duracao_seg);
                 $this->assertLessThanOrEqual(Carbon::now(), $r->fim, 'nada no futuro');
             }
         }
-
-        // Há registos com contrato e com intervenção (as ligações à Nexus Infra aparecem preenchidas).
-        $this->assertGreaterThan(0, RegistoTempo::whereNotNull('contrato_id')->count());
-        $this->assertGreaterThan(0, RegistoTempo::whereNotNull('intervencao_id')->count());
-        $this->assertSame(Contrato::first()->id, RegistoTempo::whereNotNull('contrato_id')->first()->contrato_id);
-        $this->assertSame(Intervencao::first()->id, RegistoTempo::whereNotNull('intervencao_id')->first()->intervencao_id);
 
         // Um cronómetro a correr para quem administra; ninguém passa das 9 h por dia.
         $aCorrer = RegistoTempo::whereNull('fim')->get();
@@ -146,15 +130,6 @@ class DadosDemoTest extends TestCase
         // Apagar sem haver nada é inofensivo, e depois pode-se criar de novo.
         $this->artisan('tempos:demo --apagar')->assertExitCode(0);
         $this->artisan('tempos:demo')->assertExitCode(0);
-    }
-
-    public function test_sem_clientes_na_nexus_infra_recusa(): void
-    {
-        Cliente::query()->update(['ativo' => false]);
-
-        $this->artisan('tempos:demo')->assertExitCode(1);
-        $this->assertSame(0, RegistoTempo::count());
-        $this->assertSame(0, ProjetoTempo::count());
     }
 
     /** @return array<string, int> */

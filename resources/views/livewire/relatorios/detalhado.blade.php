@@ -137,7 +137,7 @@
                                                             <span class="h-2 w-2 shrink-0 rounded-full" style="background: {{ $r->projeto?->cor ?? '#cbd5e1' }}"></span>
                                                             <span class="truncate" title="{{ $r->projeto?->nome }}">{{ $r->projeto?->nome ?? 'Sem projeto' }}</span>
                                                         </span>
-                                                        <span class="min-w-0 truncate text-texto-medio" title="{{ $r->cliente?->nome }}{{ $r->contrato ? ' · '.$r->contrato->numero : '' }}">{{ $r->cliente?->nome ?? '—' }}@if ($r->contrato) · {{ $r->contrato->numero }}@endif</span>
+                                                        <span class="min-w-0 truncate text-texto-medio" title="{{ $r->projeto?->cliente?->nome }}">{{ $r->projeto?->cliente?->nome ?? '—' }}</span>
                                                         @foreach ($r->etiquetas as $e)
                                                             <span class="shrink-0 rounded-full bg-fundo px-2 py-0.5 text-[11px] text-texto-medio">{{ $e }}</span>
                                                         @endforeach

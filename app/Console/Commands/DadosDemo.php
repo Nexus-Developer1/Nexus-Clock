@@ -6,19 +6,15 @@ use App\Enums\OrigemRegistoTempo;
 use App\Jobs\AtualizarConsumoContratos;
 use App\Models\AtribuicaoTempo;
 use App\Models\CategoriaDespesaTempo;
-use App\Models\Cliente;
 use App\Models\ClienteTempo;
-use App\Models\Contrato;
 use App\Models\DespesaTempo;
 use App\Models\GrupoEquipa;
-use App\Models\Intervencao;
 use App\Models\MembroEquipa;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\TaxaMembro;
 use App\Models\User;
 use App\Services\Tempos\GestorEquipa;
-use App\Services\Tempos\GravadorRegistos;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -29,8 +25,8 @@ use Illuminate\Support\Facades\Storage;
  * Dados de demonstração para ver as páginas dos Tempos preenchidas (cronómetro, calendário, painel,
  * relatórios, projetos, equipa, clientes, despesas, atribuições) — e para os apagar a seguir.
  *
- * Escreve SÓ nas tabelas dos Tempos. As pessoas, os clientes, os contratos e as intervenções são
- * os que já existem na Nexus Infra (só lidos). Os IDs de tudo o que cria ficam em
+ * Escreve SÓ nas tabelas dos Tempos, em cima das pessoas com acesso (a única coisa que lê da Nexus
+ * Infra). Os IDs de tudo o que cria ficam em
  * storage/app/private/dados-demo.json; `--apagar` remove exatamente esses e mais nada.
  *
  * Determinístico (semente fixa) e cauteloso: não corre duas vezes sem apagar primeiro.
@@ -47,12 +43,10 @@ class DadosDemo extends Command
 
     private const MAX_PESSOAS = 8;
 
-    private const MAX_CLIENTES = 6;
-
     /** @var array<string, list<int>> IDs criados, por tabela. */
     private array $criados = [];
 
-    public function handle(GestorEquipa $equipa, GravadorRegistos $gravador): int
+    public function handle(GestorEquipa $equipa): int
     {
         if ($this->option('apagar')) {
             return $this->apagar();
@@ -72,18 +66,11 @@ class DadosDemo extends Command
             return self::FAILURE;
         }
 
-        $clientes = $this->clientesDaNexusInfra();
-        if ($clientes->isEmpty()) {
-            $this->error('Não há clientes ativos na Nexus Infra: um registo de tempo precisa sempre de cliente.');
-
-            return self::FAILURE;
-        }
-
         mt_srand(2026);
         $fuso = config('tempos.fuso');
         $agora = CarbonImmutable::now($fuso);
 
-        DB::transaction(function () use ($equipa, $gravador, $pessoas, $clientes, $fuso, $agora) {
+        DB::transaction(function () use ($equipa, $pessoas, $fuso, $agora) {
             $equipa->sincronizar();
             $membros = MembroEquipa::whereIn('utilizador_id', $pessoas->pluck('id'))->get()->keyBy('utilizador_id');
             $admin = $pessoas->first(fn (User $u) => $u->ehAdminTempos()) ?? $pessoas->first();
@@ -92,7 +79,7 @@ class DadosDemo extends Command
             $projetos = $this->criarProjetos($clientesTempos, $membros, $agora);
             $this->criarTaxas($membros, $admin);
             $this->criarGrupos($membros);
-            $this->criarRegistos($pessoas, $projetos, $clientes, $gravador, $fuso, $agora, $admin);
+            $this->criarRegistos($pessoas, $projetos, $fuso, $agora, $admin);
             $this->criarDespesas($pessoas, $projetos, $admin, $agora);
             $this->criarAtribuicoes($pessoas, $projetos, $admin, $agora);
 
@@ -104,7 +91,7 @@ class DadosDemo extends Command
 
         AtualizarConsumoContratos::dispatchSync();
 
-        $this->info('Dados de demonstração criados para '.$pessoas->count().' pessoas e '.$clientes->count().' clientes da Nexus Infra.');
+        $this->info('Dados de demonstração criados para '.$pessoas->count().' pessoas.');
         $this->table(['Tabela', 'Linhas'], collect($this->criados)->map(fn (array $ids, string $t) => [$t, count($ids)])->values()->all());
         $this->line('Para os apagar: php artisan tempos:demo --apagar');
 
@@ -145,42 +132,6 @@ class DadosDemo extends Command
         $this->table(['Tabela', 'Linhas'], collect($apagados)->map(fn (int $n, string $t) => [$t, $n])->values()->all());
 
         return self::SUCCESS;
-    }
-
-    // ------------------------------------------------------------------ leitura da Nexus Infra
-
-    /**
-     * Clientes ativos da Nexus Infra com o contrato mais recente e uma intervenção em curso que
-     * bata certo com ele (validado pelas mesmas regras do GravadorRegistos). Primeiro os que têm
-     * contrato.
-     *
-     * @return Collection<int, array{cliente: Cliente, contrato: ?Contrato, intervencao: ?Intervencao}>
-     */
-    private function clientesDaNexusInfra(): Collection
-    {
-        $clientes = Cliente::query()->where('ativo', true)
-            ->orderByRaw('case when exists (select 1 from contratos c where c.cliente_id = clientes.id) then 0 else 1 end')
-            ->orderBy('nome')
-            ->limit(self::MAX_CLIENTES)
-            ->get();
-
-        $gravador = app(GravadorRegistos::class);
-
-        return $clientes->map(function (Cliente $cliente) use ($gravador) {
-            $contrato = Contrato::where('cliente_id', $cliente->id)->orderByDesc('data_inicio')->first();
-            $intervencao = null;
-
-            if ($contrato) {
-                foreach (Intervencao::where('contrato_id', $contrato->id)->where('estado', '!=', Intervencao::ESTADO_CONCLUIDA)->limit(5)->get() as $candidata) {
-                    if ($gravador->errosDeLigacao($cliente->id, $contrato->id, $candidata->id) === []) {
-                        $intervencao = $candidata;
-                        break;
-                    }
-                }
-            }
-
-            return ['cliente' => $cliente, 'contrato' => $contrato, 'intervencao' => $intervencao];
-        });
     }
 
     // ------------------------------------------------------------------ criação
@@ -280,9 +231,8 @@ class DadosDemo extends Command
      *
      * @param  Collection<int, User>  $pessoas
      * @param  list<array{projeto: ProjetoTempo, cliente: int, descricoes: list<string>}>  $projetos
-     * @param  Collection<int, array{cliente: Cliente, contrato: ?Contrato, intervencao: ?Intervencao}>  $clientes
      */
-    private function criarRegistos(Collection $pessoas, array $projetos, Collection $clientes, GravadorRegistos $gravador, string $fuso, CarbonImmutable $agora, User $admin): void
+    private function criarRegistos(Collection $pessoas, array $projetos, string $fuso, CarbonImmutable $agora, User $admin): void
     {
         $ativos = array_values(array_filter($projetos, fn (array $p) => ! $p['projeto']->estaArquivado()));
         $arquivados = array_values(array_filter($projetos, fn (array $p) => $p['projeto']->estaArquivado()));
@@ -341,7 +291,7 @@ class DadosDemo extends Command
                             ? $arquivados[mt_rand(0, count($arquivados) - 1)]
                             : $ativos[mt_rand(0, count($ativos) - 1)];
 
-                        $this->gravarRegisto($pessoa, $escolha, $clientes, $gravador, $cursor, $fim, $segundos, [
+                        $this->gravarRegisto($pessoa, $escolha, $cursor, $fim, $segundos, [
                             'etiquetas' => $etiquetas[mt_rand(0, count($etiquetas) - 1)],
                             'origem' => mt_rand(1, 100) <= 60 ? OrigemRegistoTempo::Cronometro : OrigemRegistoTempo::Timesheet,
                         ]);
@@ -356,34 +306,20 @@ class DadosDemo extends Command
         // Cronómetro a correr para quem administra (é quem normalmente está a ver a demonstração).
         if (! RegistoTempo::query()->doTecnico($admin)->whereNull('fim')->exists()) {
             $inicio = $agora->subMinutes(mt_rand(8, 40));
-            $this->gravarRegisto($admin, $ativos[0], $clientes, $gravador, $inicio, null, null, ['origem' => OrigemRegistoTempo::Cronometro]);
+            $this->gravarRegisto($admin, $ativos[0], $inicio, null, null, ['origem' => OrigemRegistoTempo::Cronometro]);
         }
     }
 
     /**
      * @param  array{projeto: ProjetoTempo, cliente: int, descricoes: list<string>}  $escolha
-     * @param  Collection<int, array{cliente: Cliente, contrato: ?Contrato, intervencao: ?Intervencao}>  $clientes
      * @param  array<string, mixed>  $extra
      */
-    private function gravarRegisto(User $pessoa, array $escolha, Collection $clientes, GravadorRegistos $gravador, CarbonImmutable $inicio, ?CarbonImmutable $fim, ?int $segundos, array $extra): void
+    private function gravarRegisto(User $pessoa, array $escolha, CarbonImmutable $inicio, ?CarbonImmutable $fim, ?int $segundos, array $extra): void
     {
-        $ligacao = $clientes[$escolha['cliente'] % $clientes->count()];
-        $contrato = $ligacao['contrato'] && mt_rand(1, 100) <= 75 ? $ligacao['contrato'] : null;
-        $intervencao = $contrato && $ligacao['intervencao'] && mt_rand(1, 100) <= 40 ? $ligacao['intervencao'] : null;
-
-        // Garantia extra: cliente, contrato e intervenção pelas regras do gravador.
-        if ($gravador->errosDeLigacao($ligacao['cliente']->id, $contrato?->id, $intervencao?->id) !== []) {
-            $contrato = null;
-            $intervencao = null;
-        }
-
         $descricoes = $escolha['descricoes'];
         $r = new RegistoTempo([
             'tecnico_id' => $pessoa->id,
-            'cliente_id' => $ligacao['cliente']->id,
-            'contrato_id' => $contrato?->id,
             'projeto_id' => $escolha['projeto']->id,
-            'intervencao_id' => $intervencao?->id,
             'inicio' => $inicio->utc(),
             'fim' => $fim?->utc(),
             'duracao_seg' => $segundos,

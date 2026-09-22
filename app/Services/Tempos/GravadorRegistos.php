@@ -23,10 +23,10 @@ use Illuminate\Validation\ValidationException;
  *
  * Dados aceites (criar/atualizar):
  *   tecnico_id      por omissão, quem grava
- *   cliente_id      obrigatório
- *   contrato_id     do mesmo cliente
  *   projeto_id      projeto dos Tempos ativo (opcional)
- *   intervencao_id  do mesmo cliente (e do mesmo contrato, se houver contrato)
+ *   cliente_id      cliente da Nexus Infra (opcional; a interface dos Tempos já não o usa — notas §30)
+ *   contrato_id     do mesmo cliente (opcional)
+ *   intervencao_id  do mesmo cliente (e do mesmo contrato, se houver contrato) (opcional)
  *   dia + duracao_seg     registo da timesheet: inicio = meia-noite local do dia
  *   inicio [+ fim]        registo com horas reais; sem fim = cronómetro a correr
  *   faturavel, descricao, etiquetas, origem
@@ -162,9 +162,13 @@ class GravadorRegistos
             $erros['tecnico_id'] = 'Indique o técnico.';
         }
 
+        // O cliente da Nexus Infra é opcional (notas §30); se vier, tem de existir e contrato e
+        // intervenção têm de bater certo com ele. Sem cliente não há contrato nem intervenção.
         $cliente = $registo->cliente_id ? Cliente::find($registo->cliente_id) : null;
-        if (! $cliente) {
-            $erros['cliente_id'] = 'Indique o cliente.';
+        if ($registo->cliente_id && ! $cliente) {
+            $erros['cliente_id'] = 'O cliente não existe.';
+        } elseif (! $cliente && ($registo->contrato_id || $registo->intervencao_id)) {
+            $erros['cliente_id'] = 'Indique o cliente do contrato ou da intervenção.';
         }
 
         if ($registo->inicio === null) {

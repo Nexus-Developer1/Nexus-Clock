@@ -4,8 +4,6 @@ namespace App\Livewire\Tempos;
 
 use App\Enums\OrigemRegistoTempo;
 use App\Livewire\Concerns\FormularioRegisto;
-use App\Models\Cliente;
-use App\Models\Contrato;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Services\Tempos\Cronometro as ServicoCronometro;
@@ -21,7 +19,7 @@ use Livewire\Component;
 
 /**
  * Página de registar horas (como o "Time tracker" do Clockify): barra com o que se está a fazer
- * (descrição, cliente, contrato, projeto, etiquetas, faturável) e cronómetro a correr no servidor,
+ * (descrição, projeto, etiquetas, faturável) e cronómetro a correr no servidor,
  * ou modo manual (horas de início e fim); por baixo, os registos da semana agrupados por dia, com
  * continuar, alterar, duplicar e apagar. Cada pessoa vê e mexe só nas suas horas.
  */
@@ -33,12 +31,6 @@ class Cronometro extends Component
     // --- Barra ---
 
     public string $descricao = '';
-
-    public ?int $barraCliente = null;
-
-    public string $barraBusca = '';
-
-    public string $barraContrato = '';
 
     public string $barraProjeto = '';
 
@@ -115,26 +107,11 @@ class Cronometro extends Component
         });
     }
 
-    // --- Barra: cliente ---
-
-    public function selecionarClienteBarra(int $id): void
-    {
-        $cliente = Cliente::find($id);
-        $this->barraCliente = $cliente?->id;
-        $this->barraContrato = '';
-        $this->barraBusca = $cliente?->nome ?? '';
-        $this->sincronizar();
-    }
-
-    public function updatedBarraBusca(): void
-    {
-        $this->barraCliente = null;
-        $this->barraContrato = '';
-    }
+    // --- Barra ---
 
     public function updated(string $propriedade): void
     {
-        if (in_array($propriedade, ['descricao', 'barraContrato', 'barraProjeto', 'barraEtiquetas', 'barraFaturavel'], true)) {
+        if (in_array($propriedade, ['descricao', 'barraProjeto', 'barraEtiquetas', 'barraFaturavel'], true)) {
             $this->sincronizar();
         }
     }
@@ -172,11 +149,7 @@ class Cronometro extends Component
             'fim' => $fim,
             'rotuloSemana' => $this->rotuloSemana($inicio, $fim),
             'estaSemana' => $inicio->equalTo($this->semanaDeHoje()),
-            'clientesBarra' => $this->pesquisarClientes($this->barraBusca),
-            'contratosBarra' => $this->barraCliente
-                ? Contrato::where('cliente_id', $this->barraCliente)->orderByDesc('data_inicio')->pluck('numero', 'id')->all()
-                : [],
-            'projetos' => ProjetoTempo::visiveisPara(auth()->user())->ativos()->orderByRaw('lower(nome)')->get(['id', 'nome', 'cor']),
+            'projetos' => ProjetoTempo::visiveisPara(auth()->user())->ativos()->with('cliente:id,nome')->orderByRaw('lower(nome)')->get(['id', 'nome', 'cor', 'cliente_id']),
         ] + $this->dadosDoFormulario());
     }
 
@@ -191,7 +164,7 @@ class Cronometro extends Component
             ->doTecnico(auth()->user())
             ->whereNotNull('fim')
             ->whereBetween('inicio', [$inicio->utc(), $fim->endOfDay()->utc()])
-            ->with(['cliente:id,nome', 'contrato:id,numero', 'projeto:id,nome,cor'])
+            ->with(['projeto:id,nome,cor,cliente_id', 'projeto.cliente:id,nome'])
             ->orderByDesc('inicio')
             ->limit(500)
             ->get();
@@ -211,8 +184,6 @@ class Cronometro extends Component
     private function dadosDaBarra(): array
     {
         return [
-            'cliente_id' => $this->barraCliente,
-            'contrato_id' => $this->barraContrato !== '' ? (int) $this->barraContrato : null,
             'projeto_id' => $this->barraProjeto !== '' ? (int) $this->barraProjeto : null,
             'descricao' => trim($this->descricao) ?: null,
             'faturavel' => $this->barraFaturavel,
@@ -224,7 +195,7 @@ class Cronometro extends Component
     private function sincronizar(): void
     {
         $registo = app(ServicoCronometro::class)->aCorrer(auth()->user());
-        if (! $registo || ! $this->barraCliente) {
+        if (! $registo) {
             return;
         }
 
@@ -244,9 +215,6 @@ class Cronometro extends Component
         }
 
         $this->descricao = (string) $registo->descricao;
-        $this->barraCliente = $registo->cliente_id;
-        $this->barraBusca = (string) $registo->cliente?->nome;
-        $this->barraContrato = (string) $registo->contrato_id;
         $this->barraProjeto = (string) $registo->projeto_id;
         $this->barraEtiquetas = implode(', ', $registo->etiquetas);
         $this->barraFaturavel = $registo->faturavel;
@@ -254,7 +222,7 @@ class Cronometro extends Component
 
     private function limparBarra(): void
     {
-        $this->reset(['descricao', 'barraCliente', 'barraBusca', 'barraContrato', 'barraProjeto', 'barraEtiquetas', 'manualInicio', 'manualFim']);
+        $this->reset(['descricao', 'barraProjeto', 'barraEtiquetas', 'manualInicio', 'manualFim']);
         $this->barraFaturavel = true;
     }
 

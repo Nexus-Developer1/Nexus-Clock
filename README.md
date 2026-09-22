@@ -1,6 +1,6 @@
 # Nexus Tempos
 
-Registo de horas dos técnicos da Nexus Solutions, ligado a cliente, contrato e intervenção:
+Registo de horas dos técnicos da Nexus Solutions, por projeto e cliente próprios dos Tempos:
 horas incluídas por contrato, excedentes, tarifas, margem e export de faturação (CSV + PDF)
 para lançamento manual no ERP.
 
@@ -60,8 +60,8 @@ php artisan tempos:demo            # enche as páginas com dados falsos (só tab
 php artisan tempos:demo --apagar   # apaga exatamente o que o comando criou
 ```
 
-Serve em qualquer base, incluindo produção: usa as pessoas e os clientes que já existem na Nexus
-Infra e não escreve nas tabelas dela. Notas §29.
+Serve em qualquer base, incluindo produção: usa as pessoas que já existem na Nexus Infra e não
+escreve nas tabelas dela. Notas §29.
 
 ## Instalar no servidor
 

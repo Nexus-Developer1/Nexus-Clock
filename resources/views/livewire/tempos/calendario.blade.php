@@ -56,7 +56,7 @@
                                     <button type="button" wire:click="editar({{ $r->id }})" wire:key="sh-{{ $r->id }}"
                                             class="block w-full truncate rounded-md border-l-[3px] bg-fundo px-2 py-1 text-left text-[11px] text-texto-forte hover:bg-verde-50"
                                             style="border-color: {{ $r->projeto?->cor ?? '#16a34a' }}">
-                                        {{ PainelTempos::hms((int) $r->duracao_seg) }} · {{ $r->descricao ?: ($r->cliente?->nome ?? 'Sem descrição') }}
+                                        {{ PainelTempos::hms((int) $r->duracao_seg) }} · {{ $r->descricao ?: ($r->projeto?->nome ?? 'Sem descrição') }}
                                     </button>
                                 @endforeach
                             </div>
@@ -121,7 +121,7 @@
                                         <span class="block truncate text-[11px] font-medium text-texto-forte">{{ $r->descricao ?: 'Sem descrição' }}</span>
                                         @if ($b['minutos'] >= 45)
                                             <span class="block truncate text-[11px] text-texto-medio">{{ $b['inicio'] }} – {{ $b['fim'] }}</span>
-                                            <span class="block truncate text-[11px] text-texto-fraco">{{ $r->projeto?->nome ?? $r->cliente?->nome }}</span>
+                                            <span class="block truncate text-[11px] text-texto-fraco">{{ $r->projeto?->nome }}{{ $r->projeto?->cliente ? ' · '.$r->projeto->cliente->nome : '' }}</span>
                                         @endif
                                     </button>
                                 @endforeach

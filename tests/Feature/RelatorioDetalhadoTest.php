@@ -109,7 +109,6 @@ class RelatorioDetalhadoTest extends TestCase
             // Acrescentar tempo: com horas reais…
             ->call('novo')
             ->assertSet('formulario.tecnico_id', (string) $this->ana->id)
-            ->call('selecionarCliente', $this->hospital->id)
             ->set('formulario.descricao', 'Visita')
             ->set('formulario.dia', '2026-09-15')
             ->set('formulario.hora_inicio', '22:00')
@@ -127,10 +126,7 @@ class RelatorioDetalhadoTest extends TestCase
             ->call('guardar')
             ->assertHasErrors(['formulario.duracao'])
             ->set('formulario.duracao', '1:30')
-            ->call('guardar')
-            ->assertHasErrors(['formulario.cliente_id'])
             // Não acrescenta para outro membro.
-            ->call('selecionarCliente', $this->hospital->id)
             ->set('formulario.tecnico_id', (string) $this->rui->id)
             ->call('guardar')
             ->assertHasErrors(['formulario.geral'])
@@ -178,7 +174,6 @@ class RelatorioDetalhadoTest extends TestCase
             ->assertSeeInOrder(['Tarefa 55', 'Tarefa 54'])
             // Acrescentar para o Rui.
             ->call('novo')
-            ->call('selecionarCliente', $this->hospital->id)
             ->set('formulario.tecnico_id', (string) $this->rui->id)
             ->set('formulario.duracao', '0:45')
             ->set('formulario.descricao', 'Para o Rui')
