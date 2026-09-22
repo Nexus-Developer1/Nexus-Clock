@@ -48,8 +48,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('tempos-exportar', fn (User $utilizador) => $utilizador->ehAdminTempos());
         // Tarifas e horas incluídas dos contratos (condições que pesam na faturação e na margem).
         Gate::define('tempos-gerir-tarifas', fn (User $utilizador) => $utilizador->ehAdminTempos());
-        // Clientes dos Tempos (página Clientes): criar, alterar, arquivar e apagar. Os técnicos só veem.
-        Gate::define('tempos-gerir-clientes', fn (User $utilizador) => $utilizador->ehAdminTempos());
+        // Clientes dos Tempos (página Clientes): criar, alterar, arquivar e apagar. Aberto a toda a
+        // gente a pedido (2026-09-22, notas §33): os técnicos também precisam de acrescentar clientes.
+        // Para voltar a fechar aos admins basta repor $utilizador->ehAdminTempos() aqui.
+        Gate::define('tempos-gerir-clientes', fn (User $utilizador) => true);
         // Equipa: papéis, taxas (incluindo custo), membros limitados, grupos e lembretes. Os técnicos
         // veem a equipa sem taxas e sem ações.
         Gate::define('tempos-gerir-equipa', fn (User $utilizador) => $utilizador->ehAdminTempos());

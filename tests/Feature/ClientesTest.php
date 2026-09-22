@@ -8,7 +8,6 @@ use App\Models\Auditoria;
 use App\Models\ClienteTempo;
 use App\Models\User;
 use App\Services\Tempos\GestorClientes;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -16,7 +15,7 @@ use Tests\TestCase;
 
 // Página Clientes (lista própria dos Tempos): criar na página «Novo cliente» (nome, email, emails em
 // cópia, morada, nota, moeda), alterar na janela da listagem, arquivar, restaurar e apagar só
-// arquivados. Só admin gere; técnico vê.
+// arquivados. Desde 2026-09-22 gere quem quiser, admin ou técnico (notas §33).
 class ClientesTest extends TestCase
 {
     use RefreshDatabase;
@@ -107,19 +106,19 @@ class ClientesTest extends TestCase
         $this->assertFalse($b->fresh()->estaArquivado());
     }
 
-    public function test_tecnico_so_ve(): void
+    public function test_tecnico_tambem_gere_clientes(): void
     {
         $tecnico = $this->tecnico();
         $this->gestor->criar($this->admin, ['nome' => 'Hospital Exemplo']);
 
+        // A pedido (2026-09-22): a página Clientes dá ao técnico as mesmas ações que ao admin.
         $this->actingAs($tecnico)->get(route('clientes'))->assertOk()
-            ->assertSee('Hospital Exemplo')->assertDontSee('Novo cliente')->assertDontSee('Mais opções');
+            ->assertSee('Hospital Exemplo')->assertSee('Novo cliente')->assertSee('Mais opções');
 
-        // A página de criar está fechada aos técnicos.
-        $this->actingAs($tecnico)->get(route('clientes.novo'))->assertForbidden();
+        $this->actingAs($tecnico)->get(route('clientes.novo'))->assertOk();
 
-        $this->expectException(AuthorizationException::class);
-        $this->gestor->criar($tecnico, ['nome' => 'Outro']);
+        $cliente = $this->gestor->criar($tecnico, ['nome' => 'Clínica do Técnico']);
+        $this->assertSame($tecnico->id, $cliente->criado_por);
     }
 
     public function test_pagina_de_criar_grava_todos_os_campos_e_volta_a_listagem(): void

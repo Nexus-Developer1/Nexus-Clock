@@ -15,7 +15,7 @@ use Livewire\Component;
  * janela de alterar — nome, email, emails em cópia, morada, nota e moeda — numa página própria.
  * Gravado, volta à listagem com a mensagem de sucesso.
  *
- * Só entra quem gere clientes (gate `tempos-gerir-clientes`); os técnicos apanham 403.
+ * Entra quem gere clientes (gate `tempos-gerir-clientes`), aberto a toda a gente desde 2026-09-22.
  */
 #[Layout('components.layouts.app', ['ativo' => 'clientes', 'titulo' => 'Novo cliente'])]
 class Novo extends Component

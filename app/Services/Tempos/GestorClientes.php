@@ -10,9 +10,10 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Clientes dos Tempos: criar, alterar, arquivar, restaurar e apagar. Só quem gere os clientes
- * (`tempos-gerir-clientes`). Nome obrigatório e único (sem distinguir maiúsculas), email válido, até 3
- * emails em cópia, moeda da lista. Só se apaga um cliente arquivado. Tudo fica na auditoria.
+ * Clientes dos Tempos: criar, alterar, arquivar, restaurar e apagar. Pelo gate `tempos-gerir-clientes`,
+ * aberto a toda a gente desde 2026-09-22 (notas §33). Nome obrigatório e único (sem distinguir
+ * maiúsculas), email válido, até 3 emails em cópia, moeda da lista. Só se apaga um cliente
+ * arquivado. Tudo fica na auditoria.
  */
 class GestorClientes
 {
