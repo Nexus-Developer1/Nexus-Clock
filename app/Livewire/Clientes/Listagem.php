@@ -13,8 +13,9 @@ use Livewire\Component;
 
 /**
  * Página Clientes (lista própria dos Tempos): filtrar ativos/arquivados, pesquisar pelo nome,
- * acrescentar pelo nome, alterar num formulário (nome, email, emails em cópia, morada, nota, moeda),
- * arquivar, restaurar e apagar — um a um ou vários de uma vez. Os técnicos só veem.
+ * alterar numa janela (nome, email, emails em cópia, morada, nota, moeda), arquivar, restaurar e
+ * apagar — um a um ou vários de uma vez. Criar é na página própria (App\Livewire\Clientes\Novo),
+ * pelo botão «Novo cliente». Os técnicos só veem.
  */
 #[Layout('components.layouts.app', ['ativo' => 'clientes', 'titulo' => 'Clientes'])]
 class Listagem extends Component
@@ -24,8 +25,6 @@ class Listagem extends Component
 
     #[Url(as: 'q')]
     public string $pesquisa = '';
-
-    public string $novoNome = '';
 
     /** @var list<string> */
     public array $selecionados = [];
@@ -49,26 +48,6 @@ class Listagem extends Component
     public function updatedPesquisa(): void
     {
         $this->selecionados = [];
-    }
-
-    public function acrescentar(): void
-    {
-        $this->resetErrorBag();
-
-        try {
-            $cliente = app(GestorClientes::class)->criar(auth()->user(), $this->novoNome);
-        } catch (ValidationException $e) {
-            $this->addError('novoNome', collect($e->errors())->flatten()->first());
-
-            return;
-        } catch (AuthorizationException) {
-            $this->addError('novoNome', 'Não pode acrescentar clientes.');
-
-            return;
-        }
-
-        $this->novoNome = '';
-        session()->flash('sucesso', 'Cliente «'.$cliente->nome.'» acrescentado.');
     }
 
     public function editar(int $id): void

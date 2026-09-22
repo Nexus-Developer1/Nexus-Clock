@@ -662,3 +662,11 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - Relatórios e Painel: o filtro e o agrupamento **Cliente** passam a ser o cliente do projeto (`pt.cliente_id`), com "Sem cliente" (valor 0 no filtro) para registos sem projeto ou em projeto sem cliente; o agrupamento **Contrato** desaparece; a coluna Contrato sai do CSV do Detalhado.
 - `tempos:demo` (§29) deixa de ler clientes, contratos e intervenções; os registos de demonstração ficam só com projeto.
 - Não fizemos: migração para apagar as três colunas (ficam para os serviços da especificação); ligação entre `clientes_tempos` e os clientes da Nexus Infra (§17 já dizia que não há).
+
+## 31. Página «Novo cliente» (2026-09-22, a pedido)
+
+- Pedido do utilizador: um botão no canto superior direito da página Clientes que abra **uma página** para preencher os campos, em vez de se acrescentar só pelo nome (§17, ideia do Clockify).
+- Rota `/clientes/novo` (`clientes.novo`), componente `App\Livewire\Clientes\Novo`. Campos: os mesmos que o cliente já tinha na janela de alterar — **nome** (obrigatório e único, sem distinguir maiúsculas), email, emails em cópia (até 3), morada, nota e moeda. Não inventámos campos novos: a tabela `clientes_tempos` não tem mais nenhum.
+- Os campos passaram para o partial `livewire/partials/campos-cliente`, usado pela página nova e pela janela de alterar da listagem (mesmas validações, mesmo aspeto). Alterar continua a ser na janela, que não mudou.
+- `GestorClientes::criar` passa a receber o array de dados (antes só o nome) e valida tudo pelo mesmo `preencher()` do alterar. Gravado, a página volta à listagem (`wire:navigate`) com «Cliente «X» criado.».
+- A página é só para quem gere clientes: `Gate::authorize('tempos-gerir-clientes')` no `mount()` dá 403 a um técnico, além de o botão não lhe aparecer. O estado vazio da listagem passa a ter o mesmo botão.

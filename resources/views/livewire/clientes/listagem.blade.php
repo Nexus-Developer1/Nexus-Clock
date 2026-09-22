@@ -15,13 +15,7 @@
             <x-cabecalho-pagina titulo="Clientes">
                 @if ($podeGerir)
                     <x-slot:acoes>
-                        <form wire:submit="acrescentar" class="flex flex-wrap items-start gap-2">
-                            <div class="w-full sm:w-64">
-                                <input type="text" wire:model="novoNome" class="campo-input campo-barra {{ $errors->has('novoNome') ? '!border-perigo-500' : '' }}" placeholder="Nome do novo cliente" aria-label="Nome do novo cliente">
-                                @error('novoNome') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                            </div>
-                            <button type="submit" class="botao-primario"><x-icone nome="mais" traco="2" /> Acrescentar</button>
-                        </form>
+                        <a href="{{ route('clientes.novo') }}" wire:navigate class="botao-primario"><x-icone nome="mais" traco="2" /> Novo cliente</a>
                     </x-slot:acoes>
                 @endif
             </x-cabecalho-pagina>
@@ -67,7 +61,11 @@
                     @elseif ($mostrar === 'arquivados')
                         <x-estado-vazio icone="arquivo" titulo="Sem clientes arquivados" />
                     @else
-                        <x-estado-vazio icone="pessoa-circulo" titulo="Ainda sem clientes" />
+                        <x-estado-vazio icone="pessoa-circulo" titulo="Ainda sem clientes">
+                            @if ($podeGerir)
+                                <a href="{{ route('clientes.novo') }}" wire:navigate class="botao-primario"><x-icone nome="mais" traco="2" /> Novo cliente</a>
+                            @endif
+                        </x-estado-vazio>
                     @endif
                 @else
                     <div class="relative overflow-x-auto rounded-b-2xl">
@@ -147,38 +145,7 @@
                 </header>
 
                 <div class="space-y-4 px-6 py-5">
-                    <div>
-                        <label class="campo-label" for="cliente-nome">Nome <span class="text-perigo-500">*</span></label>
-                        <input id="cliente-nome" x-ref="nome" type="text" wire:model="formulario.nome" class="campo-input">
-                        @error('formulario.nome') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="campo-label" for="cliente-email">Email</label>
-                        <input id="cliente-email" type="email" wire:model="formulario.email" class="campo-input" placeholder="geral@cliente.pt">
-                        @error('formulario.email') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="campo-label" for="cliente-cc">Emails em cópia <span class="font-normal normal-case text-texto-fraco">(até 3)</span></label>
-                        <input id="cliente-cc" type="text" wire:model="formulario.emails_cc" class="campo-input" placeholder="Separados por vírgulas">
-                        @error('formulario.emails_cc') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="campo-label" for="cliente-morada">Morada</label>
-                        <textarea id="cliente-morada" wire:model="formulario.morada" rows="3" class="campo-input" placeholder="Rua, código postal, localidade"></textarea>
-                    </div>
-                    <div>
-                        <label class="campo-label" for="cliente-nota">Nota</label>
-                        <textarea id="cliente-nota" wire:model="formulario.nota" rows="3" class="campo-input"></textarea>
-                    </div>
-                    <div>
-                        <label class="campo-label" for="cliente-moeda">Moeda</label>
-                        <select id="cliente-moeda" wire:model="formulario.moeda" class="campo-select">
-                            @foreach ($moedas as $m)
-                                <option value="{{ $m }}">{{ $m }}</option>
-                            @endforeach
-                        </select>
-                        @error('formulario.moeda') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                    </div>
+                    @include('livewire.partials.campos-cliente')
                 </div>
 
                 <footer class="flex items-center justify-end gap-3 border-t border-borda bg-fundo/50 px-6 py-4">

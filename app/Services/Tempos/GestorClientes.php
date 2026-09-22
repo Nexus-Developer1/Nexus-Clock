@@ -16,12 +16,15 @@ use Illuminate\Validation\ValidationException;
  */
 class GestorClientes
 {
-    public function criar(User $autor, string $nome): ClienteTempo
+    /**
+     * @param  array{nome?: string, email?: string|null, emails_cc?: list<string>|string|null, morada?: string|null, nota?: string|null, moeda?: string}  $dados
+     */
+    public function criar(User $autor, array $dados): ClienteTempo
     {
         Gate::forUser($autor)->authorize('tempos-gerir-clientes');
 
         $cliente = new ClienteTempo;
-        $this->preencher($cliente, ['nome' => $nome]);
+        $this->preencher($cliente, $dados + ['nome' => '']);
         $cliente->criado_por = $autor->id;
         $cliente->alterado_por = $autor->id;
         $cliente->save();

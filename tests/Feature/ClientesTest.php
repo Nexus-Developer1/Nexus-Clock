@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Clientes\Listagem;
+use App\Livewire\Clientes\Novo;
 use App\Models\Auditoria;
 use App\Models\ClienteTempo;
 use App\Models\User;
@@ -13,8 +14,9 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-// Página Clientes (lista própria dos Tempos): acrescentar pelo nome, alterar (nome, email, emails em
-// cópia, morada, nota, moeda), arquivar, restaurar e apagar só arquivados. Só admin gere; técnico vê.
+// Página Clientes (lista própria dos Tempos): criar na página «Novo cliente» (nome, email, emails em
+// cópia, morada, nota, moeda), alterar na janela da listagem, arquivar, restaurar e apagar só
+// arquivados. Só admin gere; técnico vê.
 class ClientesTest extends TestCase
 {
     use RefreshDatabase;
@@ -32,14 +34,14 @@ class ClientesTest extends TestCase
 
     public function test_criar_exige_nome_unico_sem_distinguir_maiusculas_e_audita(): void
     {
-        $cliente = $this->gestor->criar($this->admin, '  Hospital   Exemplo ');
+        $cliente = $this->gestor->criar($this->admin, ['nome' => '  Hospital   Exemplo ']);
 
         $this->assertSame(['Hospital Exemplo', 'EUR', []], [$cliente->nome, $cliente->moeda, $cliente->emails_cc]);
         $this->assertSame(['nome' => 'Hospital Exemplo'], Auditoria::where('acao', 'tempo_cliente_criado')->sole()->detalhe);
 
         foreach (['' => 'Indique o nome do cliente.', 'HOSPITAL exemplo' => 'Já existe um cliente chamado «HOSPITAL exemplo».'] as $nome => $mensagem) {
             try {
-                $this->gestor->criar($this->admin, $nome);
+                $this->gestor->criar($this->admin, ['nome' => $nome]);
                 $this->fail('Devia recusar «'.$nome.'».');
             } catch (ValidationException $e) {
                 $this->assertSame($mensagem, $e->errors()['nome'][0]);
@@ -50,7 +52,7 @@ class ClientesTest extends TestCase
 
     public function test_alterar_valida_email_emails_em_copia_e_moeda(): void
     {
-        $cliente = $this->gestor->criar($this->admin, 'Banco Exemplo');
+        $cliente = $this->gestor->criar($this->admin, ['nome' => 'Banco Exemplo']);
 
         $casos = [
             [['email' => 'isto-nao'], 'email', 'Email inválido.'],
@@ -79,8 +81,8 @@ class ClientesTest extends TestCase
 
     public function test_arquivar_restaurar_e_so_apaga_arquivados_tudo_ou_nada(): void
     {
-        $a = $this->gestor->criar($this->admin, 'A');
-        $b = $this->gestor->criar($this->admin, 'B');
+        $a = $this->gestor->criar($this->admin, ['nome' => 'A']);
+        $b = $this->gestor->criar($this->admin, ['nome' => 'B']);
 
         $this->assertSame(1, $this->gestor->arquivar($this->admin, [$a->id]));
         $this->assertTrue($a->fresh()->estaArquivado());
@@ -98,7 +100,7 @@ class ClientesTest extends TestCase
         $this->assertSoftDeleted($a);
 
         // Com A apagado, o nome volta a estar livre.
-        $this->gestor->criar($this->admin, 'a');
+        $this->gestor->criar($this->admin, ['nome' => 'a']);
 
         $this->gestor->arquivar($this->admin, [$b->id]);
         $this->gestor->restaurar($this->admin, [$b->id]);
@@ -108,30 +110,69 @@ class ClientesTest extends TestCase
     public function test_tecnico_so_ve(): void
     {
         $tecnico = $this->tecnico();
-        $this->gestor->criar($this->admin, 'Hospital Exemplo');
+        $this->gestor->criar($this->admin, ['nome' => 'Hospital Exemplo']);
 
         $this->actingAs($tecnico)->get(route('clientes'))->assertOk()
-            ->assertSee('Hospital Exemplo')->assertDontSee('Nome do novo cliente')->assertDontSee('Mais opções');
+            ->assertSee('Hospital Exemplo')->assertDontSee('Novo cliente')->assertDontSee('Mais opções');
+
+        // A página de criar está fechada aos técnicos.
+        $this->actingAs($tecnico)->get(route('clientes.novo'))->assertForbidden();
 
         $this->expectException(AuthorizationException::class);
-        $this->gestor->criar($tecnico, 'Outro');
+        $this->gestor->criar($tecnico, ['nome' => 'Outro']);
     }
 
-    public function test_pagina_acrescenta_filtra_pesquisa_altera_e_arquiva_varios(): void
+    public function test_pagina_de_criar_grava_todos_os_campos_e_volta_a_listagem(): void
     {
+        $this->actingAs($this->admin)->get(route('clientes.novo'))->assertOk()->assertSee('Novo cliente — Nexus Tempos', false);
+
+        Livewire::actingAs($this->admin)->test(Novo::class)
+            // Sem nome não grava.
+            ->call('guardar')
+            ->assertHasErrors('formulario.nome')
+            // Os outros campos são validados como na janela de alterar.
+            ->set('formulario.nome', 'Hospital Exemplo')
+            ->set('formulario.email', 'isto-nao')
+            ->call('guardar')
+            ->assertHasErrors('formulario.email')
+            ->set('formulario.email', 'geral@hospital.pt')
+            ->set('formulario.emails_cc', 'a@hospital.pt, b@hospital.pt')
+            ->set('formulario.morada', "Rua A, 1\n1000-001 Lisboa")
+            ->set('formulario.nota', 'Contacto: Ana')
+            ->set('formulario.moeda', 'GBP')
+            ->call('guardar')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('clientes'));
+
+        $cliente = ClienteTempo::sole();
+        $this->assertSame(
+            ['Hospital Exemplo', 'geral@hospital.pt', ['a@hospital.pt', 'b@hospital.pt'], "Rua A, 1\n1000-001 Lisboa", 'Contacto: Ana', 'GBP'],
+            [$cliente->nome, $cliente->email, $cliente->emails_cc, $cliente->morada, $cliente->nota, $cliente->moeda]
+        );
+        $this->assertSame(['nome' => 'Hospital Exemplo'], Auditoria::where('acao', 'tempo_cliente_criado')->sole()->detalhe);
+
+        // O nome repetido é recusado na página (não fica um segundo cliente).
+        Livewire::actingAs($this->admin)->test(Novo::class)
+            ->set('formulario.nome', 'hospital exemplo')
+            ->call('guardar')
+            ->assertHasErrors('formulario.nome')
+            ->assertNoRedirect();
+
+        $this->assertSame(1, ClienteTempo::count());
+
+        // A listagem mostra-o e o botão leva à página de criar.
+        Livewire::actingAs($this->admin)->test(Listagem::class)
+            ->assertSee('Hospital Exemplo')
+            ->assertSeeHtml(route('clientes.novo'));
+    }
+
+    public function test_pagina_filtra_pesquisa_altera_e_arquiva_varios(): void
+    {
+        $hospital = $this->gestor->criar($this->admin, ['nome' => 'Hospital Exemplo']);
+        $banco = $this->gestor->criar($this->admin, ['nome' => 'Banco Exemplo']);
+
         $pagina = Livewire::actingAs($this->admin)->test(Listagem::class)
-            ->assertSee('Ainda sem clientes')
-            ->set('novoNome', 'Hospital Exemplo')->call('acrescentar')
-            ->assertSee('Cliente «Hospital Exemplo» acrescentado.')
-            ->assertSet('novoNome', '')
-            ->set('novoNome', 'hospital exemplo')->call('acrescentar')
-            ->assertHasErrors('novoNome')
-            ->set('novoNome', 'Banco Exemplo')->call('acrescentar');
-
-        $hospital = ClienteTempo::where('nome', 'Hospital Exemplo')->sole();
-        $banco = ClienteTempo::where('nome', 'Banco Exemplo')->sole();
-
-        $pagina->set('pesquisa', 'banc')->assertSee('Banco Exemplo')->assertDontSee('Hospital Exemplo')
+            ->set('pesquisa', 'banc')->assertSee('Banco Exemplo')->assertDontSee('Hospital Exemplo')
             ->set('pesquisa', '')
             ->call('editar', $hospital->id)
             ->assertSee('Alterar cliente')

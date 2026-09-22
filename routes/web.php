@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ReciboDespesaController;
 use App\Livewire\Clientes\Listagem as ClientesListagem;
+use App\Livewire\Clientes\Novo as ClientesNovo;
 use App\Livewire\Equipa\Grupos as EquipaGrupos;
 use App\Livewire\Equipa\Lembretes as EquipaLembretes;
 use App\Livewire\Equipa\Limitados as EquipaLimitados;
@@ -49,6 +50,7 @@ Route::middleware(['auth', 'acesso'])->group(function () {
     Route::get('/equipa/grupos', EquipaGrupos::class)->name('equipa.grupos');
     Route::get('/equipa/lembretes', EquipaLembretes::class)->name('equipa.lembretes');
     Route::get('/clientes', ClientesListagem::class)->name('clientes');
+    Route::get('/clientes/novo', ClientesNovo::class)->name('clientes.novo');
 });
 
 // Relatórios partilhados por link: sem sessão obrigatória (os privados pedem-na dentro do componente).
