@@ -8,10 +8,11 @@
 
             <x-cabecalho-pagina titulo="Relatórios" />
 
-            <div class="mt-6 flex justify-end">
-                <div class="relative w-full sm:w-72">
-                    <x-icone nome="pesquisa" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" />
-                    <input type="search" wire:model.live.debounce.300ms="pesquisa" class="campo-input campo-barra pl-9" placeholder="Pesquisar" aria-label="Pesquisar pelo nome">
+            {{-- Pesquisa num cartão a toda a largura, como o cartão de filtros dos outros relatórios. --}}
+            <div class="cartao mt-6 p-4 sm:p-5">
+                <div class="relative">
+                    <x-icone nome="pesquisa" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" />
+                    <input type="search" wire:model.live.debounce.300ms="pesquisa" class="campo-input pl-10" placeholder="Pesquisar pelo nome do relatório..." aria-label="Pesquisar pelo nome">
                 </div>
             </div>
 
