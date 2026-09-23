@@ -731,6 +731,7 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - Correção: **não mexer no prefixo** (partia a sessão); dar ao Suporte uma **fila com nome próprio**, `tempos` — `REDIS_QUEUE=tempos` no `.env` (o `config/queue.php` já o lê) e `--queue=tempos` no serviço `nexus-tempos-worker`. O `.env.example` e o `deploy/instalar.sh` já vêm assim para instalações novas.
 - Em produção a mudança tem de ser feita por **root** (o ficheiro do serviço systemd), e o `.env` e o serviço têm de mudar **juntos**: com só o `.env` mudado, os jobs do Suporte iam para a fila `tempos` sem ninguém a escutá-la.
 - Os jobs da Nexus Infra que falharam estão na `failed_jobs` partilhada; reenviá-los é decisão do dono da Nexus Infra (`queue:retry` do lado dela, depois da correção — antes disso o worker do Suporte voltava a comê-los). **Decidido pelo utilizador a 2026-09-23: não se reenviam.** Ficam na `failed_jobs` como registo do que se perdeu.
+- No mesmo dia o utilizador passou também a **Nexus Infra** para fila própria, `nexus-ops`, a pensar nas várias aplicações que vão entrar no portal. Fica a **regra da suite: uma aplicação, uma fila com o nome dela**; a `default` não é de ninguém. Na troca, a `default` estava vazia (nem tarefas prontas, nem agendadas, nem a correr), por isso nada ficou para trás.
 
 ## 39. Exportar em PDF (2026-09-23, a pedido)
 
