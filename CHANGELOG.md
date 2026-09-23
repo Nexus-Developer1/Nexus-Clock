@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-23
+
+- 🧰 **Página de cada cliente** — a pedido ("os clientes que aparecem aqui têm de ser clicáveis, e mostrar a informação de cada um"): o nome de cada cliente na listagem passa a abrir `/clientes/{id}`, com os dados (email e emails em cópia clicáveis, morada, nota, moeda, data de criação), quatro indicadores (horas registadas, horas faturáveis com a percentagem, projetos ativos, despesas aprovadas) e a tabela dos projetos do cliente com as horas de cada um. Um técnico só vê os projetos a que tem acesso e os totais são só desses. «Alterar» abre a mesma janela da listagem sem sair da página; arquivado abre marcado, apagado dá 404. O título do separador é o nome do cliente. Notas §35. 266 testes.
+
 ## 2026-09-22
 
 - 🎨 **Passa a chamar-se Nexus Suporte** — a pedido: o nome visível deixa de ser «Nexus Tempos» em todo o lado — títulos das páginas, marca por baixo do logótipo (sidebar, página pública e emails), cabeçalho do mobile, as 17 migalhas de pão e o `APP_NAME` (que é também o nome de quem envia os emails). No portal, a linha da aplicação passou a «Nexus Suporte». Por dentro fica tudo `tempos` — URL `/tempos`, chave no portal, tabelas, gates e namespaces — que renomear isso obrigava a mexer na base partilhada e no vhost por uma etiqueta. Em PT-PT o nome passa a singular: «o Suporte», não «os Tempos». Notas §34. 265 testes.

@@ -96,7 +96,7 @@
                                                     <input type="checkbox" wire:model.live="selecionados" value="{{ $c->id }}" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500" aria-label="Selecionar {{ $c->nome }}">
                                                 @endif
                                                 <div class="min-w-0">
-                                                    <div class="truncate font-medium {{ $c->estaArquivado() ? 'text-texto-medio' : 'text-texto-forte' }}">{{ $c->nome }}</div>
+                                                    <a href="{{ route('clientes.ver', $c) }}" wire:navigate class="block truncate font-medium hover:underline {{ $c->estaArquivado() ? 'text-texto-medio' : 'text-texto-forte' }}">{{ $c->nome }}</a>
                                                     @if ($c->email)<div class="truncate text-xs text-texto-fraco">{{ $c->email }}</div>@endif
                                                 </div>
                                                 @if ($c->estaArquivado())

@@ -700,3 +700,12 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - **Concordância:** o nome antigo era plural («os Tempos», «acesso aos Tempos», «Abrir os Tempos»), o novo é singular. Ficou «o Suporte», «acesso ao Suporte», «Abrir o Suporte». Não chega um find/replace.
 - No portal, o nome da aplicação é a coluna `nome` da linha `chave = 'tempos'` em `aplicacoes` (tabela da Nexus Infra): passou a «Nexus Suporte» por `update`, sem tocar na chave nem na estrutura. O `deploy/portal.sql` ficou com o nome novo para instalações de raiz.
 - Ficou por confirmar se o **portal** tem o nome escrito à mão nalgum sítio do seu próprio código (não é este repositório) — a avisar o dono da Nexus Infra.
+
+## 35. Página de cada cliente (2026-09-23, a pedido)
+
+- Pedido do utilizador, com a listagem à frente: «os clientes que aparecem aqui têm de ser clicáveis, e mostrar a informação de cada um».
+- Rota `/clientes/{id}` (`clientes.ver`, só números — para não apanhar o `/clientes/novo`), componente `App\Livewire\Clientes\Detalhe`. Na listagem é **o nome** que é o link, não a linha toda: a linha tem a caixa de seleção, o lápis e o «Mais opções», e um clique na linha inteira ia à bulha com eles.
+- A página mostra: os **dados** (email e emails em cópia como `mailto:`, morada e nota com as quebras de linha, moeda, data de criação); quatro **indicadores** — horas registadas, horas faturáveis (com a percentagem), projetos ativos (e quantos arquivados), despesas aprovadas (e quantas pendentes); e a tabela dos **projetos** do cliente com cor, acesso (público/privado), horas e horas faturáveis de cada um, arquivados no fim. Contam só registos terminados — um cronómetro a correr ainda não tem duração.
+- **Quem vê o quê:** os projetos passam pelo mesmo `visiveisPara` da página Projetos — um técnico não vê os privados de que não é membro, **e os totais da página são só dos projetos que ele vê**. Sem isto, os indicadores denunciavam as horas de um projeto que a pessoa não pode abrir.
+- «Alterar» abre a mesma janela da listagem (o partial `campos-cliente`), sem sair da página. Um cliente **arquivado** abre na mesma, marcado; um **apagado** (soft delete) dá 404 pela ligação de modelo da rota.
+- Não há página de projeto para onde saltar a partir daqui; o link «Ver todos» leva à página Projetos. Se um dia houver, é ligar o nome de cada projeto.

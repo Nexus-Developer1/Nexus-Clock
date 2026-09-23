@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Clientes\Detalhe;
 use App\Livewire\Clientes\Listagem;
 use App\Livewire\Clientes\Novo;
 use App\Models\Auditoria;
 use App\Models\ClienteTempo;
+use App\Models\ProjetoTempo;
+use App\Models\RegistoTempo;
 use App\Models\User;
 use App\Services\Tempos\GestorClientes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,7 +18,8 @@ use Tests\TestCase;
 
 // Página Clientes (lista própria dos Tempos): criar na página «Novo cliente» (nome, email, emails em
 // cópia, morada, nota, moeda), alterar na janela da listagem, arquivar, restaurar e apagar só
-// arquivados. Desde 2026-09-22 gere quem quiser, admin ou técnico (notas §33).
+// arquivados. Desde 2026-09-22 gere quem quiser, admin ou técnico (notas §33). Cada nome abre a
+// página do cliente (dados, totais e projetos — só os que quem vê pode ver; notas §35).
 class ClientesTest extends TestCase
 {
     use RefreshDatabase;
@@ -119,6 +123,52 @@ class ClientesTest extends TestCase
 
         $cliente = $this->gestor->criar($tecnico, ['nome' => 'Clínica do Técnico']);
         $this->assertSame($tecnico->id, $cliente->criado_por);
+    }
+
+
+    public function test_pagina_do_cliente_mostra_dados_projetos_e_horas_de_quem_ve(): void
+    {
+        $tecnico = $this->tecnico();
+        $cliente = $this->gestor->criar($this->admin, [
+            'nome' => 'Hospital Exemplo', 'email' => 'geral@hospital.pt', 'emails_cc' => 'a@hospital.pt, b@hospital.pt',
+            'morada' => "Av. Lusíada 100\n1500-650 Lisboa", 'nota' => 'Só de manhã.', 'moeda' => 'EUR',
+        ]);
+        $publico = ProjetoTempo::create(['nome' => 'Rede Wi-Fi', 'cliente_id' => $cliente->id]);
+        $privado = ProjetoTempo::create(['nome' => 'Auditoria', 'cliente_id' => $cliente->id, 'publico' => false]);
+        $arquivado = ProjetoTempo::create(['nome' => 'Migração antiga', 'cliente_id' => $cliente->id, 'arquivado_em' => now()]);
+        $infra = $this->cliente('Infra');
+        $this->registo($tecnico, $infra, '2026-09-14', 3600, ['projeto_id' => $publico->id, 'faturavel' => true]);
+        $this->registo($tecnico, $infra, '2026-09-14', 1800, ['projeto_id' => $publico->id, 'faturavel' => false]);
+        $this->registo($this->admin, $infra, '2026-09-15', 7200, ['projeto_id' => $privado->id, 'faturavel' => true]);
+        // Cronómetro a correr: sem duração, não conta.
+        RegistoTempo::create(['tecnico_id' => $tecnico->id, 'cliente_id' => $infra->id, 'projeto_id' => $publico->id, 'inicio' => '2026-09-17 08:00:00+00']);
+
+        // Na listagem o nome é um link para a página.
+        $this->actingAs($tecnico)->get(route('clientes'))->assertOk()->assertSee(route('clientes.ver', $cliente));
+
+        // O técnico não é membro do projeto privado: não o vê e as horas dele ficam de fora.
+        $this->actingAs($tecnico)->get(route('clientes.ver', $cliente))->assertOk()
+            ->assertSee('Hospital Exemplo — Nexus Suporte', false)
+            ->assertSeeInOrder(['geral@hospital.pt', 'a@hospital.pt', 'b@hospital.pt', 'Av. Lusíada 100', 'Só de manhã.'])
+            ->assertSee('Rede Wi-Fi')->assertSee('Migração antiga')->assertDontSee('Auditoria')
+            ->assertSee('1:30:00')->assertSee('1:00:00')->assertSee('67% do total');
+
+        // O admin vê tudo.
+        $this->actingAs($this->admin)->get(route('clientes.ver', $cliente))->assertOk()
+            ->assertSee('Auditoria')->assertSee('3:30:00')->assertSee('3:00:00');
+
+        // Alterar na própria página.
+        Livewire::actingAs($this->admin)->test(Detalhe::class, ['cliente' => $cliente])
+            ->call('abrirFormulario')->assertSet('formulario.nome', 'Hospital Exemplo')
+            ->set('formulario.nome', 'Hospital Novo')->call('guardar')
+            ->assertSet('editar', false)->assertSet('cliente.nome', 'Hospital Novo');
+        $this->assertSame('Hospital Novo', $cliente->fresh()->nome);
+
+        // Um cliente arquivado abre; um apagado dá 404.
+        $this->gestor->arquivar($this->admin, [$cliente->id]);
+        $this->actingAs($this->admin)->get(route('clientes.ver', $cliente))->assertOk()->assertSee('Arquivado');
+        $this->gestor->apagar($this->admin, [$cliente->id]);
+        $this->actingAs($this->admin)->get(route('clientes.ver', $cliente))->assertNotFound();
     }
 
     public function test_pagina_de_criar_grava_todos_os_campos_e_volta_a_listagem(): void
