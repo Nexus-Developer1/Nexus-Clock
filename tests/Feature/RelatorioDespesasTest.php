@@ -274,6 +274,8 @@ class RelatorioDespesasTest extends TestCase
             ->assertSet('ordem', '-valor')
             ->call('exportar')
             ->assertFileDownloaded('despesas-20260914-20260920.csv')
+            ->call('exportar', 'pdf')
+            ->assertFileDownloaded('despesas-20260914-20260920.pdf')
             ->call('descarregarRecibos')
             ->assertSet('erro', 'Não há recibos nas despesas mostradas.');
 

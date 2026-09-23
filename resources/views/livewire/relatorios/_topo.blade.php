@@ -48,7 +48,8 @@
     <div class="relative print:hidden" x-data="{ aberto: false }" @click.outside="aberto = false" @keydown.escape="aberto = false">
         <button type="button" @click="aberto = ! aberto" class="botao-secundario"><x-icone nome="descarregar" /> Exportar <x-icone nome="seta-dir" traco="2.5" class="h-3 w-3 rotate-90" /></button>
         <div x-show="aberto" x-cloak class="absolute right-0 z-30 mt-1 w-44 overflow-hidden rounded-xl border border-borda bg-white py-1 text-sm shadow-lg" role="menu">
-            <button type="button" wire:click="exportar" @click="aberto = false" class="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-fundo" role="menuitem"><x-icone nome="descarregar" /> CSV</button>
+            <button type="button" wire:click="exportar('csv')" @click="aberto = false" class="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-fundo" role="menuitem"><x-icone nome="descarregar" /> CSV</button>
+            <button type="button" wire:click="exportar('pdf')" @click="aberto = false" class="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-fundo" role="menuitem"><x-icone nome="faturacao" /> PDF</button>
             @if ($recibos)
                 <button type="button" wire:click="descarregarRecibos" @click="aberto = false" class="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-fundo" role="menuitem"><x-icone nome="arquivo" /> Recibos (ZIP)</button>
             @endif

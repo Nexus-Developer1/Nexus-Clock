@@ -158,7 +158,7 @@ class Detalhado extends Component
         });
     }
 
-    public function exportar()
+    public function exportar(string $formato = 'csv')
     {
         [$de, $ate] = $this->periodo();
         $comValor = $this->valorVisivel();
@@ -179,7 +179,7 @@ class Detalhado extends Component
             }
         });
 
-        return Csv::resposta('detalhado-'.$de->format('Ymd').'-'.$ate->format('Ymd').'.csv', array_merge(
+        return $this->descarregar($formato, 'detalhado', 'Detalhado', $de, $ate, array_merge(
             ['Dia', 'Início', 'Fim', 'Duração (h)', 'Duração', 'Membro', 'Cliente', 'Projeto', 'Descrição', 'Etiquetas', 'Faturável'],
             $comValor ? [$this->rotuloValor().' (€)'] : [],
         ), $linhas);

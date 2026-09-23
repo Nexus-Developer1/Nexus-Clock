@@ -731,3 +731,11 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - Correção: **não mexer no prefixo** (partia a sessão); dar ao Suporte uma **fila com nome próprio**, `tempos` — `REDIS_QUEUE=tempos` no `.env` (o `config/queue.php` já o lê) e `--queue=tempos` no serviço `nexus-tempos-worker`. O `.env.example` e o `deploy/instalar.sh` já vêm assim para instalações novas.
 - Em produção a mudança tem de ser feita por **root** (o ficheiro do serviço systemd), e o `.env` e o serviço têm de mudar **juntos**: com só o `.env` mudado, os jobs do Suporte iam para a fila `tempos` sem ninguém a escutá-la.
 - Os jobs da Nexus Infra que falharam estão na `failed_jobs` partilhada; reenviá-los é decisão do dono da Nexus Infra (`queue:retry` do lado dela, depois da correção — antes disso o worker do Suporte voltava a comê-los).
+
+## 39. Exportar em PDF (2026-09-23, a pedido)
+
+- Pedido do utilizador: «o botão exportar não tem a opção de PDF». Os exports PDF da especificação tinham saído com as páginas em §15; ficaram só o CSV e o «Imprimir» do browser.
+- Feito **uma vez para os seis relatórios** (Resumo, Detalhado, Semanal, Presenças, Atribuições, Despesas): o PDF leva **a mesma tabela que o CSV** — cada `exportar()` passou a `exportar($formato)` e sai por `PeriodoEFiltros::descarregar()`, que escolhe `Csv::resposta` ou o novo `App\Support\Pdf::resposta`. Não há um modelo de PDF por relatório: quando o CSV de um relatório mudar, o PDF muda com ele.
+- O PDF (`resources/views/pdf/relatorio.blade.php`, dompdf, que já estava no `composer.json`): a marca, «Relatório X», o período **por extenso e com as datas** («Esta semana (21/09/2026 – 27/09/2026)» — num papel, «esta semana» sozinho não diz nada), quem gerou e quando, e a tabela, com números à direita e o cabeçalho repetido em cada página. Paisagem a partir de 6 colunas. Fonte DejaVu Sans (acentos e €) com *font subsetting* — sem ele cada PDF pesava ~860 KB, com ele ~20 KB.
+- Corta em **2000 linhas** (o dompdf fica muito lento com milhares) e diz quantas ficaram de fora; para tudo, há o CSV.
+- O link partilhado usa o mesmo menu e a mesma autorização do CSV.

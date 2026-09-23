@@ -126,7 +126,7 @@ class Atribuicoes extends Component
         session()->flash('sucesso', 'Atribuição apagada.');
     }
 
-    public function exportar()
+    public function exportar(string $formato = 'csv')
     {
         [$de, $ate] = $this->periodo();
         $r = $this->dados();
@@ -142,8 +142,7 @@ class Atribuicoes extends Component
             }
         }
 
-        return Csv::resposta('atribuicoes-'.$de->format('Ymd').'-'.$ate->format('Ymd').'.csv',
-            [$nomes[$this->agrupar1], $this->agrupar2 !== '' ? $nomes[$this->agrupar2] : '', 'Agendado', 'Registado', 'Diferença', 'Estado'], $linhas);
+        return $this->descarregar($formato, 'atribuicoes', 'Atribuições', $de, $ate, [$nomes[$this->agrupar1], $this->agrupar2 !== '' ? $nomes[$this->agrupar2] : '', 'Agendado', 'Registado', 'Diferença', 'Estado'], $linhas);
     }
 
     public function render()

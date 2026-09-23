@@ -112,7 +112,7 @@ class Resumo extends Component
         }
     }
 
-    public function exportar()
+    public function exportar(string $formato = 'csv')
     {
         [$de, $ate] = $this->periodo();
         $dados = $this->dados($de, $ate);
@@ -129,7 +129,7 @@ class Resumo extends Component
 
         $cabecalho = array_merge([$nomes[$this->agrupar1], $this->agrupar2 !== '' ? $nomes[$this->agrupar2] : ''], ['Duração (h)', 'Duração'], $comValor ? [$this->rotuloValor().' (€)'] : []);
 
-        return Csv::resposta('resumo-'.$de->format('Ymd').'-'.$ate->format('Ymd').'.csv', $cabecalho, $linhas);
+        return $this->descarregar($formato, 'resumo', 'Resumo', $de, $ate, $cabecalho, $linhas);
     }
 
     public function render()

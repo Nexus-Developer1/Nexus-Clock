@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-23
 
+- 🧰 **Exportar em PDF** — a pedido: o menu Exportar de todos os relatórios (Resumo, Detalhado, Semanal, Presenças, Atribuições, Despesas) ganha «PDF», com a mesma tabela do CSV, a marca, o período com as datas e quem o gerou. Até 2000 linhas por PDF; para mais, o CSV. Notas §39. 268 testes.
 - 🎨 **Despesas: topo arrumado e um só «Nova despesa»** — a pedido: os filtros passam ao cartão do IFE (pesquisa na nota em cima; Equipa / Cliente / Projeto / Categoria / Estado em colunas com rótulo); «Nova despesa» e «Categorias» sobem para a linha do título, junto ao período e ao exportar, em vez de numa linha solta; sai o segundo «Nova despesa» de dentro da caixa vazia. 266 testes.
 - 🎨 **Partilhados: pesquisa a toda a largura** — a pedido: a pesquisa sozinha no canto direito passa a um cartão a toda a largura, como o cartão de filtros dos outros relatórios. 266 testes.
 - 🎨 **Topo dos relatórios arrumado como no IFE** — a pedido ("faz como está no IFE, fica mais organizado"): em Resumo, Detalhado e Semanal os filtros passam a um cartão como o da Nexus Infra — a pesquisa na descrição em cima, a toda a largura, e por baixo Equipa / Cliente / Projeto / Etiqueta / Estado em colunas iguais, cada um com o seu rótulo e a mostrar «Todos», o nome escolhido ou «N selecionados». Em todas as páginas de relatórios o período, o partilhar e o exportar sobem para a linha do título, em vez de ficarem numa linha solta. 266 testes.

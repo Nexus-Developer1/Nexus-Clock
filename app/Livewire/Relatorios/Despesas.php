@@ -212,7 +212,7 @@ class Despesas extends Component
 
     // --- Exportar ---
 
-    public function exportar()
+    public function exportar(string $formato = 'csv')
     {
         [$de, $ate] = $this->periodo();
         $linhas = $this->consulta()->limit(20000)->get()->map(fn (DespesaTempo $d) => [
@@ -221,8 +221,7 @@ class Despesas extends Component
             DespesaTempo::ESTADOS[$d->estado], $d->recibo_caminho ? 'Sim' : 'Não',
         ]);
 
-        return Csv::resposta('despesas-'.$de->format('Ymd').'-'.$ate->format('Ymd').'.csv',
-            ['Data', 'Membro', 'Projeto', 'Cliente', 'Categoria', 'Nota', 'Valor (€)', 'Faturável', 'Estado', 'Recibo'], $linhas->all());
+        return $this->descarregar($formato, 'despesas', 'Despesas', $de, $ate, ['Data', 'Membro', 'Projeto', 'Cliente', 'Categoria', 'Nota', 'Valor (€)', 'Faturável', 'Estado', 'Recibo'], $linhas->all());
     }
 
     public function descarregarRecibos()

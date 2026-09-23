@@ -205,5 +205,6 @@ class RelatorioDetalhadoTest extends TestCase
         $this->assertSoftDeleted($faturado);
 
         $pagina->call('exportar')->assertFileDownloaded('detalhado-20260914-20260920.csv');
+        $pagina->call('exportar', 'pdf')->assertFileDownloaded('detalhado-20260914-20260920.pdf');
     }
 }

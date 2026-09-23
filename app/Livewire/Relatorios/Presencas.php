@@ -54,7 +54,7 @@ class Presencas extends Component
         $this->pagina = max(1, $pagina);
     }
 
-    public function exportar()
+    public function exportar(string $formato = 'csv')
     {
         [$de, $ate] = $this->periodo();
         $hms = fn (int $s) => PainelTempos::hms($s);
@@ -65,8 +65,7 @@ class Presencas extends Component
             ServicoPresencas::saldo($l['saldo']), $hms($l['pausa']),
         ], $this->linhas());
 
-        return Csv::resposta('presencas-'.$de->format('Ymd').'-'.$ate->format('Ymd').'.csv',
-            ['Membro', 'Dia', 'Entrada', 'Saída', 'Capacidade', 'Trabalho', 'Horas extra', 'Em falta', 'Saldo', 'Pausas'], $linhas);
+        return $this->descarregar($formato, 'presencas', 'Presenças', $de, $ate, ['Membro', 'Dia', 'Entrada', 'Saída', 'Capacidade', 'Trabalho', 'Horas extra', 'Em falta', 'Saldo', 'Pausas'], $linhas);
     }
 
     public function render()

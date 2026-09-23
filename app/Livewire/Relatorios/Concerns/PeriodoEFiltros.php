@@ -4,6 +4,8 @@ namespace App\Livewire\Relatorios\Concerns;
 
 use App\Models\User;
 use App\Services\Tempos\ResumoTempos;
+use App\Support\Csv;
+use App\Support\Pdf;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Url;
@@ -215,6 +217,26 @@ trait PeriodoEFiltros
         [$inicio, $fim] = $this->periodo();
         $this->escolhaDe = $inicio->toDateString();
         $this->escolhaAte = $fim->toDateString();
+    }
+
+    /**
+     * Saída do menu Exportar: a mesma tabela em CSV ou em PDF. O nome do ficheiro leva o período;
+     * no PDF o período vai por extenso E com as datas ("Esta semana" num papel não diz nada).
+     *
+     * @param  list<string>  $cabecalho
+     * @param  iterable<list<string|int|float|null>>  $linhas
+     */
+    protected function descarregar(string $formato, string $nome, string $titulo, CarbonImmutable $de, CarbonImmutable $ate, array $cabecalho, iterable $linhas)
+    {
+        $ficheiro = $nome.'-'.$de->format('Ymd').'-'.$ate->format('Ymd');
+        if ($formato !== 'pdf') {
+            return Csv::resposta($ficheiro.'.csv', $cabecalho, $linhas);
+        }
+
+        $rotulo = $this->rotuloPeriodo($de, $ate);
+        $datas = $de->format('d/m/Y').' – '.$ate->format('d/m/Y');
+
+        return Pdf::resposta($ficheiro.'.pdf', 'Relatório '.$titulo, str_contains($rotulo, '/') ? $rotulo : $rotulo.' ('.$datas.')', $cabecalho, $linhas);
     }
 
     protected function rotuloPeriodo(CarbonImmutable $de, CarbonImmutable $ate): string

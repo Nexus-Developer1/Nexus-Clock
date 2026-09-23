@@ -44,7 +44,7 @@ class Semanal extends Component
         }
     }
 
-    public function exportar()
+    public function exportar(string $formato = 'csv')
     {
         [$de, $ate] = $this->periodo();
         $g = $this->grelha();
@@ -92,7 +92,7 @@ class Semanal extends Component
         }
         $linhas[] = array_merge(['Total', ''], $celulas(['celulas' => $g['totais']] + $g['total']));
 
-        return Csv::resposta('semanal-'.$de->format('Ymd').'-'.$ate->format('Ymd').'.csv', $cabecalho, $linhas);
+        return $this->descarregar($formato, 'semanal', 'Semanal', $de, $ate, $cabecalho, $linhas);
     }
 
     public function render()
