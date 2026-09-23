@@ -19,47 +19,53 @@
             <x-toast-sucesso />
 
             <x-cabecalho-pagina titulo="Relatórios">
+                {{-- Tudo na linha do título: período e exportar, e as ações da página (antes numa linha solta). --}}
                 <x-slot:acoes>
                     @include('livewire.relatorios._topo', ['atual' => 'relatorios.despesas', 'recibos' => true])
+                    @if ($gere)
+                        <button type="button" wire:click="$set('categoriasAbertas', true)" class="botao-secundario print:hidden"><x-icone nome="etiqueta" /> Categorias</button>
+                    @endif
+                    <button type="button" wire:click="nova" class="botao-primario print:hidden"><x-icone nome="mais" traco="2" /> Nova despesa</button>
                 </x-slot:acoes>
             </x-cabecalho-pagina>
 
-            {{-- Filtros --}}
-            <section class="cartao relative z-20 mt-6 flex flex-wrap items-center gap-2 p-4 sm:px-5 print:hidden">
-                <span class="mr-1 inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-texto-medio"><x-icone nome="filtro" class="h-3.5 w-3.5" /> Filtros</span>
-                @if ($podeVerEquipa)
-                    <x-filtro-multiplo rotulo="Equipa" modelo="membros" :opcoes="$opcoes['membros']" :selecionados="$membros" />
-                @endif
-                <x-filtro-multiplo rotulo="Cliente" modelo="clientes" :opcoes="$opcoes['clientes']" :selecionados="$clientes" />
-                <x-filtro-multiplo rotulo="Projeto" modelo="projetos" :opcoes="$opcoes['projetos']" :selecionados="$projetos" />
-                <x-filtro-multiplo rotulo="Categoria" modelo="categorias" :opcoes="$opcoes['categorias']" :selecionados="$categorias" />
-                <select wire:model.live="situacao" class="campo-select campo-barra w-auto {{ $situacao ? '!border-verde-300 !bg-verde-50 text-verde-800' : '' }}" aria-label="Estado">
-                    <option value="">Estado</option>
-                    @foreach ($estados as $valor => $rotulo)
-                        <option value="{{ $valor }}">{{ $rotulo }}</option>
-                    @endforeach
-                </select>
-                <div class="relative min-w-[12rem] flex-1">
-                    <x-icone nome="pesquisa" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" />
-                    <input type="search" wire:model.live.debounce.400ms="descricao" class="campo-input campo-barra pl-9" placeholder="Nota" aria-label="Nota contém">
+            {{-- Filtros num cartão como o da Nexus Infra (e o dos outros relatórios): pesquisa na nota em
+                 cima, a toda a largura; por baixo, colunas iguais, cada uma com o seu rótulo. --}}
+            <section class="cartao relative z-20 mt-6 p-4 sm:p-5 print:hidden">
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="relative min-w-[14rem] flex-1">
+                        <x-icone nome="pesquisa" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-fraco" />
+                        <input type="search" wire:model.live.debounce.400ms="descricao" class="campo-input pl-10" placeholder="Pesquisar na nota..." aria-label="Nota contém">
+                    </div>
+                    @if ($filtrosAtivos > 0)
+                        <button type="button" wire:click="limparFiltros" class="px-2 text-sm font-medium text-verde-700 hover:underline">Limpar filtros</button>
+                    @endif
                 </div>
-                @if ($filtrosAtivos > 0)
-                    <button type="button" wire:click="limparFiltros" class="px-2 text-sm font-medium text-verde-700 hover:underline">Limpar filtros</button>
-                @endif
-            </section>
 
-            <div class="mt-4 flex flex-wrap items-center justify-end gap-2 print:hidden">
-                @if ($gere)
-                    <button type="button" wire:click="$set('categoriasAbertas', true)" class="botao-secundario"><x-icone nome="etiqueta" /> Categorias</button>
-                @endif
-                <button type="button" wire:click="nova" class="botao-primario"><x-icone nome="mais" traco="2" /> Nova despesa</button>
-            </div>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    @if ($podeVerEquipa)
+                        <x-filtro-multiplo campo rotulo="Equipa" modelo="membros" :opcoes="$opcoes['membros']" :selecionados="$membros" class="min-w-[11rem] flex-1" />
+                    @endif
+                    <x-filtro-multiplo campo rotulo="Cliente" modelo="clientes" :opcoes="$opcoes['clientes']" :selecionados="$clientes" class="min-w-[11rem] flex-1" />
+                    <x-filtro-multiplo campo rotulo="Projeto" modelo="projetos" :opcoes="$opcoes['projetos']" :selecionados="$projetos" class="min-w-[11rem] flex-1" />
+                    <x-filtro-multiplo campo rotulo="Categoria" modelo="categorias" :opcoes="$opcoes['categorias']" :selecionados="$categorias" class="min-w-[11rem] flex-1" />
+                    <div class="min-w-[11rem] flex-1">
+                        <label for="filtro-situacao" class="campo-label">Estado</label>
+                        <select id="filtro-situacao" wire:model.live="situacao" class="campo-select {{ $situacao ? '!border-verde-300 !bg-verde-50 text-verde-800' : '' }}">
+                            <option value="">Todos</option>
+                            @foreach ($estados as $valor => $rotulo)
+                                <option value="{{ $valor }}">{{ $rotulo }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </section>
 
             @if ($erro)
                 <div class="mt-4 flex items-center gap-2 rounded-xl border border-perigo-200 bg-perigo-100 px-4 py-3 text-sm text-perigo-600"><x-icone nome="aviso" class="shrink-0" /> {{ $erro }}</div>
             @endif
 
-            <section class="cartao mt-4">
+            <section class="cartao mt-6">
                 {{-- Totais --}}
                 <header class="flex flex-wrap items-center justify-between gap-3 rounded-t-2xl border-b border-borda bg-fundo/80 px-5 py-3">
                     <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1">
@@ -73,11 +79,8 @@
                 </header>
 
                 @if ($pagina->isEmpty())
-                    <x-estado-vazio icone="euro" :titulo="$filtrosAtivos > 0 ? 'Nenhuma despesa com estes filtros' : 'Sem despesas'" class="py-16">
-                        @if ($filtrosAtivos === 0)
-                            <button type="button" wire:click="nova" class="botao-primario"><x-icone nome="mais" traco="2" /> Nova despesa</button>
-                        @endif
-                    </x-estado-vazio>
+                    {{-- Sem botão aqui: o «Nova despesa» da linha do título chega (pedido de 2026-09-23). --}}
+                    <x-estado-vazio icone="euro" :titulo="$filtrosAtivos > 0 ? 'Nenhuma despesa com estes filtros' : 'Sem despesas'" class="py-16" />
                 @else
                     <div class="relative overflow-x-auto">
                         <table class="tabela min-w-[900px] [&_td]:px-3 [&_th]:px-3">
