@@ -198,7 +198,7 @@ Environment=HOME=/var/lib/nexus-apps/$UTIL
 UMask=0027
 Restart=always
 RestartSec=5
-ExecStart=/usr/bin/php $APP/artisan queue:work redis --queue=default --sleep=3 --tries=3 --max-time=3600
+ExecStart=/usr/bin/php $APP/artisan queue:work redis --queue=tempos --sleep=3 --tries=3 --max-time=3600
 StandardOutput=append:/var/log/nexus-tempos-worker.log
 StandardError=append:/var/log/nexus-tempos-worker.log
 
