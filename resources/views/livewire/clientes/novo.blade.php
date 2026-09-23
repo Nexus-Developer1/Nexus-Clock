@@ -10,8 +10,6 @@
                 </x-slot:acoes>
             </x-cabecalho-pagina>
 
-            <p class="mt-2 text-sm text-texto-medio">Só o nome é obrigatório. O resto pode ficar para depois.</p>
-
             <form wire:submit="guardar" class="cartao mt-6 overflow-hidden" x-data x-init="$nextTick(() => $refs.nome?.focus())">
                 <div class="space-y-4 px-6 py-5">
                     @include('livewire.partials.campos-cliente')

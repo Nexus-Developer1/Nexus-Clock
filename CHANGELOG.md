@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-23
 
+- 🎨 **«Novo cliente» sem a nota por baixo do título** — a pedido: sai «Só o nome é obrigatório. O resto pode ficar para depois.»; o nome continua marcado com o asterisco de obrigatório. 266 testes.
 - 🎨 **Calendário sem a nota de ajuda** — a pedido: sai o texto «Arraste numa coluna para acrescentar tempo; carregue num bloco para o alterar.» por baixo do calendário. 266 testes.
 - 🛠️ **Fila própria para o Suporte** — encontrado no log de produção: o Suporte e a Nexus Infra partilhavam o Redis, o prefixo (por causa da sessão partilhada) **e a fila `default`**, e cada worker comia os jobs do outro. As notificações da Nexus Infra apanhadas pelo worker do Suporte falhavam e perdiam-se. O Suporte passa a usar a fila `tempos` (`REDIS_QUEUE=tempos` + `--queue=tempos` no worker), já no `.env.example` e no `instalar.sh`; em produção falta o passo de root. Notas §38.
 - 🧰 **Dados de demonstração alargados** — a pedido ("cria alguns dados falsos para eu ver o site preenchido… tens de criar clientes"): o `tempos:demo` passa a criar 9 clientes (com todos os casos: emails em cópia, moradas em várias linhas, sem email, GBP e USD, um arquivado sem projetos), 13 projetos, horas para toda a gente com acesso e 3 lembretes — **desligados**, para não mandarem emails a pessoas reais. Corrido em produção. Notas §37. 266 testes.
