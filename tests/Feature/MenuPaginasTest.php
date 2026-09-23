@@ -16,7 +16,7 @@ class MenuPaginasTest extends TestCase
     {
         $this->actingAs($this->tecnico())->get(route('painel'))->assertOk()
             ->assertSeeInOrder([
-                'Cronómetro', 'Calendário', 'Painel', 'Relatórios',
+                'Painel', 'Cronómetro', 'Calendário', 'Relatórios',
                 'Tempo', 'Resumo', 'Detalhado', 'Semanal', 'Partilhados',
                 'Equipa', 'Presenças', 'Atribuições',
                 'Despesas', 'Detalhado',

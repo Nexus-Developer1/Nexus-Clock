@@ -6,9 +6,9 @@
     // Menu da aplicação. Um item com 'filhos' abre um submenu (fica aberto quando uma das suas
     // páginas está ativa); ['secao' => …] é um título de secção, no menu ou dentro de um submenu.
     $itens = [
+        ['id' => 'painel', 'label' => 'Painel', 'icone' => 'inicio', 'url' => route('painel')],
         ['id' => 'cronometro', 'label' => 'Cronómetro', 'icone' => 'relogio', 'url' => route('cronometro')],
         ['id' => 'calendario', 'label' => 'Calendário', 'icone' => 'calendario', 'url' => route('calendario')],
-        ['id' => 'painel', 'label' => 'Painel', 'icone' => 'inicio', 'url' => route('painel')],
         ['id' => 'relatorios', 'label' => 'Relatórios', 'icone' => 'grafico', 'filhos' => [
             ['secao' => 'Tempo'],
             ['id' => 'relatorios.resumo', 'label' => 'Resumo', 'url' => route('relatorios.resumo')],
