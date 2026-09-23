@@ -41,11 +41,16 @@
             @if ($partilhado)
                 <x-cabecalho-pagina :titulo="$partilhado->nome" />
                 <p class="mt-1 text-sm text-texto-medio">Resumo · partilhado por {{ $partilhado->autor->nome }}</p>
+                <div class="mt-6 flex justify-end">
+                    @include('livewire.relatorios._topo', ['atual' => 'relatorios.resumo'])
+                </div>
             @else
-                <x-cabecalho-pagina titulo="Relatórios" />
+                <x-cabecalho-pagina titulo="Relatórios">
+                    <x-slot:acoes>
+                        @include('livewire.relatorios._topo', ['atual' => 'relatorios.resumo'])
+                    </x-slot:acoes>
+                </x-cabecalho-pagina>
             @endif
-
-            @include('livewire.relatorios._topo', ['atual' => 'relatorios.resumo'])
 
             @unless ($partilhado)
                 @include('livewire.relatorios._filtros')

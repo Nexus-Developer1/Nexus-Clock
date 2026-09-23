@@ -33,9 +33,11 @@
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-7xl">
 
-            <x-cabecalho-pagina titulo="Relatórios" />
-
-            @include('livewire.relatorios._topo', ['atual' => 'relatorios.presencas'])
+            <x-cabecalho-pagina titulo="Relatórios">
+                <x-slot:acoes>
+                    @include('livewire.relatorios._topo', ['atual' => 'relatorios.presencas'])
+                </x-slot:acoes>
+            </x-cabecalho-pagina>
 
             {{-- Filtros --}}
             <section class="cartao relative z-20 mt-6 flex flex-wrap items-center gap-2 p-4 sm:px-5 print:hidden">

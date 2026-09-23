@@ -17,9 +17,11 @@
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-7xl">
 
-            <x-cabecalho-pagina titulo="Relatórios" />
-
-            @include('livewire.relatorios._topo', ['atual' => 'relatorios.semanal'])
+            <x-cabecalho-pagina titulo="Relatórios">
+                <x-slot:acoes>
+                    @include('livewire.relatorios._topo', ['atual' => 'relatorios.semanal'])
+                </x-slot:acoes>
+            </x-cabecalho-pagina>
 
             @include('livewire.relatorios._filtros')
 

@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-23
 
+- 🎨 **Topo dos relatórios arrumado como no IFE** — a pedido ("faz como está no IFE, fica mais organizado"): em Resumo, Detalhado e Semanal os filtros passam a um cartão como o da Nexus Infra — a pesquisa na descrição em cima, a toda a largura, e por baixo Equipa / Cliente / Projeto / Etiqueta / Estado em colunas iguais, cada um com o seu rótulo e a mostrar «Todos», o nome escolhido ou «N selecionados». Em todas as páginas de relatórios o período, o partilhar e o exportar sobem para a linha do título, em vez de ficarem numa linha solta. 266 testes.
 - 🎨 **«Novo cliente» sem a nota por baixo do título** — a pedido: sai «Só o nome é obrigatório. O resto pode ficar para depois.»; o nome continua marcado com o asterisco de obrigatório. 266 testes.
 - 🎨 **Calendário sem a nota de ajuda** — a pedido: sai o texto «Arraste numa coluna para acrescentar tempo; carregue num bloco para o alterar.» por baixo do calendário. 266 testes.
 - 🛠️ **Fila própria para o Suporte** — encontrado no log de produção: o Suporte e a Nexus Infra partilhavam o Redis, o prefixo (por causa da sessão partilhada) **e a fila `default`**, e cada worker comia os jobs do outro. As notificações da Nexus Infra apanhadas pelo worker do Suporte falhavam e perdiam-se. O Suporte passa a usar a fila `tempos` (`REDIS_QUEUE=tempos` + `--queue=tempos` no worker), já no `.env.example` e no `instalar.sh`; em produção falta o passo de root. Notas §38.

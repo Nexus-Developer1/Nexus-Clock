@@ -18,9 +18,11 @@
 
             <x-toast-sucesso />
 
-            <x-cabecalho-pagina titulo="Relatórios" />
-
-            @include('livewire.relatorios._topo', ['atual' => 'relatorios.detalhado'])
+            <x-cabecalho-pagina titulo="Relatórios">
+                <x-slot:acoes>
+                    @include('livewire.relatorios._topo', ['atual' => 'relatorios.detalhado'])
+                </x-slot:acoes>
+            </x-cabecalho-pagina>
 
             @include('livewire.relatorios._filtros')
 

@@ -18,9 +18,11 @@
 
             <x-toast-sucesso />
 
-            <x-cabecalho-pagina titulo="Relatórios" />
-
-            @include('livewire.relatorios._topo', ['atual' => 'relatorios.despesas', 'recibos' => true])
+            <x-cabecalho-pagina titulo="Relatórios">
+                <x-slot:acoes>
+                    @include('livewire.relatorios._topo', ['atual' => 'relatorios.despesas', 'recibos' => true])
+                </x-slot:acoes>
+            </x-cabecalho-pagina>
 
             {{-- Filtros --}}
             <section class="cartao relative z-20 mt-6 flex flex-wrap items-center gap-2 p-4 sm:px-5 print:hidden">
