@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\ClienteTempo;
 use App\Models\DespesaTempo;
 use App\Models\GrupoEquipa;
+use App\Models\LembreteEquipa;
 use App\Models\MembroEquipa;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
@@ -48,12 +49,19 @@ class DadosDemoTest extends TestCase
         $this->artisan('tempos:demo')->assertExitCode(0);
 
         $this->assertSame($antes, $this->contagensDaNexusInfra(), 'as tabelas da Nexus Infra não podem mudar');
-        $this->assertSame(3, ClienteTempo::count());
-        $this->assertSame(6, ProjetoTempo::count());
-        $this->assertSame(1, ProjetoTempo::arquivados()->count());
+        // Clientes variados, para a listagem e a página de cada um mostrarem todos os casos.
+        $this->assertSame(9, ClienteTempo::count());
+        $this->assertSame(1, ClienteTempo::arquivados()->count());
+        $this->assertSame(['EUR', 'GBP', 'USD'], ClienteTempo::distinct()->orderBy('moeda')->pluck('moeda')->all());
+        $this->assertSame(1, ClienteTempo::whereNull('email')->count());
+        $this->assertSame(1, ClienteTempo::whereNotIn('id', ProjetoTempo::whereNotNull('cliente_id')->select('cliente_id'))->count(), 'um cliente sem projetos');
+        $this->assertSame(13, ProjetoTempo::count());
+        $this->assertSame(2, ProjetoTempo::arquivados()->count());
         $this->assertSame(3, MembroEquipa::count());
         $this->assertSame(6, TaxaMembro::count());
         $this->assertSame(2, GrupoEquipa::count());
+        $this->assertSame(3, LembreteEquipa::count());
+        $this->assertSame(0, LembreteEquipa::where('ativo', true)->count(), 'desligados: a demonstração não manda emails');
         $this->assertSame(10, DespesaTempo::count());
         $this->assertSame(7, CategoriaDespesaTempo::count(), 'usa as categorias da migração, não cria novas');
         $this->assertSame(5, AtribuicaoTempo::count());
@@ -122,6 +130,7 @@ class DadosDemoTest extends TestCase
         $this->assertSame(0, AtribuicaoTempo::count());
         $this->assertSame(0, TaxaMembro::count());
         $this->assertSame(0, GrupoEquipa::count());
+        $this->assertSame(0, LembreteEquipa::count());
         $this->assertSame(0, DB::table('grupo_membro')->count());
         $this->assertSame(0, DB::table('projeto_membro')->count());
         $this->assertSame(3, MembroEquipa::count(), 'as linhas da equipa são as pessoas a sério: ficam');

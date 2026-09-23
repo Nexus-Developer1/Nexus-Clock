@@ -9,6 +9,7 @@ use App\Models\CategoriaDespesaTempo;
 use App\Models\ClienteTempo;
 use App\Models\DespesaTempo;
 use App\Models\GrupoEquipa;
+use App\Models\LembreteEquipa;
 use App\Models\MembroEquipa;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
@@ -23,7 +24,7 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * Dados de demonstração para ver as páginas dos Tempos preenchidas (cronómetro, calendário, painel,
- * relatórios, projetos, equipa, clientes, despesas, atribuições) — e para os apagar a seguir.
+ * relatórios, projetos, equipa, clientes, despesas, atribuições, lembretes) — e para os apagar a seguir.
  *
  * Escreve SÓ nas tabelas dos Tempos, em cima das pessoas com acesso (a única coisa que lê da Nexus
  * Infra). Os IDs de tudo o que cria ficam em
@@ -41,7 +42,7 @@ class DadosDemo extends Command
 
     private const SEMANAS = 8;
 
-    private const MAX_PESSOAS = 8;
+    private const MAX_PESSOAS = 20;
 
     /** @var array<string, list<int>> IDs criados, por tabela. */
     private array $criados = [];
@@ -78,7 +79,8 @@ class DadosDemo extends Command
             $clientesTempos = $this->criarClientesTempos();
             $projetos = $this->criarProjetos($clientesTempos, $membros, $agora);
             $this->criarTaxas($membros, $admin);
-            $this->criarGrupos($membros);
+            $grupos = $this->criarGrupos($membros);
+            $this->criarLembretes($grupos);
             $this->criarRegistos($pessoas, $projetos, $fuso, $agora, $admin);
             $this->criarDespesas($pessoas, $projetos, $admin, $agora);
             $this->criarAtribuicoes($pessoas, $projetos, $admin, $agora);
@@ -119,6 +121,7 @@ class DadosDemo extends Command
             $apagados['despesas_tempos'] = DespesaTempo::withTrashed()->whereIn('id', $tabelas['despesas_tempos'] ?? [])->forceDelete();
             $apagados['atribuicoes_tempos'] = AtribuicaoTempo::whereIn('id', $tabelas['atribuicoes_tempos'] ?? [])->delete();
             $apagados['taxas_membros'] = TaxaMembro::whereIn('id', $tabelas['taxas_membros'] ?? [])->delete();
+            $apagados['lembretes_equipa'] = LembreteEquipa::whereIn('id', $tabelas['lembretes_equipa'] ?? [])->delete();
             $apagados['grupos_equipa'] = GrupoEquipa::whereIn('id', $tabelas['grupos_equipa'] ?? [])->delete();
             $apagados['projetos_tempos'] = ProjetoTempo::withTrashed()->whereIn('id', $tabelas['projetos_tempos'] ?? [])->forceDelete();
             $apagados['clientes_tempos'] = ClienteTempo::withTrashed()->whereIn('id', $tabelas['clientes_tempos'] ?? [])->forceDelete();
@@ -139,15 +142,27 @@ class DadosDemo extends Command
     /** @return list<ClienteTempo> */
     private function criarClientesTempos(): array
     {
+        // nome, morada, email, emails em cópia, nota, moeda, arquivado. Variados de propósito, para a
+        // listagem e a página de cada cliente mostrarem todos os casos: sem email, sem nada em cópia,
+        // morada em várias linhas, outra moeda, arquivado e sem projetos.
         $dados = [
-            ['Hospital da Luz (demo)', 'Av. Lusíada 100, 1500-650 Lisboa', 'facturacao@hospitaldaluz.demo'],
-            ['Banco Atlântico (demo)', 'Rua do Ouro 12, 1100-060 Lisboa', 'compras@bancoatlantico.demo'],
-            ['Data Center Norte (demo)', 'Zona Industrial da Maia, lote 7, 4470-605 Maia', 'operacoes@dcnorte.demo'],
+            ['Hospital da Luz (demo)', 'Av. Lusíada 100, 1500-650 Lisboa', 'facturacao@hospitaldaluz.demo', ['manutencao@hospitaldaluz.demo'], 'Contrato de manutenção anual das UPS. Acesso pela entrada técnica, piso -1.', 'EUR', false],
+            ['Banco Atlântico (demo)', 'Rua do Ouro 12, 1100-060 Lisboa', 'compras@bancoatlantico.demo', ['it@bancoatlantico.demo', 'seguranca@bancoatlantico.demo'], 'Intervenções só fora do horário de balcão (antes das 8h30 ou depois das 15h).', 'EUR', false],
+            ['Data Center Norte (demo)', "Zona Industrial da Maia, lote 7\n4470-605 Maia", 'operacoes@dcnorte.demo', [], null, 'EUR', false],
+            ['Câmara Municipal de Braga (demo)', "Praça do Município\n4700-435 Braga", 'aprovisionamento@cm-braga.demo', ['informatica@cm-braga.demo', 'obras@cm-braga.demo', 'financeiro@cm-braga.demo'], 'Faturas com número de compromisso. Pedidos por ofício.', 'EUR', false],
+            ['Universidade do Minho (demo)', "Campus de Gualtar\n4710-057 Braga", 'servicos.tecnicos@uminho.demo', ['laboratorios@uminho.demo'], null, 'EUR', false],
+            ['Farmácias Saúde+ (demo)', 'Rua de Santa Catarina 210, 4000-447 Porto', null, [], 'Rede de 14 farmácias. Contacto sempre pelo telefone da loja.', 'EUR', false],
+            ['Retail Iberia Ltd (demo)', "1 Canada Square\nLondon E14 5AB\nReino Unido", 'accounts@retailiberia.demo', ['pos@retailiberia.demo'], 'Faturar em libras. Pagamento a 60 dias.', 'GBP', false],
+            ['Atlantic Shipping Inc. (demo)', "200 Park Avenue\nNew York, NY 10166\nEstados Unidos", 'ops@atlanticshipping.demo', [], null, 'USD', false],
+            ['Clínica Dentária Sorriso (demo)', 'Av. da República 45, 1050-187 Lisboa', 'geral@clinicasorriso.demo', [], 'Deixou de ser cliente em 2025.', 'EUR', true],
         ];
 
         $lista = [];
-        foreach ($dados as [$nome, $morada, $email]) {
-            $c = new ClienteTempo(['nome' => $nome, 'morada' => $morada, 'email' => $email, 'nota' => 'Cliente de demonstração — apagar com tempos:demo --apagar']);
+        foreach ($dados as [$nome, $morada, $email, $cc, $nota, $moeda, $arquivado]) {
+            $c = new ClienteTempo(['nome' => $nome, 'morada' => $morada, 'email' => $email, 'emails_cc' => $cc, 'nota' => $nota, 'moeda' => $moeda]);
+            if ($arquivado) {
+                $c->arquivado_em = CarbonImmutable::now()->subMonths(4);
+            }
             $c->save();
             $this->criados['clientes_tempos'][] = $c->id;
             $lista[] = $c;
@@ -171,6 +186,13 @@ class DadosDemo extends Command
             ['Instalação data center', 2, '#7c3aed', true, null, 200, false, false, ['Instalação de UPS modular', 'Cablagem e quadro de distribuição', 'Arranque e testes de carga', 'Reunião de obra']],
             ['Formação interna', null, '#64748b', false, null, null, true, false, ['Formação: novas UPS modulares', 'Reunião de equipa', 'Organização do armazém']],
             ['Auditoria energética', 1, '#eda100', true, 6000, 30, true, true, ['Levantamento de cargas', 'Medições e relatório de auditoria']],
+            ['Rede Wi-Fi edifícios municipais', 3, '#0891b2', true, null, 80, true, false, ['Levantamento de cobertura Wi-Fi', 'Instalação de access points', 'Configuração de VLAN e controlador', 'Visita ao edifício dos Paços do Concelho']],
+            ['Contrato de manutenção 2026', 3, '#65a30d', true, 4800, null, true, false, ['Manutenção trimestral — escolas', 'Manutenção trimestral — piscinas municipais', 'Resposta a avaria em quadro elétrico']],
+            ['Laboratórios — UPS e quadros', 4, '#db2777', true, null, 60, false, false, ['Instalação de UPS no laboratório de química', 'Revisão de quadros parciais', 'Teste de comutação do gerador']],
+            ['Migração de servidores', 4, '#dc2626', true, null, 40, true, true, ['Inventário de servidores', 'Migração para o novo bastidor']],
+            ['Assistência às lojas', 5, '#eb6834', true, 4500, null, true, false, ['Avaria de UPS — loja da Boavista', 'Substituição de bateria — loja de Gaia', 'Visita preventiva às lojas do Porto']],
+            ['Rollout POS Iberia', 6, '#2a78d6', true, 7000, 50, true, false, ['Preparação de terminais POS', 'Instalação de UPS nos balcões', 'Chamada com a equipa de Londres']],
+            ['Vessel monitoring', 7, '#7c3aed', true, 7500, null, true, false, ['Configuração de monitorização remota', 'Relatório mensal de alarmes', 'Análise de falha de energia a bordo']],
         ];
 
         $lista = [];
@@ -213,14 +235,50 @@ class DadosDemo extends Command
         }
     }
 
-    /** @param Collection<int, MembroEquipa> $membros */
-    private function criarGrupos(Collection $membros): void
+    /**
+     * @param  Collection<int, MembroEquipa>  $membros
+     * @return list<GrupoEquipa>
+     */
+    private function criarGrupos(Collection $membros): array
     {
+        $grupos = [];
         $metade = (int) ceil($membros->count() / 2);
         foreach (['Equipa Norte (demo)' => $membros->take($metade), 'Equipa Sul (demo)' => $membros->skip($metade)] as $nome => $quem) {
             $g = GrupoEquipa::create(['nome' => $nome]);
             $g->membros()->sync($quem->pluck('id')->all());
             $this->criados['grupos_equipa'][] = $g->id;
+            $grupos[] = $g;
+        }
+
+        return $grupos;
+    }
+
+    /**
+     * Lembretes de horas em falta — todos DESLIGADOS: um lembrete ativo manda emails a sério à equipa,
+     * e a demonstração não pode mandar emails a ninguém. Servem só para a página ficar preenchida.
+     *
+     * @param  list<GrupoEquipa>  $grupos
+     */
+    private function criarLembretes(array $grupos): void
+    {
+        // destinatários, grupos, período, horas mínimas, dias, hora
+        $dados = [
+            ['todos', [], 'dia', 8, [1, 2, 3, 4, 5], 9],
+            ['grupos', [$grupos[0]->id], 'semana', 35, [1], 10],
+            ['grupos', [$grupos[1]->id], 'dia', 6.5, [2, 4], 18],
+        ];
+
+        foreach ($dados as [$destinatarios, $ids, $periodo, $horas, $dias, $hora]) {
+            $l = LembreteEquipa::create([
+                'destinatarios' => $destinatarios,
+                'grupos' => $ids,
+                'periodo' => $periodo,
+                'horas_minimas' => $horas,
+                'dias' => $dias,
+                'hora' => $hora,
+                'ativo' => false,
+            ]);
+            $this->criados['lembretes_equipa'][] = $l->id;
         }
     }
 

@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-23
 
+- 🧰 **Dados de demonstração alargados** — a pedido ("cria alguns dados falsos para eu ver o site preenchido… tens de criar clientes"): o `tempos:demo` passa a criar 9 clientes (com todos os casos: emails em cópia, moradas em várias linhas, sem email, GBP e USD, um arquivado sem projetos), 13 projetos, horas para toda a gente com acesso e 3 lembretes — **desligados**, para não mandarem emails a pessoas reais. Corrido em produção. Notas §37. 266 testes.
 - 🎨 **Painel em primeiro no menu** — a pedido: a sidebar passa a abrir com Painel, Cronómetro, Calendário, Relatórios… (antes era Cronómetro, Calendário, Painel). A página que abre em `/` continua a ser o Cronómetro. 266 testes.
 - 🎨 **Sem o botão «Abrir o Suporte» nos relatórios partilhados** — a pedido: o cabeçalho da página pública dos relatórios partilhados por link (`/partilhado/…`) deixa de ter o botão para o Painel que aparecia a quem tinha sessão; fica só a marca. O botão com o mesmo texto no email de lembrete de horas fica, que é a única ligação do email. 266 testes.
 - 🔒 **Lembretes: o técnico vê, não mexe** — a pedido (a página dava 403 a um técnico): Equipa › Lembretes passa a abrir para toda a gente, como Membros e Grupos, mas só quem gere a equipa cria, altera, liga/desliga e apaga — o técnico vê a lista com uma etiqueta Ativo/Desligado. Notas §36. 266 testes.
