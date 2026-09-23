@@ -130,8 +130,6 @@
                     </div>
                 </div>
             </section>
-
-            <p class="mt-3 text-xs text-texto-fraco">Arraste numa coluna para acrescentar tempo; carregue num bloco para o alterar.</p>
         </div>
     </main>
 
