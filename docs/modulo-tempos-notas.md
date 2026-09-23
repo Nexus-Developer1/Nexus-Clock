@@ -709,3 +709,10 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - **Quem vê o quê:** os projetos passam pelo mesmo `visiveisPara` da página Projetos — um técnico não vê os privados de que não é membro, **e os totais da página são só dos projetos que ele vê**. Sem isto, os indicadores denunciavam as horas de um projeto que a pessoa não pode abrir.
 - «Alterar» abre a mesma janela da listagem (o partial `campos-cliente`), sem sair da página. Um cliente **arquivado** abre na mesma, marcado; um **apagado** (soft delete) dá 404 pela ligação de modelo da rota.
 - Não há página de projeto para onde saltar a partir daqui; o link «Ver todos» leva à página Projetos. Se um dia houver, é ligar o nome de cada projeto.
+
+## 36. Lembretes: o técnico vê, não mexe (2026-09-23, a pedido)
+
+- Pedido do utilizador, a entrar com a conta de técnico: «a página Lembretes está com este erro, corrige-a» — um 403.
+- Não era um erro de programação: desde §18 a página inteira estava fechada a quem não gere a equipa (`abort_unless` no `boot()`). O problema era a incoerência: o separador «Lembretes» aparecia a toda a gente, e os irmãos Membros e Grupos deixam o técnico ver sem ações. O único que rebentava era este.
+- Decisão: **igualar aos irmãos**, não abrir tudo. O técnico vê a lista (o quê, quando, a quem, se está ativo), sem «Novo lembrete», sem lápis, sem apagar, e o interruptor passa a uma etiqueta Ativo/Desligado. O `novo()` e o `editar()` dão 403 como o `abrir()` dos Grupos; o `guardar`, o `alternar` e o `apagar` já passavam pelo `GestorEquipa`, que autoriza por `tempos-gerir-equipa`.
+- Porque não abrir de todo, como nos clientes (§33): um lembrete manda emails à equipa inteira a uma hora certa. Deixar qualquer técnico criá-los é outra conversa — fica a uma linha no gate, se for para isso.

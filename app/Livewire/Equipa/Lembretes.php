@@ -13,7 +13,8 @@ use Livewire\Component;
 
 /**
  * Equipa › Lembretes: lembretes por email a quem registou menos horas do que o mínimo no dia ou na
- * semana anterior — a quem, quando (dias da semana e hora) e com que mínimo. Só quem gere a equipa.
+ * semana anterior — a quem, quando (dias da semana e hora) e com que mínimo. Todos veem a lista (como
+ * Membros e Grupos); criar, alterar, ligar/desligar e apagar é só de quem gere a equipa.
  */
 #[Layout('components.layouts.app', ['ativo' => 'equipa', 'titulo' => 'Equipa'])]
 class Lembretes extends Component
@@ -27,13 +28,9 @@ class Lembretes extends Component
 
     public ?string $erro = null;
 
-    public function boot(): void
-    {
-        abort_unless(Gate::allows('tempos-gerir-equipa'), 403);
-    }
-
     public function novo(): void
     {
+        abort_unless(Gate::allows('tempos-gerir-equipa'), 403);
         $this->resetErrorBag();
         $this->lembreteId = null;
         $this->formulario = ['destinatarios' => 'todos', 'grupos' => [], 'periodo' => 'dia', 'horas_minimas' => '8', 'dias' => ['1', '2', '3', '4', '5'], 'hora' => '9', 'ativo' => true];
@@ -42,6 +39,8 @@ class Lembretes extends Component
 
     public function editar(int $id): void
     {
+        abort_unless(Gate::allows('tempos-gerir-equipa'), 403);
+
         $l = LembreteEquipa::findOrFail($id);
         $this->resetErrorBag();
         $this->lembreteId = $l->id;
@@ -99,6 +98,7 @@ class Lembretes extends Component
             'lembretes' => LembreteEquipa::orderBy('hora')->orderBy('id')->get(),
             'grupos' => GrupoEquipa::orderByRaw('lower(nome)')->get(['id', 'nome']),
             'dias' => LembreteEquipa::DIAS,
+            'podeGerir' => Gate::allows('tempos-gerir-equipa'),
         ]);
     }
 

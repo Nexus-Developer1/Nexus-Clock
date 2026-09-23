@@ -348,12 +348,20 @@ class EquipaTest extends TestCase
         $this->assertFalse($lembrete->fresh()->ativo);
     }
 
-    public function test_tecnico_ve_a_equipa_sem_taxas_nem_acoes_e_nao_entra_nos_lembretes(): void
+    public function test_tecnico_ve_a_equipa_e_os_lembretes_sem_taxas_nem_acoes(): void
     {
         $this->actingAs($this->ana)->get(route('equipa'))->assertOk()
             ->assertSee('Suporte Nexus')
             ->assertDontSee('Taxa faturável')->assertDontSee('Mudar')->assertDontSee('Exportar CSV');
 
-        $this->actingAs($this->ana)->get(route('equipa.lembretes'))->assertForbidden();
+        // Lembretes: vê a lista (antes dava 403 — notas §36), mas sem criar, alterar, desligar nem apagar.
+        $lembrete = app(GestorEquipa::class)->guardarLembrete($this->admin, null, ['destinatarios' => 'todos', 'grupos' => [], 'periodo' => 'dia', 'horas_minimas' => '8', 'dias' => ['1', '2', '3', '4', '5'], 'hora' => '9', 'ativo' => true]);
+        $this->actingAs($this->ana)->get(route('equipa.lembretes'))->assertOk()
+            ->assertSee('Menos de 8 h no dia anterior')->assertSee('Ativo')
+            ->assertDontSee('Novo lembrete')->assertDontSee('Alterar lembrete')->assertDontSee('Apagar lembrete');
+        Livewire::actingAs($this->ana)->test(Lembretes::class)->call('novo')->assertForbidden();
+        Livewire::actingAs($this->ana)->test(Lembretes::class)->call('editar', $lembrete->id)->assertForbidden();
+        Livewire::actingAs($this->ana)->test(Lembretes::class)->call('alternar', $lembrete->id)->assertSee('Não tem permissão para gerir lembretes.');
+        $this->assertTrue($lembrete->fresh()->ativo);
     }
 }

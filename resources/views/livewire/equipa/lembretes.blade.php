@@ -23,9 +23,11 @@
             <x-toast-sucesso />
 
             <x-equipa-separadores atual="equipa.lembretes">
-                <x-slot:acoes>
-                    <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Novo lembrete</button>
-                </x-slot:acoes>
+                @if ($podeGerir)
+                    <x-slot:acoes>
+                        <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Novo lembrete</button>
+                    </x-slot:acoes>
+                @endif
             </x-equipa-separadores>
 
             @if ($erro)
@@ -45,19 +47,25 @@
                                 @if ($l->enviado_em) · <span class="text-texto-fraco">último envio {{ $l->enviado_em->format('d/m') }}</span>@endif
                             </div>
                         </div>
-                        <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-texto-medio">
-                            <input type="checkbox" wire:click="alternar({{ $l->id }})" @checked($l->ativo) class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500">
-                            {{ $l->ativo ? 'Ativo' : 'Desligado' }}
-                        </label>
-                        <div class="flex gap-1.5">
-                            <button type="button" wire:click="editar({{ $l->id }})" class="botao-icone h-8 w-8" title="Alterar" aria-label="Alterar lembrete"><x-icone nome="lapis" /></button>
-                            <button type="button" wire:click="apagar({{ $l->id }})" wire:confirm="Apagar este lembrete?" class="botao-icone-perigo h-8 w-8" title="Apagar" aria-label="Apagar lembrete"><x-icone nome="lixo" /></button>
-                        </div>
+                        @if ($podeGerir)
+                            <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-texto-medio">
+                                <input type="checkbox" wire:click="alternar({{ $l->id }})" @checked($l->ativo) class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500">
+                                {{ $l->ativo ? 'Ativo' : 'Desligado' }}
+                            </label>
+                            <div class="flex gap-1.5">
+                                <button type="button" wire:click="editar({{ $l->id }})" class="botao-icone h-8 w-8" title="Alterar" aria-label="Alterar lembrete"><x-icone nome="lapis" /></button>
+                                <button type="button" wire:click="apagar({{ $l->id }})" wire:confirm="Apagar este lembrete?" class="botao-icone-perigo h-8 w-8" title="Apagar" aria-label="Apagar lembrete"><x-icone nome="lixo" /></button>
+                            </div>
+                        @else
+                            <span class="etiqueta {{ $l->ativo ? 'bg-verde-50 text-verde-700' : 'bg-slate-100 text-texto-medio' }}">{{ $l->ativo ? 'Ativo' : 'Desligado' }}</span>
+                        @endif
                     </article>
                 @empty
                     <div class="cartao">
                         <x-estado-vazio icone="relogio" titulo="Ainda sem lembretes">
-                            <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Novo lembrete</button>
+                            @if ($podeGerir)
+                                <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Novo lembrete</button>
+                            @endif
                         </x-estado-vazio>
                     </div>
                 @endforelse

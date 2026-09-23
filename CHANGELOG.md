@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-23
 
+- 🔒 **Lembretes: o técnico vê, não mexe** — a pedido (a página dava 403 a um técnico): Equipa › Lembretes passa a abrir para toda a gente, como Membros e Grupos, mas só quem gere a equipa cria, altera, liga/desliga e apaga — o técnico vê a lista com uma etiqueta Ativo/Desligado. Notas §36. 266 testes.
 - 🧰 **Página de cada cliente** — a pedido ("os clientes que aparecem aqui têm de ser clicáveis, e mostrar a informação de cada um"): o nome de cada cliente na listagem passa a abrir `/clientes/{id}`, com os dados (email e emails em cópia clicáveis, morada, nota, moeda, data de criação), quatro indicadores (horas registadas, horas faturáveis com a percentagem, projetos ativos, despesas aprovadas) e a tabela dos projetos do cliente com as horas de cada um. Um técnico só vê os projetos a que tem acesso e os totais são só desses. «Alterar» abre a mesma janela da listagem sem sair da página; arquivado abre marcado, apagado dá 404. O título do separador é o nome do cliente. Notas §35. 266 testes.
 
 ## 2026-09-22
