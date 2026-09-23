@@ -23,9 +23,6 @@
             <img src="{{ asset('img/nexus-1.png') }}" alt="Nexus" class="h-7">
             <div class="mt-1 text-[10px] font-medium uppercase tracking-[0.2em] text-white/60">Suporte</div>
         </div>
-        @auth
-            <a href="{{ route('painel') }}" class="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white/90 hover:bg-white/10">Abrir o Suporte</a>
-        @endauth
     </header>
 
     {{ $slot }}
