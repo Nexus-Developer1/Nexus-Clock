@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-24
 
+- 🧰 **Detalhe da despesa ao carregar na linha** — a pedido ("ver a informação da despesa sem ter de ir aos três pontinhos e alterar"): carregar numa despesa abre um painel só de leitura com o valor, o estado, faturável ou não, projeto e cliente, categoria, data, a nota completa, o recibo para descarregar, o motivo da rejeição, e quem a lançou, decidiu e alterou (com data e hora). Quem gere aprova, rejeita ou volta a pendente dali mesmo; quem pode alterar tem Alterar e Apagar. Também em «Ver detalhes» no menu ⋯. O painel volta a verificar no servidor se quem vê pode ver aquela despesa — mexer no id pelo browser não mostra a de ninguém. 274 testes.
 - 🔒 **Link partilhado blindado** — revisão de segurança: quem abria um link público podia chamar à mão o «Limpar filtros» herdado do Resumo e ver (e exportar) todos os clientes — com autor admin, a equipa inteira; um admin que partilhasse com «Custo» ou «Lucro» selecionado punha a margem no link; e as ações da página não tinham limite (PDFs sem fim). Agora: lista fechada de ações (tudo o resto dá 403, incluindo o que o Resumo venha a ganhar), cálculos sempre com os filtros guardados pelo autor, valor no máximo faturável e limite de 60 ações e 10 exportações por minuto. Nada estava exposto em produção. Notas §40. 272 testes.
 
 ## 2026-09-23

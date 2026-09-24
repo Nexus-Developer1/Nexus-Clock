@@ -323,4 +323,56 @@ class RelatorioDespesasTest extends TestCase
         auth()->logout();
         $this->get(route('despesas.recibo', $d))->assertRedirect();
     }
+
+    public function test_detalhe_da_despesa_so_de_leitura_ao_carregar_na_linha(): void
+    {
+        $d = $this->despesa($this->ana, ['projeto_id' => $this->obra->id, 'valor' => '23,50', 'faturavel' => true, 'nota' => "Portagens A28\nida e volta"],
+            UploadedFile::fake()->create('portagem.pdf', 20, 'application/pdf'));
+
+        // A dona vê tudo, sem abrir o formulário de alterar.
+        Livewire::actingAs($this->ana)->test(Despesas::class)
+            ->assertSee('wire:click="ver('.$d->id.')"', false)
+            ->call('ver', $d->id)
+            ->assertSet('verId', $d->id)
+            ->assertSet('editarId', null)
+            ->assertSee('Despesa de 15/09/2026')
+            // (depois de um call o assertSeeInOrder lê a resposta em JSON, com € e quebras escapados)
+            ->assertSee('23,50 €')->assertSee('Faturável ao cliente')->assertSee('Pendente')->assertSee('Obra')->assertSee('Hospital')
+            ->assertSee('Refeições')->assertSee('Portagens A28')->assertSee('ida e volta')->assertSee('portagem.pdf')
+            ->assertSee('Lançada por Ana Martins')
+            ->assertSee('Alterar')->assertDontSee('>Aprovar</button>', false)
+            ->call('fecharDetalhe')->assertSet('verId', null)->assertDontSee('Despesa de 15/09/2026');
+
+        // Quem gere decide a partir do detalhe; o detalhe fica aberto e mostra a decisão.
+        Livewire::actingAs($this->admin)->test(Despesas::class)
+            ->call('ver', $d->id)
+            ->assertSee('Aprovar')
+            ->call('aprovar', $d->id)
+            ->assertSet('verId', $d->id)
+            ->assertSee('Aprovada por Suporte Nexus');
+
+        // Rejeitada: o motivo aparece em destaque.
+        $this->gestor->decidir($this->admin, $d, 'rejeitada', 'Falta o talão.');
+        Livewire::actingAs($this->ana)->test(Despesas::class)->call('ver', $d->id)
+            ->assertSee('Motivo da rejeição')->assertSee('Falta o talão.');
+    }
+
+    public function test_detalhe_nao_mostra_a_despesa_de_outra_pessoa(): void
+    {
+        $daAna = $this->despesa($this->ana, ['nota' => 'Segredo da Ana']);
+
+        // Pela ação: 403.
+        Livewire::actingAs($this->rui)->test(Despesas::class)->call('ver', $daAna->id)->assertForbidden();
+
+        // Mexendo no id diretamente pelo browser: o render volta a verificar e não mostra nada.
+        Livewire::actingAs($this->rui)->test(Despesas::class)
+            ->set('verId', $daAna->id)
+            ->assertSet('verId', null)
+            ->assertDontSee('Segredo da Ana')->assertDontSee('Despesa de 15/09/2026');
+
+        // Apagada entretanto: o detalhe fecha-se sozinho.
+        $pagina = Livewire::actingAs($this->ana)->test(Despesas::class)->call('ver', $daAna->id)->assertSee('Segredo da Ana');
+        $this->gestor->apagar($this->ana, $daAna);
+        $pagina->call('$refresh')->assertSet('verId', null)->assertDontSee('Despesa de 15/09/2026');
+    }
 }

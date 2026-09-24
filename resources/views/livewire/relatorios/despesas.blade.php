@@ -99,7 +99,7 @@
                             </thead>
                             <tbody>
                                 @foreach ($pagina as $d)
-                                    <tr wire:key="despesa-{{ $d->id }}">
+                                    <tr wire:key="despesa-{{ $d->id }}" wire:click="ver({{ $d->id }})" class="cursor-pointer" title="Ver a despesa">
                                         <td class="whitespace-nowrap tabular-nums text-texto-forte">{{ $d->data->format('d/m/Y') }}</td>
                                         @if ($podeVerEquipa)
                                             <td class="max-w-[10rem] truncate text-texto-medio">{{ $d->utilizador?->nome ?? '—' }}</td>
@@ -122,7 +122,8 @@
                                             @if ($d->faturavel)<div class="text-[11px] text-verde-700">Faturável</div>@endif
                                         </td>
                                         <td><span class="etiqueta {{ $classesEstado[$d->estado] }}">{{ $estados[$d->estado] }}</span></td>
-                                        <td class="print:hidden">
+                                        {{-- @click.stop: o recibo e o menu não abrem o detalhe da linha. --}}
+                                        <td class="print:hidden" @click.stop>
                                             <div class="flex items-center justify-end gap-1">
                                                 @if ($d->recibo_caminho)
                                                     <a href="{{ route('despesas.recibo', $d) }}" class="inline-flex h-8 w-8 items-center justify-center rounded-full text-texto-medio hover:bg-fundo hover:text-verde-700" title="Recibo: {{ $d->recibo_nome }}" aria-label="Descarregar recibo"><x-icone nome="descarregar" /></a>
@@ -130,6 +131,7 @@
                                                 <div class="relative" x-data="menuFlutuante('direita')" @click.outside="fechar()" @keydown.escape="fechar()" @scroll.window="fechar()" @resize.window="fechar()">
                                                     <button type="button" x-ref="botao" @click="alternar()" class="botao-icone h-8 w-8" aria-label="Opções da despesa de {{ $d->data->format('d/m') }}" :aria-expanded="aberto"><x-icone nome="mais-opcoes" /></button>
                                                     <div x-ref="menu" x-show="aberto" :style="estilo" x-cloak x-transition.opacity class="fixed z-50 w-44 overflow-hidden rounded-xl border border-borda bg-white py-1 text-sm shadow-lg" role="menu">
+                                                        <button type="button" wire:click="ver({{ $d->id }})" @click="fechar()" class="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-fundo" role="menuitem"><x-icone nome="olho" /> Ver detalhes</button>
                                                         @if ($gestor->podeAlterar($euAgora, $d))
                                                             <button type="button" wire:click="editar({{ $d->id }})" @click="fechar()" class="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-fundo" role="menuitem"><x-icone nome="lapis" /> Alterar</button>
                                                         @endif
@@ -174,6 +176,107 @@
             </section>
         </div>
     </main>
+
+    {{-- Detalhe da despesa (só leitura; carregar na linha). Vem antes das janelas de alterar e de
+         rejeitar para, abertas a partir daqui, ficarem por cima — e ao fechá-las volta-se ao detalhe. --}}
+    @if ($emDetalhe)
+        @php
+            $det = $emDetalhe;
+            $podeAlterarEsta = $gestor->podeAlterar($euAgora, $det);
+            $local = fn ($data) => $data?->setTimezone(config('tempos.fuso'))->format('d/m/Y H:i');
+        @endphp
+        <div class="janela-fundo fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-10" wire:keydown.escape="fecharDetalhe" role="dialog" aria-modal="true" aria-labelledby="titulo-detalhe">
+            <div class="absolute inset-0" wire:click="fecharDetalhe"></div>
+            <div class="janela relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <header class="flex items-start justify-between gap-4 border-b border-borda px-6 py-4">
+                    <div class="min-w-0">
+                        <h2 id="titulo-detalhe" class="text-lg font-semibold text-texto-forte">Despesa de {{ $det->data->format('d/m/Y') }}</h2>
+                        <p class="mt-0.5 truncate text-sm text-texto-medio">{{ $det->utilizador?->nome ?? '—' }}</p>
+                    </div>
+                    <button type="button" wire:click="fecharDetalhe" class="botao-icone" aria-label="Fechar"><x-icone nome="fechar" /></button>
+                </header>
+
+                <div class="space-y-5 px-6 py-5">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-3xl font-semibold tracking-tight tabular-nums text-texto-forte">{{ Dinheiro::formatar($det->valor_cent) }}</div>
+                            <div class="mt-0.5 text-xs {{ $det->faturavel ? 'text-verde-700' : 'text-texto-fraco' }}">{{ $det->faturavel ? 'Faturável ao cliente' : 'Não faturável' }}</div>
+                        </div>
+                        <span class="etiqueta {{ $classesEstado[$det->estado] }}">{{ $estados[$det->estado] }}</span>
+                    </div>
+
+                    @if ($det->estado === 'rejeitada' && $det->motivo_rejeicao)
+                        <div class="rounded-xl border border-perigo-200 bg-perigo-100 px-4 py-3 text-sm text-perigo-600">
+                            <div class="font-medium">Motivo da rejeição</div>
+                            <div class="mt-0.5 whitespace-pre-line">{{ $det->motivo_rejeicao }}</div>
+                        </div>
+                    @endif
+
+                    <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                        <div class="col-span-2">
+                            <dt class="text-xs font-medium text-texto-medio">Projeto</dt>
+                            <dd class="mt-0.5 flex items-center gap-2 text-texto-forte">
+                                <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {{ $det->projeto?->cor ?? '#cbd5e1' }}" aria-hidden="true"></span>
+                                <span>{{ $det->projeto?->nome ?? 'Sem projeto' }}@if ($det->projeto?->cliente)<span class="text-texto-medio"> · {{ $det->projeto->cliente->nome }}</span>@endif</span>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-texto-medio">Categoria</dt>
+                            <dd class="mt-0.5 text-texto-forte">{{ $det->categoria?->nome ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-texto-medio">Data</dt>
+                            <dd class="mt-0.5 tabular-nums text-texto-forte">{{ $det->data->format('d/m/Y') }}</dd>
+                        </div>
+                        <div class="col-span-2">
+                            <dt class="text-xs font-medium text-texto-medio">Nota</dt>
+                            <dd class="mt-0.5 whitespace-pre-line text-texto-forte">{{ $det->nota ?: '—' }}</dd>
+                        </div>
+                        <div class="col-span-2">
+                            <dt class="text-xs font-medium text-texto-medio">Recibo</dt>
+                            <dd class="mt-0.5">
+                                @if ($det->recibo_caminho)
+                                    <a href="{{ route('despesas.recibo', $det) }}" class="inline-flex max-w-full items-center gap-2 font-medium text-verde-700 hover:underline"><x-icone nome="descarregar" class="shrink-0" /> <span class="truncate">{{ $det->recibo_nome }}</span></a>
+                                @else
+                                    <span class="text-texto-fraco">Sem recibo</span>
+                                @endif
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <div class="space-y-1 border-t border-borda pt-4 text-xs text-texto-medio">
+                        <div>Lançada por {{ $nomesRegisto[$det->criado_por] ?? '—' }} em {{ $local($det->created_at) }}</div>
+                        @if ($det->decidido_em)
+                            <div>{{ $det->estado === 'rejeitada' ? 'Rejeitada' : 'Aprovada' }} por {{ $det->decisor?->nome ?? '—' }} em {{ $local($det->decidido_em) }}</div>
+                        @endif
+                        @if ($det->alterado_por && $det->updated_at?->ne($det->created_at))
+                            <div>Última alteração por {{ $nomesRegisto[$det->alterado_por] ?? '—' }} em {{ $local($det->updated_at) }}</div>
+                        @endif
+                    </div>
+                </div>
+
+                @if ($gere || $podeAlterarEsta)
+                    <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-borda bg-fundo/50 px-6 py-4">
+                        @if ($podeAlterarEsta)
+                            <button type="button" wire:click="apagar({{ $det->id }})" wire:confirm="Apagar esta despesa?" class="botao-secundario mr-auto !text-perigo-600"><x-icone nome="lixo" /> Apagar</button>
+                            <button type="button" wire:click="editar({{ $det->id }})" class="botao-secundario"><x-icone nome="lapis" /> Alterar</button>
+                        @endif
+                        @if ($gere)
+                            @if ($det->estado !== 'pendente')
+                                <button type="button" wire:click="reabrir({{ $det->id }})" class="botao-secundario"><x-icone nome="atualizar" /> Voltar a pendente</button>
+                            @endif
+                            @if ($det->estado !== 'rejeitada')
+                                <button type="button" wire:click="pedirRejeicao({{ $det->id }})" class="botao-secundario"><x-icone nome="fechar" /> Rejeitar</button>
+                            @endif
+                            @if ($det->estado !== 'aprovada')
+                                <button type="button" wire:click="aprovar({{ $det->id }})" class="botao-primario"><x-icone nome="visto" traco="2" /> Aprovar</button>
+                            @endif
+                        @endif
+                    </footer>
+                @endif
+            </div>
+        </div>
+    @endif
 
     {{-- Nova / alterar despesa --}}
     @if ($editarId !== null)

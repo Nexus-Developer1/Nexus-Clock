@@ -10,7 +10,6 @@ use App\Models\ProjetoTempo;
 use App\Models\User;
 use App\Services\Tempos\GestorDespesas;
 use App\Services\Tempos\RelatorioDespesas;
-use App\Support\Csv;
 use App\Support\Dinheiro;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Gate;
@@ -58,6 +57,10 @@ class Despesas extends Component
     public ?int $rejeitarId = null;
 
     public string $motivo = '';
+
+    // Detalhe só de leitura (carregar na linha). O id é só um pedido: quem pode ver a despesa volta a
+    // verificar-se no render, por isso mexer nele pelo browser não mostra a despesa de ninguém.
+    public ?int $verId = null;
 
     // Categorias (janela).
     public bool $categoriasAbertas = false;
@@ -167,6 +170,16 @@ class Despesas extends Component
         $this->executar(fn () => app(GestorDespesas::class)->decidir(auth()->user(), $this->despesa($id), 'pendente'), 'Despesa de novo pendente.');
     }
 
+    public function ver(int $id): void
+    {
+        $this->verId = $this->despesa($id)->id;
+    }
+
+    public function fecharDetalhe(): void
+    {
+        $this->verId = null;
+    }
+
     public function pedirRejeicao(int $id): void
     {
         $this->resetErrorBag();
@@ -243,7 +256,18 @@ class Despesas extends Component
         $gestor = app(GestorDespesas::class);
         $gere = $gestor->gere(auth()->user());
 
+        // Detalhe: só se quem vê pode ver ESTA despesa (dona ou quem gere); apagada entretanto, fecha.
+        $emDetalhe = $this->verId ? DespesaTempo::with(['utilizador:id,nome', 'projeto.cliente:id,nome', 'categoria:id,nome', 'decisor:id,nome'])->find($this->verId) : null;
+        if ($emDetalhe && ! $gestor->podeVer(auth()->user(), $emDetalhe)) {
+            $emDetalhe = null;
+        }
+        if (! $emDetalhe) {
+            $this->verId = null;
+        }
+
         return view('livewire.relatorios.despesas', [
+            'emDetalhe' => $emDetalhe,
+            'nomesRegisto' => $emDetalhe ? User::whereIn('id', array_filter([$emDetalhe->criado_por, $emDetalhe->alterado_por]))->pluck('nome', 'id') : collect(),
             'pagina' => $this->consulta()->paginate(self::POR_PAGINA),
             'totais' => app(RelatorioDespesas::class)->totais($this->filtros(), $de, $ate),
             'de' => $de,
