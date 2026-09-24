@@ -61,6 +61,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('tempos-gerir-projetos', fn (User $utilizador) => $utilizador->ehAdminTempos());
         // Despesas: cada um lança as suas; quem gere lança para outros, aprova, rejeita e gere categorias.
         Gate::define('tempos-gerir-despesas', fn (User $utilizador) => $utilizador->ehAdminTempos());
+        // Ver as despesas de toda a equipa (só ver: não altera nem decide). Aberto a toda a gente a
+        // pedido (2026-09-24, notas §41). Para voltar a ser só de quem gere: $utilizador->ehAdminTempos().
+        Gate::define('tempos-ver-despesas', fn (User $utilizador) => true);
 
         // No servidor a aplicação vive em /tempos, ao lado do portal: o Livewire tem de o saber.
         LivewireSubpasta::registar();

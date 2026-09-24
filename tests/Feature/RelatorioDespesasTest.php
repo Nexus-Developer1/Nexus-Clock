@@ -16,6 +16,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -292,33 +293,46 @@ class RelatorioDespesasTest extends TestCase
             ->assertFileDownloaded('recibos-20260914-20260920.zip');
     }
 
-    public function test_tecnico_so_ve_as_suas_e_nao_decide(): void
+    public function test_tecnico_ve_as_de_todos_mas_nao_decide_nem_altera_as_dos_outros(): void
     {
         $minha = $this->despesa($this->ana, ['nota' => 'Minha']);
         $doRui = $this->despesa($this->rui, ['nota' => 'Do Rui']);
 
         $this->actingAs($this->ana)->get('/relatorios/despesas')->assertOk()->assertSee('Despesas — Nexus Suporte', false);
 
+        // A pedido (notas §41): o técnico vê as despesas de toda a equipa, com a coluna Membro e o filtro Equipa.
+        Livewire::actingAs($this->ana)->test(Despesas::class)
+            ->assertSee('Minha')->assertSee('Do Rui')->assertSee('Rui Costa')
+            ->assertSee('for="filtro-membros"', false)
+            ->assertDontSee('Categorias de despesa');
+
+        // O filtro Equipa funciona para ele.
         Livewire::actingAs($this->ana)->withQueryParams(['membros' => [(string) $this->rui->id]])->test(Despesas::class)
-            ->assertSee('Minha')
-            ->assertDontSee('Do Rui')
-            ->assertDontSee('Categorias de despesa')
+            ->assertSee('Do Rui')->assertDontSee('Minha');
+
+        // Ver não é mexer: não decide, nem abre o formulário, nem apaga as dos outros.
+        Livewire::actingAs($this->ana)->test(Despesas::class)
             ->call('aprovar', $minha->id)
             ->assertSet('erro', 'Só quem gere as despesas pode fazer isto.')
             ->call('editar', $doRui->id)
             ->assertForbidden();
+        Livewire::actingAs($this->ana)->test(Despesas::class)->call('apagar', $doRui->id)->assertSet('erro', fn ($e) => $e !== null);
 
         $this->assertSame('pendente', $minha->fresh()->estado);
+        $this->assertNotNull($doRui->fresh());
     }
 
-    public function test_recibo_so_para_o_dono_e_quem_gere(): void
+    public function test_recibo_para_quem_tem_acesso_ao_suporte(): void
     {
         $d = $this->despesa($this->ana, [], UploadedFile::fake()->createWithContent('fatura.pdf', '%PDF-1.4'));
         $sem = $this->despesa($this->ana, []);
 
         $this->actingAs($this->ana)->get(route('despesas.recibo', $d))->assertOk()->assertDownload('fatura.pdf');
         $this->actingAs($this->admin)->get(route('despesas.recibo', $d))->assertOk();
-        $this->actingAs($this->rui)->get(route('despesas.recibo', $d))->assertForbidden();
+        // Os colegas veem as despesas da equipa, e com elas os recibos (notas §41).
+        $this->actingAs($this->rui)->get(route('despesas.recibo', $d))->assertOk();
+        // Quem não tem o Suporte atribuído no portal não chega lá.
+        $this->actingAs($this->utilizador(null))->get(route('despesas.recibo', $d))->assertRedirect(config('app.portal_url'));
         $this->actingAs($this->ana)->get(route('despesas.recibo', $sem))->assertNotFound();
         auth()->logout();
         $this->get(route('despesas.recibo', $d))->assertRedirect();
@@ -357,21 +371,29 @@ class RelatorioDespesasTest extends TestCase
             ->assertSee('Motivo da rejeição')->assertSee('Falta o talão.');
     }
 
-    public function test_detalhe_nao_mostra_a_despesa_de_outra_pessoa(): void
+    public function test_detalhe_da_despesa_de_um_colega_e_so_de_leitura(): void
     {
-        $daAna = $this->despesa($this->ana, ['nota' => 'Segredo da Ana']);
+        $daAna = $this->despesa($this->ana, ['nota' => 'Nota da Ana']);
 
-        // Pela ação: 403.
+        // O colega vê o detalhe (notas §41), mas sem nenhuma ação: nem alterar, nem apagar, nem decidir.
+        Livewire::actingAs($this->rui)->test(Despesas::class)
+            ->call('ver', $daAna->id)
+            ->assertSee('Despesa de 15/09/2026')->assertSee('Nota da Ana')
+            ->assertDontSee('wire:click="editar('.$daAna->id.')"', false)
+            ->assertDontSee('wire:click="apagar('.$daAna->id.')"', false)
+            ->assertDontSee('wire:click="aprovar('.$daAna->id.')"', false);
+
+        // Com o acesso a ver despesas fechado outra vez, o id mexido pelo browser não mostra nada.
+        Gate::define('tempos-ver-despesas', fn () => false);
         Livewire::actingAs($this->rui)->test(Despesas::class)->call('ver', $daAna->id)->assertForbidden();
-
-        // Mexendo no id diretamente pelo browser: o render volta a verificar e não mostra nada.
         Livewire::actingAs($this->rui)->test(Despesas::class)
             ->set('verId', $daAna->id)
             ->assertSet('verId', null)
-            ->assertDontSee('Segredo da Ana')->assertDontSee('Despesa de 15/09/2026');
+            ->assertDontSee('Nota da Ana')->assertDontSee('Despesa de 15/09/2026');
+        Gate::define('tempos-ver-despesas', fn () => true);
 
         // Apagada entretanto: o detalhe fecha-se sozinho.
-        $pagina = Livewire::actingAs($this->ana)->test(Despesas::class)->call('ver', $daAna->id)->assertSee('Segredo da Ana');
+        $pagina = Livewire::actingAs($this->ana)->test(Despesas::class)->call('ver', $daAna->id)->assertSee('Nota da Ana');
         $this->gestor->apagar($this->ana, $daAna);
         $pagina->call('$refresh')->assertSet('verId', null)->assertDontSee('Despesa de 15/09/2026');
     }

@@ -753,3 +753,12 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
   3. **Valor no máximo faturável**: o `GestorPartilhados` guarda `faturavel` em vez de `custo`/`lucro` (`semValoresInternos`), e a página impõe-no também para links antigos. «Sem valor» mantém-se.
   4. **Limites por link e endereço**: 60 ações e 10 exportações por minuto (429 a partir daí).
 - Os quatro testes novos foram corridos **sem a correção** e falharam todos; com ela, passam. Em produção havia um só link, de um técnico, com valor faturável — nada estava exposto.
+
+## 41. Os técnicos veem as despesas de toda a equipa (2026-09-24, a pedido)
+
+- Pedido do utilizador: «um técnico também tem de conseguir ver as despesas dos outros, não é só o admin».
+- Decisão: separar **ver** de **mexer**. Novo gate `tempos-ver-despesas`, aberto a toda a gente (como o dos clientes em §33 — volta a fechar numa linha no `AppServiceProvider`). Quem passa nele vê a lista de toda a equipa, com a coluna Membro e o filtro Equipa, os totais, o detalhe (§ desta data, painel ao carregar na linha), **os recibos** e as exportações (CSV, PDF, ZIP dos recibos). Tudo pergunta ao mesmo sítio: `GestorDespesas::veTodas()`, que o `podeVer()` usa.
+- **Não mudou quem mexe**: cada um lança as suas; lançar em nome de outra pessoa, alterar ou apagar as dos outros, aprovar, rejeitar e gerir categorias continua só de quem gere (`tempos-gerir-despesas`, admins).
+- Efeito secundário apanhado: o `editar()` de uma despesa alheia dava 403 **porque o técnico não a podia ver**. Com a nova regra, o formulário de alterar abria (a gravação continuava barrada pelo serviço). O `editar()` passou a exigir `podeAlterar` — o formulário nem abre.
+- Os recibos entram no «ver» por coerência com o detalhe. Se um dia não se quiser que os colegas descarreguem os recibos uns dos outros, é o `ReciboDespesaController` usar uma regra própria em vez do `podeVer`.
+- O `filtrosDoServico()` do `PeriodoEFiltros` prende o técnico às suas horas, e continua a prender nos relatórios de tempo: nas despesas a lista de pessoas vem agora do próprio `Despesas::filtros()`.

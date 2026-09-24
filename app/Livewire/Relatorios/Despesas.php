@@ -12,7 +12,6 @@ use App\Services\Tempos\GestorDespesas;
 use App\Services\Tempos\RelatorioDespesas;
 use App\Support\Dinheiro;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -100,6 +99,8 @@ class Despesas extends Component
     public function editar(int $id): void
     {
         $d = $this->despesa($id);
+        // Ver as despesas dos outros não é poder alterá-las: o formulário nem abre (notas §41).
+        abort_unless(app(GestorDespesas::class)->podeAlterar(auth()->user(), $d), 403);
         $this->prepararFormulario();
         $this->editarId = $d->id;
         $this->formulario = [
@@ -273,7 +274,7 @@ class Despesas extends Component
             'de' => $de,
             'ate' => $ate,
             'rotuloPeriodo' => $this->rotuloPeriodo($de, $ate),
-            'podeVerEquipa' => $gere,
+            'podeVerEquipa' => $gestor->veTodas(auth()->user()), // filtro Equipa e coluna Membro
             'gere' => $gere,
             'gestor' => $gestor,
             'opcoes' => [
@@ -309,8 +310,12 @@ class Despesas extends Component
     {
         $f = $this->filtrosDoServico();
 
+        // Quem vê as despesas da equipa escolhe as pessoas no filtro (vazio = todas); quem não vê, só as suas.
+        // (O filtrosDoServico() prende o técnico às suas horas — nas despesas a regra é outra, notas §41.)
         return [
-            'membros' => Gate::allows('tempos-gerir-despesas') ? $f['membros'] : [auth()->id()],
+            'membros' => app(GestorDespesas::class)->veTodas(auth()->user())
+                ? ($this->membros === [] ? null : array_map('intval', $this->membros))
+                : [auth()->id()],
             'clientes' => $f['clientes'],
             'projetos' => $f['projetos'],
             'categorias' => array_map('intval', $this->categorias),

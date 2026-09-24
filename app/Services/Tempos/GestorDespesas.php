@@ -149,9 +149,15 @@ class GestorDespesas
         return $this->gere($autor) || ((int) $d->utilizador_id === $autor->id && $d->estado !== 'aprovada');
     }
 
+    /** Vê as despesas de toda a equipa (lista, totais, detalhe, recibos, exportações) — notas §41. */
+    public function veTodas(User $autor): bool
+    {
+        return $this->gere($autor) || Gate::forUser($autor)->allows('tempos-ver-despesas');
+    }
+
     public function podeVer(User $autor, DespesaTempo $d): bool
     {
-        return $this->gere($autor) || (int) $d->utilizador_id === $autor->id;
+        return $this->veTodas($autor) || (int) $d->utilizador_id === $autor->id;
     }
 
     private function autorizarGestao(User $autor): void
