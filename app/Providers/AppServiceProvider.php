@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\ExigeAcessoAplicacao;
 use App\Livewire\Relatorios\Partilhado;
 use App\Mail\Transport\GraphTransport;
 use App\Models\User;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -52,7 +54,7 @@ class AppServiceProvider extends ServiceProvider
         // Clientes dos Tempos (página Clientes): criar, alterar, arquivar e apagar. Aberto a toda a
         // gente a pedido (2026-09-22, notas §33): os técnicos também precisam de acrescentar clientes.
         // Para voltar a fechar aos admins basta repor $utilizador->ehAdminTempos() aqui.
-        Gate::define('tempos-gerir-clientes', fn (User $utilizador) => true);
+        Gate::define('tempos-gerir-clientes', fn (User $utilizador) => $utilizador->temAcesso());
         // Equipa: papéis, taxas (incluindo custo), membros limitados, grupos e lembretes. Os técnicos
         // veem a equipa sem taxas e sem ações.
         Gate::define('tempos-gerir-equipa', fn (User $utilizador) => $utilizador->ehAdminTempos());
@@ -63,12 +65,17 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('tempos-gerir-despesas', fn (User $utilizador) => $utilizador->ehAdminTempos());
         // Ver as despesas de toda a equipa (só ver: não altera nem decide). Aberto a toda a gente a
         // pedido (2026-09-24, notas §41). Para voltar a ser só de quem gere: $utilizador->ehAdminTempos().
-        Gate::define('tempos-ver-despesas', fn (User $utilizador) => true);
+        Gate::define('tempos-ver-despesas', fn (User $utilizador) => $utilizador->temAcesso());
 
         // No servidor a aplicação vive em /tempos, ao lado do portal: o Livewire tem de o saber.
         LivewireSubpasta::registar();
 
         // Relatório partilhado por link: só as ações da lista fechada (notas §40).
         Partilhado::registarListaDeAcoes();
+
+        // As ações do Livewire vão por /livewire/update, que só reaplica os middleware da lista do
+        // Livewire: sem isto, a quem se retirasse o acesso no portal, a página já aberta continuava a
+        // funcionar (notas §42).
+        Livewire::addPersistentMiddleware([ExigeAcessoAplicacao::class]);
     }
 }

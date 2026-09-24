@@ -25,6 +25,10 @@ class ExigeAcessoAplicacao
         }
 
         if (! $utilizador->temAcesso()) {
+            // Nas ações do Livewire (este middleware é persistente — notas §42) um redirect viria parar
+            // dentro da página; um 403 trava a ação, e ao recarregar a página vai-se ao portal.
+            abort_if($request->hasHeader('X-Livewire'), 403);
+
             return redirect()->away(config('app.portal_url'));
         }
 

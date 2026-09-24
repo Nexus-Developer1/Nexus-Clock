@@ -16,6 +16,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Session;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -84,8 +85,12 @@ class Membros extends Component
     public array $selecionados = [];
 
     // Mudar taxa (janela).
+    // Janela da taxa: só o servidor abre (abrirTaxa, que exige gerir a equipa) — o browser não mexe
+    // nestes dois campos, e o render volta a exigir a permissão (notas §42).
+    #[Locked]
     public ?int $taxaMembroId = null;
 
+    #[Locked]
     public string $taxaTipo = 'faturavel';
 
     public string $taxaValor = '';
@@ -326,7 +331,9 @@ class Membros extends Component
     public function render()
     {
         $podeGerir = Gate::allows('tempos-gerir-equipa');
-        $membroTaxa = $this->taxaMembroId ? MembroEquipa::with(['utilizador', 'taxas.criadoPor'])->find($this->taxaMembroId) : null;
+        $membroTaxa = $this->taxaMembroId && $podeGerir && isset(TaxaMembro::TIPOS[$this->taxaTipo])
+            ? MembroEquipa::with(['utilizador', 'taxas.criadoPor'])->find($this->taxaMembroId)
+            : null;
 
         return view('livewire.equipa.membros', [
             'membros' => $this->membros(),

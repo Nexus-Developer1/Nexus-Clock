@@ -210,7 +210,10 @@ class Detalhado extends Component
             'auditorias' => ResumoTempos::AUDITORIA,
             'filtrosAtivos' => $this->contarFiltros() + ($this->auditoria !== '' ? 1 : 0),
             'projetosMassa' => ProjetoTempo::visiveisPara(auth()->user())->ativos()->orderByRaw('lower(nome)')->pluck('nome', 'id')->all(),
-            'segundosSelecionados' => $this->selecionados === [] ? 0 : (int) RegistoTempo::whereKey(array_map('intval', $this->selecionados))->sum('duracao_seg'),
+            // Só soma registos que quem vê pode ver: a seleção vem do browser (notas §42).
+            'segundosSelecionados' => $this->selecionados === [] ? 0 : (int) RegistoTempo::whereKey(array_map('intval', $this->selecionados))
+                ->when(! Gate::allows('tempos-ver-todos'), fn ($q) => $q->where('tecnico_id', auth()->id()))
+                ->sum('duracao_seg'),
         ] + $this->dadosDoFormulario());
     }
 

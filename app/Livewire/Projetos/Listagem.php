@@ -81,6 +81,7 @@ class Listagem extends Component
 
     public function novo(): void
     {
+        abort_unless(Gate::allows('tempos-gerir-projetos'), 403);
         $this->resetErrorBag();
         $this->editarId = 0;
         $this->formulario = $this->formularioVazio();
@@ -88,6 +89,9 @@ class Listagem extends Component
 
     public function editar(int $id): void
     {
+        // Só quem gere os projetos abre o formulário — sem isto, um id de um projeto privado punha nome,
+        // cliente, membros, taxa e nota no estado do componente, que vai para o browser (notas §42).
+        abort_unless(Gate::allows('tempos-gerir-projetos'), 403);
         $p = ProjetoTempo::with('membros')->findOrFail($id);
         $this->resetErrorBag();
         $this->editarId = $p->id;

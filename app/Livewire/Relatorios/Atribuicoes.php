@@ -59,6 +59,7 @@ class Atribuicoes extends Component
 
     public function nova(): void
     {
+        abort_unless(Gate::allows('tempos-gerir-equipa'), 403);
         [$de, $ate] = $this->periodo();
         $this->resetErrorBag();
         $this->editarId = 0;
@@ -71,6 +72,9 @@ class Atribuicoes extends Component
 
     public function editar(int $id): void
     {
+        // O formulário é de quem gere a equipa: sem isto, qualquer id mostrava a atribuição de outra pessoa
+        // (e a lista de todos os projetos, privados incluídos) — notas §42.
+        abort_unless(Gate::allows('tempos-gerir-equipa'), 403);
         $a = AtribuicaoTempo::findOrFail($id);
         $this->resetErrorBag();
         $this->editarId = $a->id;

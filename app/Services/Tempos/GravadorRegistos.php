@@ -42,7 +42,7 @@ class GravadorRegistos
         $this->preencher($registo, $dados + ['tecnico_id' => $autor->id]);
 
         Gate::forUser($autor)->authorize('create', $registo);
-        $this->validar($registo);
+        $this->validar($autor, $registo);
 
         $registo->criado_por = $autor->id;
         $registo->alterado_por = $autor->id;
@@ -57,7 +57,7 @@ class GravadorRegistos
         $this->preencher($registo, $dados);
 
         Gate::forUser($autor)->authorize('update', $registo);
-        $this->validar($registo);
+        $this->validar($autor, $registo);
 
         $registo->alterado_por = $autor->id;
         $this->gravar($registo);
@@ -154,7 +154,7 @@ class GravadorRegistos
         }
     }
 
-    private function validar(RegistoTempo $registo): void
+    private function validar(User $autor, RegistoTempo $registo): void
     {
         $erros = [];
 
@@ -185,11 +185,12 @@ class GravadorRegistos
             $erros += $this->errosDeLigacao($cliente->id, $registo->contrato_id, $registo->intervencao_id);
         }
 
-        // Projeto: tem de existir e, ao escolhê-lo, estar ativo (registos antigos de um projeto entretanto
-        // arquivado continuam editáveis).
+        // Projeto: tem de existir, quem grava tem de o poder ver (um privado só para os membros — notas §42)
+        // e, ao escolhê-lo, estar ativo. Registos antigos continuam editáveis sem mudar de projeto. Um
+        // privado que não se vê dá a mesma mensagem de um que não existe: não revela o nome a quem tenta ids.
         if ($registo->projeto_id && $registo->isDirty('projeto_id')) {
             $projeto = ProjetoTempo::find($registo->projeto_id);
-            if (! $projeto) {
+            if (! $projeto || ! ProjetoTempo::visiveisPara($autor)->whereKey($projeto->id)->exists()) {
                 $erros['projeto_id'] = 'O projeto não existe.';
             } elseif ($projeto->estaArquivado()) {
                 $erros['projeto_id'] = 'O projeto «'.$projeto->nome.'» está arquivado.';

@@ -208,7 +208,9 @@ class GestorDespesas
             $id = (int) $dados['projeto_id'];
             if ($id) {
                 $projeto = ProjetoTempo::find($id);
-                if (! $projeto) {
+                // Um privado de que quem lança não é membro conta como inexistente (notas §42).
+                $mudou = $id !== (int) $d->getOriginal('projeto_id');
+                if (! $projeto || ($mudou && ! ProjetoTempo::visiveisPara($autor)->whereKey($id)->exists())) {
                     $erros['projeto_id'] = 'O projeto não existe.';
                 } elseif ($projeto->estaArquivado() && $id !== (int) $d->getOriginal('projeto_id')) {
                     $erros['projeto_id'] = 'O projeto «'.$projeto->nome.'» está arquivado.';
