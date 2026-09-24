@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-24
+
+- 🔒 **Link partilhado blindado** — revisão de segurança: quem abria um link público podia chamar à mão o «Limpar filtros» herdado do Resumo e ver (e exportar) todos os clientes — com autor admin, a equipa inteira; um admin que partilhasse com «Custo» ou «Lucro» selecionado punha a margem no link; e as ações da página não tinham limite (PDFs sem fim). Agora: lista fechada de ações (tudo o resto dá 403, incluindo o que o Resumo venha a ganhar), cálculos sempre com os filtros guardados pelo autor, valor no máximo faturável e limite de 60 ações e 10 exportações por minuto. Nada estava exposto em produção. Notas §40. 272 testes.
+
 ## 2026-09-23
 
 - 🧰 **Exportar em PDF** — a pedido: o menu Exportar de todos os relatórios (Resumo, Detalhado, Semanal, Presenças, Atribuições, Despesas) ganha «PDF», com a mesma tabela do CSV, a marca, o período com as datas e quem o gerou. Até 2000 linhas por PDF; para mais, o CSV. Notas §39. 268 testes.

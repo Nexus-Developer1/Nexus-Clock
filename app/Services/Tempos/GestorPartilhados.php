@@ -31,7 +31,7 @@ class GestorPartilhados
         $relatorio = new RelatorioPartilhado;
         $relatorio->tipo = $tipo;
         $relatorio->token = Str::random(40);
-        $relatorio->parametros = $parametros;
+        $relatorio->parametros = $this->semValoresInternos($parametros);
         $relatorio->criado_por = $autor->id;
         $this->preencher($relatorio, $dados + ['nome' => '']);
         $relatorio->save();
@@ -48,7 +48,7 @@ class GestorPartilhados
 
         $this->preencher($relatorio, $dados);
         if ($parametros !== null) {
-            $relatorio->parametros = $parametros;
+            $relatorio->parametros = $this->semValoresInternos($parametros);
         }
         $campos = array_keys($relatorio->getDirty());
         $relatorio->save();
@@ -82,6 +82,22 @@ class GestorPartilhados
     public function podeGerir(User $autor, RelatorioPartilhado $relatorio): bool
     {
         return (int) $relatorio->criado_por === $autor->id || $autor->can('tempos-gerir-equipa');
+    }
+
+    /**
+     * Custo e lucro são internos: um relatório partilhado guarda no máximo o valor faturável, mesmo
+     * que quem partilha tenha o seletor em «Custo» ou «Lucro» nesse momento (notas §40).
+     *
+     * @param  array<string, mixed>  $parametros
+     * @return array<string, mixed>
+     */
+    private function semValoresInternos(array $parametros): array
+    {
+        if (in_array($parametros['mostrarValor'] ?? null, ['custo', 'lucro'], true)) {
+            $parametros['mostrarValor'] = 'faturavel';
+        }
+
+        return $parametros;
     }
 
     private function autorizar(User $autor, RelatorioPartilhado $relatorio): void

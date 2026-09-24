@@ -22,7 +22,10 @@ use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
+use Livewire\Drawer\Utils;
 use Livewire\Livewire;
+use ReflectionMethod;
+use ReflectionParameter;
 use Tests\TestCase;
 
 // Partilhar o Resumo por link (como o "Share report" do Clockify): nome, visibilidade, período sempre
@@ -278,5 +281,114 @@ class RelatoriosPartilhadosTest extends TestCase
             && array_column($n->grupos, 'nome') === ['Rui Costa', 'Ana Martins']);
         $this->assertNotNull($semanal->fresh()->email_enviado_em);
         $this->assertNotNull($diario->fresh()->email_enviado_em);
+    }
+
+    // ---- Blindagem do link (notas §40): quem abre o link a mandar pedidos à mão, como um atacante.
+
+    /** Um segundo cliente, com horas na mesma semana, que nunca pode aparecer num link filtrado ao Hospital. */
+    private function outroCliente(): void
+    {
+        $cofre = ProjetoTempo::create(['nome' => 'Cofre', 'cliente_id' => ClienteTempo::create(['nome' => 'Banco'])->id]);
+        $this->registo($this->rui, $this->hospital, '2026-09-09', 5400, ['projeto_id' => $cofre->id, 'descricao' => 'Trabalho do banco']);
+    }
+
+    private function linkSoDoHospital(): RelatorioPartilhado
+    {
+        $hospital = ClienteTempo::where('nome', 'Hospital')->value('id');
+
+        return $this->partilhar($this->admin, ['nome' => 'Só Hospital', 'sempre_atual' => false, 'bloquear_datas' => true],
+            ['clientes' => [(string) $hospital], 'agrupar1' => 'projeto']);
+    }
+
+    public function test_link_nao_deixa_limpar_filtros_nem_chamar_acoes_herdadas(): void
+    {
+        $this->outroCliente();
+        $link = $this->linkSoDoHospital();
+
+        $this->get('/partilhado/'.$link->token)->assertOk()->assertSee('3:00:00')->assertDontSee('Cofre');
+
+        // O «Limpar filtros» herdado do Resumo abria o relatório a todos os clientes.
+        Livewire::test(Partilhado::class, ['token' => $link->token])->call('limparFiltros')->assertForbidden();
+
+        // Lista fechada: TUDO o que o Livewire deixaria chamar e não está em ACOES dá 403 — incluindo o
+        // que o Resumo venha a ganhar no futuro (este teste apanha-o).
+        $instancia = Livewire::test(Partilhado::class, ['token' => $link->token])->instance();
+        $chamaveis = array_diff(Utils::getPublicMethodsDefinedBySubClass($instancia), ['render'], Partilhado::ACOES);
+        $this->assertContains('limparFiltros', $chamaveis);
+        $this->assertContains('guardarPartilha', $chamaveis);
+        foreach ($chamaveis as $metodo) {
+            $argumentos = array_map(fn (ReflectionParameter $p) => match (true) {
+                $p->isDefaultValueAvailable() => $p->getDefaultValue(),
+                $p->allowsNull() => null,
+                default => match ((string) $p->getType()) {
+                    'int' => 0, 'float' => 0.0, 'bool' => false, 'array' => [], default => '',
+                },
+            }, (new ReflectionMethod($instancia, $metodo))->getParameters());
+
+            Livewire::test(Partilhado::class, ['token' => $link->token])->call($metodo, ...$argumentos)->assertForbidden();
+        }
+
+        // As ações da lista continuam a funcionar.
+        Livewire::test(Partilhado::class, ['token' => $link->token])
+            ->call('ordenarPor', 'titulo')->assertOk()
+            ->call('exportar')->assertFileDownloaded('resumo-20260907-20260913.csv');
+    }
+
+    public function test_link_calcula_sempre_com_os_filtros_do_autor_mesmo_com_as_propriedades_mexidas(): void
+    {
+        $this->outroCliente();
+        $link = $this->linkSoDoHospital();
+        $hospital = ClienteTempo::where('nome', 'Hospital')->value('id');
+
+        // Mudar os filtros pelo browser não passa (é reposto a cada alteração)...
+        Livewire::test(Partilhado::class, ['token' => $link->token])
+            ->set('clientes', [])->set('membros', [(string) $this->ana->id])
+            ->assertSee('3:00:00')->assertDontSee('Cofre');
+
+        // ... e mesmo que alguma via deixe as propriedades vazias, os cálculos não as usam: vêm do que
+        // o autor guardou (segunda linha de defesa).
+        $instancia = Livewire::test(Partilhado::class, ['token' => $link->token])->instance();
+        $instancia->clientes = [];
+        $instancia->projetos = [];
+        $instancia->membros = [];
+        $filtros = (fn () => $this->filtrosDoServico())->call($instancia);
+        $this->assertSame([(int) $hospital], $filtros['clientes']);
+        $this->assertNull($filtros['membros'], 'o autor vê a equipa e não filtrou pessoas');
+    }
+
+    public function test_link_nunca_mostra_custo_nem_lucro(): void
+    {
+        // O admin partilha com o seletor em «Lucro»: guarda-se o faturável.
+        $comLucro = $this->partilhar($this->admin, ['nome' => 'Margem'], ['mostrarValor' => 'lucro']);
+        $this->assertSame('faturavel', $comLucro->fresh()->parametros['mostrarValor']);
+        $this->assertSame('faturavel', $this->gestor->atualizar($this->admin, $comLucro, [], ['mostrarValor' => 'custo'] + $this->parametros)->fresh()->parametros['mostrarValor']);
+
+        // Um link antigo com «Custo» gravado mostra só o faturável.
+        $antigo = $this->partilhar($this->admin, ['nome' => 'Antigo']);
+        $antigo->forceFill(['parametros' => ['mostrarValor' => 'custo'] + $this->parametros])->save();
+        $this->get('/partilhado/'.$antigo->token)->assertOk()
+            ->assertSee('>Valor</span>', false)->assertDontSee('>Custo</span>', false)->assertDontSee('>Lucro</span>', false);
+        Livewire::test(Partilhado::class, ['token' => $antigo->token])
+            ->assertSet('mostrarValor', 'faturavel')
+            ->set('mostrarValor', 'lucro')->assertSet('mostrarValor', 'faturavel');
+
+        // «Sem valor» guardado continua sem valor.
+        $semValor = $this->partilhar($this->admin, ['nome' => 'Sem valor'], ['mostrarValor' => 'nao']);
+        Livewire::test(Partilhado::class, ['token' => $semValor->token])->assertSet('mostrarValor', 'nao');
+    }
+
+    public function test_link_limita_as_acoes_e_as_exportacoes(): void
+    {
+        $link = $this->partilhar($this->admin, ['nome' => 'Limites']);
+        $pagina = Livewire::test(Partilhado::class, ['token' => $link->token]);
+
+        for ($i = 0; $i < Partilhado::MAXIMO_EXPORTACOES; $i++) {
+            $pagina->call('exportar', 'csv')->assertOk();
+        }
+        $pagina->call('exportar', 'pdf')->assertStatus(429);
+
+        // O limite é por link: outro link não é afetado.
+        $outro = $this->partilhar($this->admin, ['nome' => 'Outro']);
+        Livewire::test(Partilhado::class, ['token' => $outro->token])->call('exportar')->assertOk();
     }
 }

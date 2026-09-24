@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Livewire\Relatorios\Partilhado;
 use App\Mail\Transport\GraphTransport;
 use App\Models\User;
 use App\Services\Tempos\Faturacao\MesesFechados;
@@ -63,5 +64,8 @@ class AppServiceProvider extends ServiceProvider
 
         // No servidor a aplicação vive em /tempos, ao lado do portal: o Livewire tem de o saber.
         LivewireSubpasta::registar();
+
+        // Relatório partilhado por link: só as ações da lista fechada (notas §40).
+        Partilhado::registarListaDeAcoes();
     }
 }

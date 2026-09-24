@@ -740,3 +740,16 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - O PDF (`resources/views/pdf/relatorio.blade.php`, dompdf, que já estava no `composer.json`): a marca, «Relatório X», o período **por extenso e com as datas** («Esta semana (21/09/2026 – 27/09/2026)» — num papel, «esta semana» sozinho não diz nada), quem gerou e quando, e a tabela, com números à direita e o cabeçalho repetido em cada página. Paisagem a partir de 6 colunas. Fonte DejaVu Sans (acentos e €) com *font subsetting* — sem ele cada PDF pesava ~860 KB, com ele ~20 KB.
 - Corta em **2000 linhas** (o dompdf fica muito lento com milhares) e diz quantas ficaram de fora; para tudo, há o CSV.
 - O link partilhado usa o mesmo menu e a mesma autorização do CSV.
+
+## 40. Blindagem do link partilhado (2026-09-24, revisão de segurança)
+
+- Revisão de segurança pedida pelo utilizador, cruzada com uma segunda análise (ChatGPT) que ele trouxe. Três falhas no mesmo sítio — a página pública do relatório partilhado (`Relatorios\Partilhado`, subclasse do `Resumo`):
+  - **«Limpar filtros» herdado.** O `limparFiltros()` do `PeriodoEFiltros` ficava chamável por quem abria o link, sem login, e limpava os filtros **sem passar pelo `normalizar()`** do Partilhado (que só corria nas alterações de campos). Um link filtrado a um cliente passava a mostrar e a exportar todos os clientes — e, com autor admin, a equipa inteira. A §25 dizia que quem abre não muda filtros; os testes só cobriam alterar campos, não chamar ações herdadas.
+  - **Custo e lucro.** A página usava o `mostrarValor` guardado pelo autor: um admin que partilhasse com o seletor em «Custo» ou «Lucro» punha a margem num link público. O email agendado já se protegia (só faturável); a página não.
+  - **Sem limite nas ações.** O `throttle:60,1` da rota só cobre abrir a página; as ações vão por `/livewire/update` sem ele — um visitante anónimo podia pôr o servidor a gerar PDFs sem fim.
+- Correção, em camadas:
+  1. **Lista fechada de ações** (`Partilhado::ACOES`: `anterior`, `seguinte`, `escolherPeriodo`, `aplicarDatas`, `ordenarPor`, `exportar`, `$refresh`), imposta num `before('call')` do Livewire registado no `AppServiceProvider` — corre antes de qualquer outro ouvinte, incluindo as ações mágicas. Tudo o resto dá 403, **incluindo o que o Resumo venha a ganhar**: o teste enumera os métodos que o Livewire deixaria chamar (a mesma função que ele usa) e exige 403 em todos os que não estão na lista.
+  2. **Os cálculos usam sempre os filtros guardados**: o Partilhado substitui `filtrosDoServico()` para os ler dos parâmetros do relatório, nunca das propriedades do componente. E o `render()` e o `exportar()` voltam a `normalizar()` antes de calcular. Se aparecer outra via de mexer nas propriedades, os números não mudam.
+  3. **Valor no máximo faturável**: o `GestorPartilhados` guarda `faturavel` em vez de `custo`/`lucro` (`semValoresInternos`), e a página impõe-no também para links antigos. «Sem valor» mantém-se.
+  4. **Limites por link e endereço**: 60 ações e 10 exportações por minuto (429 a partir daí).
+- Os quatro testes novos foram corridos **sem a correção** e falharam todos; com ela, passam. Em produção havia um só link, de um técnico, com valor faturável — nada estava exposto.
