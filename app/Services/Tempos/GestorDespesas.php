@@ -10,6 +10,7 @@ use App\Notifications\DespesaPorAprovar;
 use App\Services\Auditor;
 use App\Support\Dinheiro;
 use Carbon\CarbonImmutable;
+use finfo;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
@@ -29,6 +30,9 @@ class GestorDespesas
     public const TIPOS_RECIBO = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic'];
 
     public const RECIBO_MAX_KB = 10240;
+
+    /** Tipos (pelo conteúdo) aceites num recibo. */
+    private const MIMES_RECIBO = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'];
 
     /** @param array<string, mixed> $dados */
     public function criar(User $autor, array $dados, ?UploadedFile $recibo = null): DespesaTempo
@@ -310,6 +314,30 @@ class GestorDespesas
         }
     }
 
+    /**
+     * O CONTEÚDO do recibo tem de ser PDF ou imagem, não só o nome (notas §45): um ficheiro qualquer
+     * chamado «fatura.pdf» deixava de passar. Lê-se os primeiros bytes com o finfo — nunca o tipo que
+     * o browser declara, nem o getMimeType() (que nos ficheiros falsos dos testes devolve o tipo pedido).
+     * O HEIC das fotos do iPhone vê-se também pela assinatura, porque versões antigas da libmagic não
+     * o conhecem e diriam «application/octet-stream».
+     */
+    private function conteudoDeRecibo(UploadedFile $recibo): bool
+    {
+        $caminho = $recibo->getRealPath();
+        if (! $caminho || ! is_readable($caminho)) {
+            return false;
+        }
+
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($caminho);
+        if (in_array($mime, self::MIMES_RECIBO, true)) {
+            return true;
+        }
+
+        $inicio = (string) file_get_contents($caminho, false, null, 0, 12);
+
+        return substr($inicio, 4, 4) === 'ftyp' && in_array(substr($inicio, 8, 4), ['heic', 'heix', 'hevc', 'hevx', 'heif', 'mif1', 'msf1'], true);
+    }
+
     private function guardarRecibo(DespesaTempo $d, ?UploadedFile $recibo): void
     {
         if (! $recibo) {
@@ -322,6 +350,9 @@ class GestorDespesas
         }
         if ($recibo->getSize() > self::RECIBO_MAX_KB * 1024) {
             throw ValidationException::withMessages(['recibo' => 'O recibo não pode passar de 10 MB.']);
+        }
+        if (! $this->conteudoDeRecibo($recibo)) {
+            throw ValidationException::withMessages(['recibo' => 'O recibo tem de ser PDF ou imagem (JPG, PNG, WEBP, HEIC).']);
         }
 
         $d->recibo_caminho = $recibo->store(DespesaTempo::PASTA_RECIBOS, DespesaTempo::DISCO);

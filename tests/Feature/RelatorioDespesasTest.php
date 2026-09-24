@@ -64,6 +64,17 @@ class RelatorioDespesasTest extends TestCase
         $this->gestor = app(GestorDespesas::class);
     }
 
+    /** Recibos com conteúdo a sério: o serviço lê os bytes, não o nome nem o tipo declarado (notas §45). */
+    private function pdf(string $nome = 'fatura.pdf'): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent($nome, "%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n");
+    }
+
+    private function jpg(string $nome = 'talão.jpg'): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent($nome, "\xFF\xD8\xFF\xE0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xFF\xD9");
+    }
+
     private function despesa(User $autor, array $dados, ?UploadedFile $recibo = null): DespesaTempo
     {
         return $this->gestor->criar($autor, $dados + ['data' => '2026-09-15', 'categoria_id' => $this->refeicoes->id, 'valor' => '10'], $recibo);
@@ -96,7 +107,7 @@ class RelatorioDespesasTest extends TestCase
         }
 
         $d = $this->despesa($this->ana, ['valor' => '12,50', 'faturavel' => true, 'nota' => ' Almoço na obra ', 'projeto_id' => $this->obra->id],
-            UploadedFile::fake()->create('fatura.pdf', 100, 'application/pdf'));
+            $this->pdf());
 
         $this->assertSame([$this->ana->id, 1250, true, 'Almoço na obra', 'pendente', 'fatura.pdf'],
             [$d->utilizador_id, $d->valor_cent, $d->faturavel, $d->nota, $d->estado, $d->recibo_nome]);
@@ -204,7 +215,7 @@ class RelatorioDespesasTest extends TestCase
     public function test_relatorio_filtra_soma_e_junta_recibos(): void
     {
         $this->despesa($this->ana, ['valor' => '12,50', 'faturavel' => true, 'projeto_id' => $this->obra->id, 'nota' => 'Almoço'],
-            UploadedFile::fake()->createWithContent('talão.jpg', 'imagem'));
+            $this->jpg());
         $this->despesa($this->ana, ['valor' => '40', 'categoria_id' => $this->combustiveis->id, 'nota' => 'Gasóleo']);
         $r = $this->despesa($this->admin, ['utilizador_id' => $this->rui->id, 'valor' => '7,30', 'data' => '2026-09-16']);
         $this->gestor->decidir($this->admin, $r, 'aprovada');
@@ -248,7 +259,7 @@ class RelatorioDespesasTest extends TestCase
             ->set('formulario.categoria_id', (string) $this->refeicoes->id)
             ->set('formulario.valor', '8,40')
             ->set('formulario.nota', 'Jantar')
-            ->set('recibo', UploadedFile::fake()->create('fatura.pdf', 50, 'application/pdf'))
+            ->set('recibo', $this->pdf())
             ->call('guardar')
             ->assertHasNoErrors()
             ->assertSet('editarId', null)
@@ -295,7 +306,7 @@ class RelatorioDespesasTest extends TestCase
 
     public function test_pagina_descarrega_zip_dos_recibos(): void
     {
-        $this->despesa($this->ana, [], UploadedFile::fake()->create('fatura.pdf', 10, 'application/pdf'));
+        $this->despesa($this->ana, [], $this->pdf());
 
         Livewire::actingAs($this->admin)->test(Despesas::class)
             ->call('descarregarRecibos')
@@ -350,7 +361,7 @@ class RelatorioDespesasTest extends TestCase
     public function test_detalhe_da_despesa_so_de_leitura_ao_carregar_na_linha(): void
     {
         $d = $this->despesa($this->ana, ['projeto_id' => $this->obra->id, 'valor' => '23,50', 'faturavel' => true, 'nota' => "Portagens A28\nida e volta"],
-            UploadedFile::fake()->create('portagem.pdf', 20, 'application/pdf'));
+            $this->pdf('portagem.pdf'));
 
         // A dona vê tudo, sem abrir o formulário de alterar.
         Livewire::actingAs($this->ana)->test(Despesas::class)
