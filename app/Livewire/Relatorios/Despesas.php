@@ -57,8 +57,10 @@ class Despesas extends Component
 
     public string $motivo = '';
 
-    // Detalhe só de leitura (carregar na linha). O id é só um pedido: quem pode ver a despesa volta a
-    // verificar-se no render, por isso mexer nele pelo browser não mostra a despesa de ninguém.
+    // Detalhe só de leitura (carregar na linha, ou ?ver=<id> — o link do email ao aprovador). O id é só
+    // um pedido: quem pode ver a despesa volta a verificar-se no render, por isso mexer nele pelo
+    // browser não mostra a despesa de ninguém.
+    #[Url(as: 'ver')]
     public ?int $verId = null;
 
     // Categorias (janela).
@@ -183,6 +185,7 @@ class Despesas extends Component
 
     public function pedirRejeicao(int $id): void
     {
+        abort_unless(app(GestorDespesas::class)->podeDecidir(auth()->user()), 403);
         $this->resetErrorBag();
         $this->rejeitarId = $id;
         $this->motivo = '';
@@ -275,6 +278,7 @@ class Despesas extends Component
             'ate' => $ate,
             'rotuloPeriodo' => $this->rotuloPeriodo($de, $ate),
             'podeVerEquipa' => $gestor->veTodas(auth()->user()), // filtro Equipa e coluna Membro
+            'podeDecidir' => $gestor->podeDecidir(auth()->user()), // aprovar, rejeitar, voltar a pendente
             'gere' => $gere,
             'gestor' => $gestor,
             'opcoes' => [

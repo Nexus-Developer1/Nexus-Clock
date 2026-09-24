@@ -40,6 +40,15 @@ class DespesaTempo extends Model
         ];
     }
 
+    /**
+     * Referência à vista: «SUP-12». Os números das despesas do IFE e do Suporte repetem-se (tabelas
+     * diferentes); com o prefixo, quem aprova as duas não confunde a nº 12 de uma com a da outra.
+     */
+    public function referencia(): string
+    {
+        return 'SUP-'.$this->id;
+    }
+
     /** @return BelongsTo<User, $this> */
     public function utilizador(): BelongsTo
     {

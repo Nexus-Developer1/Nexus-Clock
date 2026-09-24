@@ -16,8 +16,8 @@
 
                     <tr>
                         <td style="padding:28px 36px 6px;">
-                            <div style="font-size:22px; font-weight:800; color:#16a34a; line-height:1;">Nexus Infra</div>
-                            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#9ca3af; margin-top:3px;">Suporte</div>
+                            <div style="font-size:22px; font-weight:800; color:#16a34a; line-height:1;">Nexus Suporte</div>
+                            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#9ca3af; margin-top:3px;">Registo de horas e despesas</div>
                         </td>
                     </tr>
 

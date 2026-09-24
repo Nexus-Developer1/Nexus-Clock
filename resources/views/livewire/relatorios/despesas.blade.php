@@ -135,7 +135,7 @@
                                                         @if ($gestor->podeAlterar($euAgora, $d))
                                                             <button type="button" wire:click="editar({{ $d->id }})" @click="fechar()" class="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-fundo" role="menuitem"><x-icone nome="lapis" /> Alterar</button>
                                                         @endif
-                                                        @if ($gere)
+                                                        @if ($podeDecidir)
                                                             @if ($d->estado !== 'aprovada')
                                                                 <button type="button" wire:click="aprovar({{ $d->id }})" @click="fechar()" class="flex w-full items-center gap-2 px-4 py-2 text-left text-verde-700 hover:bg-verde-50" role="menuitem"><x-icone nome="visto" /> Aprovar</button>
                                                             @endif
@@ -149,9 +149,9 @@
                                                         @if ($gestor->podeAlterar($euAgora, $d))
                                                             <button type="button" wire:click="apagar({{ $d->id }})" wire:confirm="Apagar esta despesa?" @click="fechar()" class="flex w-full items-center gap-2 px-4 py-2 text-left text-perigo-600 hover:bg-perigo-100" role="menuitem"><x-icone nome="lixo" /> Apagar</button>
                                                         @endif
-                                                        @unless ($gestor->podeAlterar($euAgora, $d) || $gere)
-                                                            <span class="block px-4 py-2 text-texto-fraco">Aprovada: sem alterações</span>
-                                                        @endunless
+                                                        @if ($d->estado === 'aprovada' && ! $podeDecidir)
+                                                            <span class="block px-4 py-2 text-texto-fraco">Aprovada: fechada</span>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             </div>
@@ -191,7 +191,7 @@
                 <header class="flex items-start justify-between gap-4 border-b border-borda px-6 py-4">
                     <div class="min-w-0">
                         <h2 id="titulo-detalhe" class="text-lg font-semibold text-texto-forte">Despesa de {{ $det->data->format('d/m/Y') }}</h2>
-                        <p class="mt-0.5 truncate text-sm text-texto-medio">{{ $det->utilizador?->nome ?? '—' }}</p>
+                        <p class="mt-0.5 truncate text-sm text-texto-medio">{{ $det->referencia() }} · {{ $det->utilizador?->nome ?? '—' }}</p>
                     </div>
                     <button type="button" wire:click="fecharDetalhe" class="botao-icone" aria-label="Fechar"><x-icone nome="fechar" /></button>
                 </header>
@@ -255,13 +255,13 @@
                     </div>
                 </div>
 
-                @if ($gere || $podeAlterarEsta)
+                @if ($podeDecidir || $podeAlterarEsta)
                     <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-borda bg-fundo/50 px-6 py-4">
                         @if ($podeAlterarEsta)
                             <button type="button" wire:click="apagar({{ $det->id }})" wire:confirm="Apagar esta despesa?" class="botao-secundario mr-auto !text-perigo-600"><x-icone nome="lixo" /> Apagar</button>
                             <button type="button" wire:click="editar({{ $det->id }})" class="botao-secundario"><x-icone nome="lapis" /> Alterar</button>
                         @endif
-                        @if ($gere)
+                        @if ($podeDecidir)
                             @if ($det->estado !== 'pendente')
                                 <button type="button" wire:click="reabrir({{ $det->id }})" class="botao-secundario"><x-icone nome="atualizar" /> Voltar a pendente</button>
                             @endif

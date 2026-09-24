@@ -63,6 +63,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('tempos-gerir-projetos', fn (User $utilizador) => $utilizador->ehAdminTempos());
         // Despesas: cada um lança as suas; quem gere lança para outros, aprova, rejeita e gere categorias.
         Gate::define('tempos-gerir-despesas', fn (User $utilizador) => $utilizador->ehAdminTempos());
+        // Aprovar, rejeitar e voltar a pendente: só quem está em config('tempos.aprovam_despesas') — a
+        // pedido, só o Paulo Gouveia; ser admin não chega (notas §44).
+        Gate::define('tempos-aprovar-despesas', fn (User $utilizador) => $utilizador->temAcesso()
+            && in_array(strtolower((string) $utilizador->email), config('tempos.aprovam_despesas'), true));
         // Ver as despesas de toda a equipa (só ver: não altera nem decide). Aberto a toda a gente a
         // pedido (2026-09-24, notas §41). Para voltar a ser só de quem gere: $utilizador->ehAdminTempos().
         Gate::define('tempos-ver-despesas', fn (User $utilizador) => $utilizador->temAcesso());

@@ -6,12 +6,14 @@ use App\Models\CategoriaDespesaTempo;
 use App\Models\DespesaTempo;
 use App\Models\ProjetoTempo;
 use App\Models\User;
+use App\Notifications\DespesaPorAprovar;
 use App\Services\Auditor;
 use App\Support\Dinheiro;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -40,6 +42,7 @@ class GestorDespesas
         $d->save();
 
         Auditor::registar('tempo_despesa_criada', $d, $this->resumo($d));
+        $this->pedirAprovacao($d);
 
         return $d;
     }
@@ -56,8 +59,10 @@ class GestorDespesas
         }
         $this->guardarRecibo($d, $recibo);
 
-        // O dono corrigiu uma despesa rejeitada: volta a ser avaliada.
-        if ($d->estado === 'rejeitada' && ! $this->gere($autor) && $d->isDirty()) {
+        // Uma despesa rejeitada corrigida por quem não aprova (o dono ou outro admin) volta a ser avaliada
+        // — e o aprovador recebe outra vez o pedido (notas §44).
+        $reenviada = $d->estado === 'rejeitada' && ! $this->podeDecidir($autor) && $d->isDirty();
+        if ($reenviada) {
             $d->forceFill(['estado' => 'pendente', 'decidido_por' => null, 'decidido_em' => null, 'motivo_rejeicao' => null]);
         }
 
@@ -67,6 +72,9 @@ class GestorDespesas
 
         if ($campos !== []) {
             Auditor::registar('tempo_despesa_alterada', $d, $this->resumo($d) + ['campos' => $campos]);
+        }
+        if ($reenviada) {
+            $this->pedirAprovacao($d, reenvio: true);
         }
 
         return $d;
@@ -84,7 +92,9 @@ class GestorDespesas
     /** Aprovar ou rejeitar (com motivo), ou voltar a pendente. */
     public function decidir(User $autor, DespesaTempo $d, string $estado, ?string $motivo = null): DespesaTempo
     {
-        $this->autorizarGestao($autor);
+        if (! $this->podeDecidir($autor)) {
+            throw new AuthorizationException('Só quem aprova as despesas pode fazer isto.');
+        }
 
         if (! isset(DespesaTempo::ESTADOS[$estado])) {
             throw ValidationException::withMessages(['estado' => 'Estado inválido.']);
@@ -144,9 +154,49 @@ class GestorDespesas
         return Gate::forUser($autor)->allows('tempos-gerir-despesas');
     }
 
+    /** Aprova, rejeita e volta a pendente: só quem está em config('tempos.aprovam_despesas') — notas §44. */
+    public function podeDecidir(User $autor): bool
+    {
+        return Gate::forUser($autor)->allows('tempos-aprovar-despesas');
+    }
+
+    /**
+     * Aprovada fica fechada para toda a gente, como no IFE: para a corrigir, quem aprova volta-a a
+     * pendente primeiro. Assim ninguém muda o que o aprovador aprovou (notas §44).
+     */
     public function podeAlterar(User $autor, DespesaTempo $d): bool
     {
-        return $this->gere($autor) || ((int) $d->utilizador_id === $autor->id && $d->estado !== 'aprovada');
+        return $d->estado !== 'aprovada' && ($this->gere($autor) || (int) $d->utilizador_id === $autor->id);
+    }
+
+    /**
+     * Pedido de aprovação por email a cada aprovador (despesa nova, ou rejeitada e corrigida). A marca, o
+     * assunto e a referência SUP- deixam claro que é uma despesa do Suporte e não do IFE, que manda
+     * emails parecidos à mesma pessoa. Vai pela fila; uma falha no envio não impede a gravação.
+     */
+    private function pedirAprovacao(DespesaTempo $d, bool $reenvio = false): void
+    {
+        $d->loadMissing(['utilizador:id,nome', 'projeto.cliente:id,nome', 'categoria:id,nome']);
+        $dados = [
+            'id' => $d->id,
+            'referencia' => $d->referencia(),
+            'membro' => $d->utilizador?->nome ?? '—',
+            'data' => $d->data->format('d/m/Y'),
+            'valor' => Dinheiro::formatar($d->valor_cent),
+            'faturavel' => $d->faturavel,
+            'projeto' => $d->projeto?->nome,
+            'cliente' => $d->projeto?->cliente?->nome,
+            'categoria' => $d->categoria?->nome ?? '—',
+            'nota' => (string) $d->nota,
+            'recibo' => $d->recibo_caminho !== null,
+            'url' => route('relatorios.despesas', ['ver' => $d->id]),
+        ];
+
+        foreach (config('tempos.aprovam_despesas') as $email) {
+            $conta = User::whereRaw('lower(email) = ?', [$email])->where('ativo', true)->first();
+            $aviso = new DespesaPorAprovar($dados, $reenvio);
+            $conta ? $conta->notify($aviso) : Notification::route('mail', $email)->notify($aviso);
+        }
     }
 
     /** Vê as despesas de toda a equipa (lista, totais, detalhe, recibos, exportações) — notas §41. */
@@ -171,7 +221,7 @@ class GestorDespesas
     {
         if (! $this->podeAlterar($autor, $d)) {
             throw new AuthorizationException($d->estado === 'aprovada'
-                ? 'Esta despesa já foi aprovada: só quem gere as despesas a pode alterar.'
+                ? 'Esta despesa já foi aprovada e está fechada. Para a corrigir, quem aprova tem de a voltar a pôr pendente.'
                 : 'Só pode alterar as suas despesas.');
         }
     }

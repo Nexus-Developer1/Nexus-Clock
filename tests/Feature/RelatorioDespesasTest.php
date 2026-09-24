@@ -51,6 +51,8 @@ class RelatorioDespesasTest extends TestCase
 
         $this->admin = $this->admin();
         $this->admin->update(['nome' => 'Suporte Nexus']);
+        // Nestes testes, o admin é também quem aprova (o papel do Paulo Gouveia em produção, notas §44).
+        config(['tempos.aprovam_despesas' => [strtolower($this->admin->email)]]);
         $this->ana = $this->tecnico();
         $this->ana->update(['nome' => 'Ana Martins']);
         $this->rui = $this->tecnico();
@@ -140,16 +142,23 @@ class RelatorioDespesasTest extends TestCase
         $this->gestor->atualizar($this->ana, $d, ['valor' => '11']);
         $this->assertSame(['pendente', null, null], [$d->fresh()->estado, $d->fresh()->motivo_rejeicao, $d->fresh()->decidido_por]);
 
-        // Aprovada → fechada para a dona, aberta para quem gere.
+        // Aprovada → fechada para TODA a gente, incluindo quem gere e quem aprova (notas §44): para a
+        // corrigir, quem aprova volta-a a pendente primeiro.
         $this->gestor->decidir($this->admin, $d, 'aprovada');
         $this->assertFalse($this->gestor->podeAlterar($this->ana, $d));
+        $this->assertFalse($this->gestor->podeAlterar($this->admin, $d));
         try {
             $this->gestor->apagar($this->ana, $d);
             $this->fail('Aprovada não se apaga.');
         } catch (AuthorizationException $e) {
             $this->assertStringContainsString('aprovada', $e->getMessage());
         }
-        $this->gestor->atualizar($this->admin, $d, ['nota' => 'Visto']);
+        try {
+            $this->gestor->atualizar($this->admin, $d, ['nota' => 'Visto']);
+            $this->fail('Aprovada está fechada também para quem gere.');
+        } catch (AuthorizationException $e) {
+            $this->assertStringContainsString('voltar a pôr pendente', $e->getMessage());
+        }
         $this->assertSame('aprovada', $d->fresh()->estado);
 
         $this->gestor->decidir($this->admin, $d, 'pendente');
@@ -158,7 +167,7 @@ class RelatorioDespesasTest extends TestCase
         $this->assertSoftDeleted($d);
 
         $this->assertSame(
-            ['tempo_despesa_alterada' => 2, 'tempo_despesa_apagada' => 1, 'tempo_despesa_aprovada' => 1, 'tempo_despesa_reaberta' => 1, 'tempo_despesa_rejeitada' => 1],
+            ['tempo_despesa_alterada' => 1, 'tempo_despesa_apagada' => 1, 'tempo_despesa_aprovada' => 1, 'tempo_despesa_reaberta' => 1, 'tempo_despesa_rejeitada' => 1],
             Auditoria::where('acao', 'like', 'tempo_despesa_%')->where('acao', '!=', 'tempo_despesa_criada')
                 ->selectRaw('acao, count(*) as n')->groupBy('acao')->orderBy('acao')->pluck('n', 'acao')->map(fn ($n) => (int) $n)->all()
         );
@@ -313,7 +322,7 @@ class RelatorioDespesasTest extends TestCase
         // Ver não é mexer: não decide, nem abre o formulário, nem apaga as dos outros.
         Livewire::actingAs($this->ana)->test(Despesas::class)
             ->call('aprovar', $minha->id)
-            ->assertSet('erro', 'Só quem gere as despesas pode fazer isto.')
+            ->assertSet('erro', 'Só quem aprova as despesas pode fazer isto.')
             ->call('editar', $doRui->id)
             ->assertForbidden();
         Livewire::actingAs($this->ana)->test(Despesas::class)->call('apagar', $doRui->id)->assertSet('erro', fn ($e) => $e !== null);

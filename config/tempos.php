@@ -14,6 +14,14 @@ return [
         explode(',', (string) env('TEMPOS_PODE_REABRIR', 'suporte@nxs.pt')),
     ))),
 
+    // Quem aprova as despesas do Suporte — aprovar, rejeitar e voltar a pendente — e recebe por email
+    // cada despesa por aprovar. A pedido, só o Paulo Gouveia (notas §44); ser admin não chega.
+    // Lista de emails separados por vírgula.
+    'aprovam_despesas' => array_values(array_filter(array_map(
+        fn (string $email) => strtolower(trim($email)),
+        explode(',', (string) env('TEMPOS_APROVAM_DESPESAS', 'pgouveia@nxs.pt')),
+    ))),
+
     // Horas por semana abaixo das quais o resumo semanal de quem gere avisa (0 = não avisa). Só aviso:
     // férias e ausências não estão nos tempos.
     'horas_semana_minimas' => (float) env('TEMPOS_HORAS_SEMANA_MINIMAS', 35),
