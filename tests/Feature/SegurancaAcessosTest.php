@@ -160,15 +160,19 @@ class SegurancaAcessosTest extends TestCase
         $html = $this->get(route('cronometro'))->assertOk()->getContent();
         preg_match('/wire:snapshot="([^"]+)"/', $html, $snap);
         $snapshot = html_entity_decode($snap[1], ENT_QUOTES);
-        $acao = fn () => $this->withHeaders(['X-Livewire' => '1'])->postJson(app(HandleRequests::class)->getUpdateUri(), [
-            'components' => [['snapshot' => $snapshot, 'updates' => new \stdClass, 'calls' => [['path' => '', 'method' => 'comecar', 'params' => []]]]],
+        $acao = fn (string $metodo) => $this->withHeaders(['X-Livewire' => '1'])->postJson(app(HandleRequests::class)->getUpdateUri(), [
+            'components' => [['snapshot' => $snapshot, 'updates' => new \stdClass, 'calls' => [['path' => '', 'method' => $metodo, 'params' => []]]]],
         ]);
+
+        // Controlo: com acesso, as ações passam pelo middleware (agora persistente) sem problema.
+        // (O Livewire::test() não passa pelos middleware HTTP — só um pedido a sério prova isto.)
+        $acao('semanaSeguinte')->assertOk();
 
         // Tiram-lhe o acesso no portal; a página continua aberta e ela carrega em «Começar».
         DB::table('acessos')->where('utilizador_id', $this->ana->id)->delete();
         $this->actingAs($this->ana->fresh());
 
-        $acao()->assertForbidden();
+        $acao('comecar')->assertForbidden();
         $this->assertSame(0, RegistoTempo::count(), 'nenhum cronómetro começou');
 
         // E as permissões abertas a toda a gente também exigem o acesso.
