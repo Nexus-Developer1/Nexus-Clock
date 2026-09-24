@@ -66,6 +66,10 @@ class AppServiceProvider extends ServiceProvider
         // Ver as despesas de toda a equipa (só ver: não altera nem decide). Aberto a toda a gente a
         // pedido (2026-09-24, notas §41). Para voltar a ser só de quem gere: $utilizador->ehAdminTempos().
         Gate::define('tempos-ver-despesas', fn (User $utilizador) => $utilizador->temAcesso());
+        // Relatório Atribuições da equipa toda — o agendado E as horas registadas de cada um nesses
+        // projetos (coluna «Registado»). Aberto a toda a gente a pedido (2026-09-24, notas §43); só
+        // neste relatório: nos de tempo cada técnico continua a ver as suas. Fechar: ehAdminTempos().
+        Gate::define('tempos-ver-atribuicoes', fn (User $utilizador) => $utilizador->temAcesso());
 
         // No servidor a aplicação vive em /tempos, ao lado do portal: o Livewire tem de o saber.
         LivewireSubpasta::registar();

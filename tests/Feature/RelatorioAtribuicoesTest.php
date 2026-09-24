@@ -181,17 +181,23 @@ class RelatorioAtribuicoesTest extends TestCase
         $this->actingAs($this->admin)->get('/relatorios/tarefas')->assertRedirect('/relatorios/atribuicoes');
     }
 
-    public function test_tecnico_so_ve_as_suas_e_nao_gere(): void
+    public function test_tecnico_ve_as_de_todos_mas_nao_gere(): void
     {
         $this->actingAs($this->ana)->get('/relatorios/atribuicoes')->assertOk()->assertSee('Atribuições — Nexus Suporte', false);
 
-        Livewire::actingAs($this->ana)->withQueryParams(['membros' => [(string) $this->rui->id], 'sem_tempo' => '1'])->test(Atribuicoes::class)
-            ->assertSee('Ana Martins')
-            ->assertDontSee('Rui Costa')
-            ->assertDontSee('Suporte Nexus')
+        // A pedido (notas §43): o técnico vê as atribuições da equipa e o registado de cada um.
+        Livewire::actingAs($this->ana)->test(Atribuicoes::class)
+            ->assertSee('Ana Martins')->assertSee('Rui Costa')
+            ->assertSeeHtml('wire:model.live="membros"') // o filtro Equipa
             ->assertDontSee('Nova atribuição')
-            ->assertDontSeeHtml('aria-label="Alterar atribuição"')
-            ->call('apagar', AtribuicaoTempo::first()->id)
-            ->assertForbidden();
+            ->assertDontSeeHtml('aria-label="Alterar atribuição"');
+
+        // O filtro Equipa funciona: só o Rui, com a meia hora que registou no Interno.
+        Livewire::actingAs($this->ana)->withQueryParams(['membros' => [(string) $this->rui->id], 'agrupar' => 'membro'])->test(Atribuicoes::class)
+            ->assertViewHas('grupos', fn (array $grupos) => array_column($grupos, 'nome') === ['Rui Costa']);
+
+        // Ver não é gerir.
+        Livewire::actingAs($this->ana)->test(Atribuicoes::class)->call('apagar', AtribuicaoTempo::first()->id)->assertForbidden();
+        Livewire::actingAs($this->ana)->test(Atribuicoes::class)->call('editar', AtribuicaoTempo::first()->id)->assertForbidden();
     }
 }

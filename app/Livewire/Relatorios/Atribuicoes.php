@@ -154,7 +154,7 @@ class Atribuicoes extends Component
         [$de, $ate] = $this->periodo();
         $r = $this->dados();
         $podeGerir = Gate::allows('tempos-gerir-equipa');
-        $podeVerEquipa = Gate::allows('tempos-ver-todos');
+        $podeVerEquipa = $this->veTodas(); // filtro Equipa e agrupar por membro
 
         return view('livewire.relatorios.atribuicoes', [
             'r' => $r,
@@ -195,13 +195,22 @@ class Atribuicoes extends Component
         $this->reset(['membros', 'clientes', 'projetos']);
     }
 
+    /** Vê as atribuições (e o registado) de toda a equipa — notas §43. */
+    private function veTodas(): bool
+    {
+        return Gate::allows('tempos-ver-todos') || Gate::allows('tempos-ver-atribuicoes');
+    }
+
     private function dados(): array
     {
         [$de, $ate] = $this->periodo();
         $f = $this->filtrosDoServico();
 
+        // O filtrosDoServico() prende o técnico às suas horas; aqui a regra é o gate das atribuições.
+        $membros = $this->veTodas() ? ($this->membros === [] ? null : array_map('intval', $this->membros)) : $f['membros'];
+
         return app(RelatorioAtribuicoes::class)->gerar(
-            ['membros' => $f['membros'], 'clientes' => $f['clientes'], 'projetos' => $f['projetos']],
+            ['membros' => $membros, 'clientes' => $f['clientes'], 'projetos' => $f['projetos']],
             $de, $ate, $this->agrupar1, $this->agrupar2 !== '' ? $this->agrupar2 : null, $this->semTempo,
         );
     }
