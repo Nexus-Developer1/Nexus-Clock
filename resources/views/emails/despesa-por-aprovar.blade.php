@@ -6,7 +6,7 @@
     <title>Despesa {{ $d['referencia'] }} para aprovar</title>
 </head>
 {{-- Pedido de aprovação de uma despesa do Suporte (App\Notifications\DespesaPorAprovar). O mesmo layout
-     dos outros emails, mas com a marca do Suporte bem visível e um aviso de que não é do IFE — quem
+     dos outros emails, mas com a marca do Suporte bem visível e em destaque que é do Suporte — quem
      aprova recebe pedidos parecidos das duas aplicações (notas §44). --}}
 <body style="margin:0; padding:0; background-color:#f3f4f6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;">
@@ -25,7 +25,7 @@
                     <tr>
                         <td style="padding:16px 36px 0;">
                             <div style="background-color:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 14px; font-size:14px; line-height:1.5; color:#166534;">
-                                Esta despesa é do <strong>Nexus Suporte</strong>, <strong>não do IFE</strong>. Aprova-se no Suporte, pelo botão abaixo.
+                                Esta despesa é do <strong>Nexus Suporte</strong>. Aprova-se no Suporte, pelo botão abaixo.
                             </div>
                         </td>
                     </tr>
@@ -54,21 +54,18 @@
                                     'Nota' => $d['nota'] !== '' ? $d['nota'] : '—',
                                     'Recibo' => $d['recibo'] ? 'Sim (no Suporte)' : 'Sem recibo',
                                 ] as $rotulo => $valor)
+                                    {{-- Sem white-space:pre-line: o Gmail mete uma quebra no início de cada célula, que
+                                         com pre-line aparecia e descia o valor uma linha. As quebras da nota vão por <br>. --}}
                                     <tr>
-                                        <td style="padding:8px 0; width:120px; color:#6b7280; vertical-align:top; border-bottom:1px solid #f3f4f6;">{{ $rotulo }}</td>
-                                        <td style="padding:8px 0; vertical-align:top; border-bottom:1px solid #f3f4f6; white-space:pre-line;">{{ $valor }}</td>
+                                        <td width="120" valign="top" style="padding:8px 12px 8px 0; width:120px; color:#6b7280; vertical-align:top; border-bottom:1px solid #f3f4f6;">{{ $rotulo }}</td>
+                                        <td valign="top" style="padding:8px 0; vertical-align:top; border-bottom:1px solid #f3f4f6;">{!! nl2br(e($valor), false) !!}</td>
                                     </tr>
                                 @endforeach
                             </table>
 
                             <div style="height:22px; line-height:22px; font-size:0;">&nbsp;</div>
                             @include('emails._botao', ['url' => $d['url'], 'texto' => 'Abrir no Nexus Suporte'])
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td style="padding:0 36px 28px; font-size:12px; line-height:1.5; color:#9ca3af;">
-                            Recebe este email por ser quem aprova as despesas do Nexus Suporte.
+                            <div style="height:28px; line-height:28px; font-size:0;">&nbsp;</div>
                         </td>
                     </tr>
                 </table>

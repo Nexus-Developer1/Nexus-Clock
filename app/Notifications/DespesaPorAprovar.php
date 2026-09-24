@@ -10,8 +10,8 @@ use Illuminate\Notifications\Notification;
 /**
  * Pedido de aprovação de uma despesa do Suporte, para quem aprova (config tempos.aprovam_despesas).
  * Quem aprova recebe também os pedidos do IFE, parecidos: por isso o assunto começa por «Suporte»,
- * a referência é SUP-<nº> (os números das duas aplicações repetem-se) e o corpo diz com todas as letras
- * que não é uma despesa do IFE (notas §44). Leva uma fotografia da despesa, não o modelo: o email
+ * a referência é SUP-<nº> (os números das duas aplicações repetem-se) e o corpo diz em destaque
+ * que é uma despesa do Nexus Suporte (notas §44). Leva uma fotografia da despesa, não o modelo: o email
  * mostra o que foi submetido, mesmo que a despesa mude antes de a fila o enviar.
  */
 class DespesaPorAprovar extends Notification implements ShouldQueue

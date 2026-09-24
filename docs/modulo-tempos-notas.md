@@ -789,7 +789,7 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - **Aprovada fica fechada para toda a gente**, como no IFE — incluindo admins e o próprio Paulo: para a corrigir, o Paulo volta-a a pendente. Sem isto, outro admin podia mudar o valor depois de o Paulo aprovar. Uma rejeitada corrigida por quem não decide (a dona, ou outro admin) volta a pendente.
 - **Email ao Paulo** (`DespesaPorAprovar`, pela fila `tempos`) quando uma despesa fica à espera: nova, ou rejeitada e corrigida. Para não se confundir com os pedidos parecidos do IFE, que ele também recebe:
   - assunto a começar por **«Suporte ·»** e referência **SUP-<nº>** — os números das duas aplicações repetem-se (tabelas diferentes), a nº 12 de uma não é a da outra; a referência aparece também no detalhe da despesa;
-  - marca **«Nexus Suporte»** em grande e uma caixa verde «Esta despesa é do Nexus Suporte, **não do IFE**»; remetente «Nexus Suporte» (o IFE manda como «Nexus Solutions»);
+  - marca **«Nexus Suporte»** em grande e uma caixa verde «Esta despesa é do **Nexus Suporte**» (a primeira versão dizia também «não do IFE»; o utilizador preferiu não referir o IFE e manter o negrito); remetente «Nexus Suporte» (o IFE manda como «Nexus Solutions»);
   - botão «Abrir no Nexus Suporte», que abre a página já com o detalhe da despesa (`?ver=<id>`, verificado no render como qualquer outro id).
   - Voltar a pendente pelo próprio Paulo não lhe manda nada. Um aprovador sem conta na suite recebe na mesma, pelo email.
 - De caminho: os dois emails que já existiam (lembrete de horas, relatório partilhado) tinham como marca grande «**Nexus Infra**», com «Suporte» pequeno por baixo — passam a «Nexus Suporte».

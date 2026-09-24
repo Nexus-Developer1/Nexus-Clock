@@ -130,12 +130,14 @@ class AprovacaoDespesasTest extends TestCase
         });
         $html = (string) $aviso->toMail($this->paulo)->render();
 
-        $this->assertStringContainsString('Nexus Suporte', $html);
-        $this->assertStringContainsString('<strong>não do IFE</strong>', $html);
+        $this->assertStringContainsString('Esta despesa é do <strong>Nexus Suporte</strong>.', $html);
+        $this->assertStringNotContainsString('IFE', $html, 'a pedido: não se refere o IFE');
+        $this->assertStringNotContainsString('Recebe este email', $html, 'a pedido: sem texto no fundo');
+        $this->assertStringNotContainsString('pre-line', $html, 'no Gmail o pre-line descia os valores uma linha');
         $this->assertStringContainsString('SUP-'.$d->id, $html);
         $this->assertStringContainsString('Ana Martins', $html);
         $this->assertStringContainsString('18,50 €', $html);
-        $this->assertStringContainsString('ida e volta', $html);
+        $this->assertStringContainsString("Portagens A28<br>\nida e volta", $html);
         $this->assertStringNotContainsString('Nexus Infra', $html);
         $link = route('relatorios.despesas', ['ver' => $d->id]);
         $this->assertStringContainsString(e($link), $html);
