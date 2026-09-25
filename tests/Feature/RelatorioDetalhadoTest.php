@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Relatorios\Detalhado;
 use App\Models\Cliente;
+use App\Models\ClienteTempo;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\User;
@@ -206,5 +207,28 @@ class RelatorioDetalhadoTest extends TestCase
 
         $pagina->call('exportar')->assertFileDownloaded('detalhado-20260914-20260920.csv');
         $pagina->call('exportar', 'pdf')->assertFileDownloaded('detalhado-20260914-20260920.pdf');
+    }
+
+    // Notas §50: o projeto e o cliente de cada linha abrem a página deles (só se quem vê a puder
+    // abrir); o resto da linha abre o «Alterar» do registo.
+    public function test_projeto_e_cliente_da_linha_abrem_a_pagina_deles(): void
+    {
+        $cliente = ClienteTempo::create(['nome' => 'Hospital da Luz']);
+        $this->obra->update(['cliente_id' => $cliente->id]);
+        $segredo = ProjetoTempo::create(['nome' => 'Projeto Secreto', 'publico' => false]);
+        $this->registo($this->ana, $this->hospital, '2026-09-14', 3600, ['projeto_id' => $this->obra->id]);
+        $this->registo($this->ana, $this->hospital, '2026-09-15', 1800, ['projeto_id' => $segredo->id]); // já não é membro
+
+        Livewire::actingAs($this->ana)->test(Detalhado::class)
+            ->assertSeeHtml('href="'.route('projetos.ver', $this->obra).'"')
+            ->assertSeeHtml('href="'.route('clientes.ver', $cliente).'"')
+            ->assertSee('Projeto Secreto')
+            ->assertDontSeeHtml(route('projetos.ver', $segredo))
+            ->assertSeeHtml('$wire.editar(');
+
+        // Cliente apagado: o nome fica, sem ligação.
+        $cliente->delete();
+        Livewire::actingAs($this->ana)->test(Detalhado::class)
+            ->assertDontSeeHtml(route('clientes.ver', $cliente));
     }
 }

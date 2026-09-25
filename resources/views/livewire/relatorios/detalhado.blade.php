@@ -128,7 +128,9 @@
                                         $horas = Detalhado::temHorasReais($r);
                                         $podeMexer = auth()->user()->can('update', $r);
                                     @endphp
-                                    <tr wire:key="registo-{{ $r->id }}" class="{{ in_array((string) $r->id, $selecionados, true) ? '!bg-verde-50/60' : '' }}">
+                                    {{-- A linha abre o «Alterar» do registo; o projeto e o cliente abrem a página deles; caixa, links e menu fazem o que já faziam (notas §50). --}}
+                                    <tr wire:key="registo-{{ $r->id }}" class="{{ in_array((string) $r->id, $selecionados, true) ? '!bg-verde-50/60' : '' }} {{ $podeMexer ? 'cursor-pointer' : '' }}"
+                                        @if ($podeMexer) @click="$event.target.closest('a, button, input, select, textarea, label, [role=menu], [role=dialog]') || $wire.editar({{ $r->id }})" @endif>
                                         <td class="max-w-0">
                                             <div class="flex items-start gap-3">
                                                 <input type="checkbox" wire:model.live="selecionados" value="{{ $r->id }}" class="mt-0.5 h-4 w-4 shrink-0 rounded border-borda text-verde-600 focus:ring-verde-500 print:hidden" aria-label="Selecionar registo de {{ $r->dia()->format('d/m') }}">
@@ -137,9 +139,17 @@
                                                     <div class="mt-0.5 flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs">
                                                         <span class="inline-flex max-w-[45%] shrink-0 items-center gap-1.5 {{ $r->projeto ? 'font-medium text-texto-forte' : 'text-texto-fraco' }}">
                                                             <span class="h-2 w-2 shrink-0 rounded-full" style="background: {{ $r->projeto?->cor ?? '#cbd5e1' }}"></span>
-                                                            <span class="truncate" title="{{ $r->projeto?->nome }}">{{ $r->projeto?->nome ?? 'Sem projeto' }}</span>
+                                                            @if ($r->projeto && isset($abreProjeto[$r->projeto->id]))
+                                                                <a href="{{ route('projetos.ver', $r->projeto) }}" wire:navigate class="truncate hover:text-verde-700 hover:underline" title="{{ $r->projeto->nome }}">{{ $r->projeto->nome }}</a>
+                                                            @else
+                                                                <span class="truncate" title="{{ $r->projeto?->nome }}">{{ $r->projeto?->nome ?? 'Sem projeto' }}</span>
+                                                            @endif
                                                         </span>
-                                                        <span class="min-w-0 truncate text-texto-medio" title="{{ $r->projeto?->cliente?->nome }}">{{ $r->projeto?->cliente?->nome ?? '—' }}</span>
+                                                        @if ($r->projeto?->cliente && isset($abreCliente[$r->projeto->cliente->id]))
+                                                            <a href="{{ route('clientes.ver', $r->projeto->cliente) }}" wire:navigate class="min-w-0 truncate text-texto-medio hover:text-verde-700 hover:underline" title="{{ $r->projeto->cliente->nome }}">{{ $r->projeto->cliente->nome }}</a>
+                                                        @else
+                                                            <span class="min-w-0 truncate text-texto-medio" title="{{ $r->projeto?->cliente?->nome }}">{{ $r->projeto?->cliente?->nome ?? '—' }}</span>
+                                                        @endif
                                                         @foreach ($r->etiquetas as $e)
                                                             <span class="shrink-0 rounded-full bg-fundo px-2 py-0.5 text-[11px] text-texto-medio">{{ $e }}</span>
                                                         @endforeach

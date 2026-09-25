@@ -4,6 +4,7 @@ namespace App\Livewire\Relatorios;
 
 use App\Livewire\Concerns\FormularioRegisto;
 use App\Livewire\Relatorios\Concerns\PeriodoEFiltros;
+use App\Models\ClienteTempo;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Services\Tempos\EdicaoEmMassa;
@@ -193,8 +194,15 @@ class Detalhado extends Component
         $modelos = $this->modelos(collect($pagina->items())->pluck('id')->all());
         $totais = $servico->totais(auth()->user(), $this->filtros(), $de, $ate);
 
+        // O projeto e o cliente de cada linha abrem a página deles (notas §50), só se quem vê a puder
+        // abrir: um projeto privado de que não é membro, ou um projeto/cliente apagado, dariam 404.
+        $idsProjetos = $modelos->pluck('projeto_id')->filter()->unique()->all();
+        $idsClientes = $modelos->map(fn (RegistoTempo $r) => $r->projeto?->cliente_id)->filter()->unique()->all();
+
         return view('livewire.relatorios.detalhado', [
             'pagina' => $pagina,
+            'abreProjeto' => ProjetoTempo::visiveisPara(auth()->user())->whereKey($idsProjetos)->pluck('id')->flip()->all(),
+            'abreCliente' => ClienteTempo::whereKey($idsClientes)->pluck('id')->flip()->all(),
             'linhas' => collect($pagina->items())->map(fn ($l) => ['r' => $modelos[$l->id], 'fat' => (bool) $l->fat, 'valor' => $this->valorDe($l)]),
             'totais' => $totais,
             'valorTotal' => $this->valorDe((object) $totais),
