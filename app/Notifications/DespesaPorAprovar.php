@@ -18,7 +18,7 @@ class DespesaPorAprovar extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    /** @param array{id: int, referencia: string, membro: string, data: string, valor: string, faturavel: bool, projeto: ?string, cliente: ?string, categoria: string, nota: string, recibo: bool, url: string} $despesa */
+    /** @param array{id: int, referencia: string, membro: string, por?: ?string, data: string, valor: string, faturavel: bool, projeto: ?string, cliente: ?string, categoria: string, nota: string, recibo: bool, url: string} $despesa */
     public function __construct(public array $despesa, public bool $reenvio = false) {}
 
     /** @return list<string> */

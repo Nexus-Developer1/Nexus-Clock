@@ -36,8 +36,12 @@
                                 Despesa {{ $d['referencia'] }} {{ $reenvio ? 'corrigida — ' : '' }}para aprovar
                             </h1>
                             <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:#374151;">
-                                @if ($reenvio)
+                                @if ($reenvio && ! empty($d['por']))
+                                    {{ $d['por'] }} corrigiu, em nome de {{ $d['membro'] }}, uma despesa que tinha sido rejeitada.
+                                @elseif ($reenvio)
                                     {{ $d['membro'] }} corrigiu uma despesa que tinha sido rejeitada.
+                                @elseif (! empty($d['por']))
+                                    {{ $d['por'] }} lançou, em nome de {{ $d['membro'] }}, uma despesa que precisa da sua aprovação.
                                 @else
                                     {{ $d['membro'] }} lançou uma despesa que precisa da sua aprovação.
                                 @endif

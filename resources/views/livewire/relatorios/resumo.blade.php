@@ -144,20 +144,25 @@
             <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <section class="cartao min-w-0 overflow-hidden lg:col-span-2" x-data="{ abertos: [] }">
                     <header class="flex flex-wrap items-center gap-2 border-b border-borda bg-fundo/80 px-5 py-2.5">
-                        <span class="text-xs font-medium text-texto-medio">Agrupar por</span>
-                        <select wire:model.live="agrupar1" class="campo-select campo-mini w-auto" aria-label="Agrupar por">
-                            @foreach ($agrupamentos as $valor => $rotulo)
-                                <option value="{{ $valor }}">{{ $rotulo }}</option>
-                            @endforeach
-                        </select>
-                        <select wire:model.live="agrupar2" class="campo-select campo-mini w-auto" aria-label="Depois por">
-                            <option value="">—</option>
-                            @foreach ($agrupamentos as $valor => $rotulo)
-                                @continue($valor === $agrupar1)
-                                <option value="{{ $valor }}">{{ $rotulo }}</option>
-                            @endforeach
-                        </select>
-                        @if ($agrupar1 === 'projeto')
+                        @if ($partilhado)
+                            {{-- Num link partilhado, o agrupamento é o do autor (notas §53). --}}
+                            <span class="text-xs font-medium text-texto-medio">Agrupado por {{ mb_strtolower($agrupamentos[$agrupar1], 'UTF-8') }}@if ($agrupar2 !== '') › {{ mb_strtolower($agrupamentos[$agrupar2], 'UTF-8') }}@endif</span>
+                        @else
+                            <span class="text-xs font-medium text-texto-medio">Agrupar por</span>
+                            <select wire:model.live="agrupar1" class="campo-select campo-mini w-auto" aria-label="Agrupar por">
+                                @foreach ($agrupamentos as $valor => $rotulo)
+                                    <option value="{{ $valor }}">{{ $rotulo }}</option>
+                                @endforeach
+                            </select>
+                            <select wire:model.live="agrupar2" class="campo-select campo-mini w-auto" aria-label="Depois por">
+                                <option value="">—</option>
+                                @foreach ($agrupamentos as $valor => $rotulo)
+                                    @continue($valor === $agrupar1)
+                                    <option value="{{ $valor }}">{{ $rotulo }}</option>
+                                @endforeach
+                            </select>
+                        @endif
+                        @if ($agrupar1 === 'projeto' && ! $partilhado)
                             <label class="ml-auto inline-flex cursor-pointer items-center gap-2 text-xs text-texto-medio print:hidden">
                                 <input type="checkbox" wire:model.live="estimativa" class="peer sr-only">
                                 <span class="relative h-4 w-7 rounded-full bg-slate-300 transition after:absolute after:left-0.5 after:top-0.5 after:h-3 after:w-3 after:rounded-full after:bg-white after:transition peer-checked:bg-verde-600 peer-checked:after:translate-x-3 peer-focus-visible:ring-2 peer-focus-visible:ring-verde-500"></span>

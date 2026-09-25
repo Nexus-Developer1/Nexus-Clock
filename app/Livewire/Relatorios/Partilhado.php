@@ -18,7 +18,7 @@ use function Livewire\before;
  * Relatório partilhado por link (/partilhado/{token}): o Resumo só de leitura, calculado com as
  * permissões de quem o criou e com os filtros que guardou. Público = qualquer pessoa com o link; privado
  * = só quem tem acesso aos Tempos. Com "bloquear datas" o período não muda; com "sempre atual" abre no
- * período corrente. Pode-se mudar o agrupamento, exportar e imprimir.
+ * período corrente. O agrupamento é o que o autor escolheu (notas §53); pode-se exportar e imprimir.
  *
  * Blindado contra quem abre o link a mandar pedidos à mão (notas §40): só as ACOES abaixo se podem
  * chamar — tudo o que herda do Resumo, e o que ele venha a ganhar, dá 403; os filtros usados nos
@@ -172,9 +172,12 @@ class Partilhado extends Resumo
         if ($relatorio->bloquear_datas) {
             ['tipo' => $this->tipo, 'inicio' => $this->inicio, 'fim' => $this->fim] = $relatorio->periodo();
         }
-        if (! isset(ResumoTempos::AGRUPAMENTOS[$this->agrupar1])) {
-            $this->agrupar1 = $p['agrupar1'] ?? 'projeto';
-        }
+        // O agrupamento (e a estimativa) é o do autor: trocá-lo para «membro» ou «descrição» mostrava as
+        // horas de cada técnico e o texto interno dos registos a quem só devia ver o que o autor escolheu
+        // (notas §53).
+        $this->agrupar1 = (string) ($p['agrupar1'] ?? 'projeto');
+        $this->agrupar2 = (string) ($p['agrupar2'] ?? '');
+        $this->estimativa = (bool) ($p['estimativa'] ?? false);
 
         parent::normalizar();
     }

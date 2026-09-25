@@ -179,8 +179,15 @@ class RelatoriosPartilhadosTest extends TestCase
             ->assertSee('3:00:00')
             ->call('seguinte')
             ->assertSet('inicio', '2026-09-07')
-            ->set('agrupar1', 'cliente')
-            ->assertSee('Hospital')
+            // Nem o agrupamento (notas §53): por membro ou por descrição via o que o autor não escolheu.
+            ->assertDontSee('wire:model.live="agrupar1"', false)
+            ->assertSee('Agrupado por membro')
+            ->set('agrupar1', 'descricao')
+            ->assertSet('agrupar1', 'membro')
+            ->set('agrupar2', 'descricao')
+            ->assertSet('agrupar2', '')
+            ->set('estimativa', true)
+            ->assertSet('estimativa', false)
             ->call('exportar')
             ->assertFileDownloaded('resumo-20260907-20260913.csv');
 

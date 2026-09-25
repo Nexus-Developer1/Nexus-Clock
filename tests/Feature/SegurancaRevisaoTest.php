@@ -161,6 +161,41 @@ class SegurancaRevisaoTest extends TestCase
         Livewire::actingAs($this->rui)->test(Despesas::class)->assertSee('Projeto Secreto');
     }
 
+    public function test_recibo_trocado_ou_retirado_apaga_o_ficheiro_antigo(): void
+    {
+        // Lote B (notas §53): quem troca um recibo mandado por engano julga que o antigo desapareceu.
+        $gestor = app(GestorDespesas::class);
+        $disco = Storage::disk(DespesaTempo::DISCO);
+        $pdf = fn (string $nome) => UploadedFile::fake()->createWithContent($nome, "%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n");
+        $dados = ['data' => '2026-09-15', 'valor' => '10', 'categoria_id' => CategoriaDespesaTempo::firstOrFail()->id];
+
+        $d = $gestor->criar($this->ana, $dados, $pdf('engano.pdf'));
+        $primeiro = $d->recibo_caminho;
+        $this->assertTrue($disco->exists($primeiro));
+
+        // Pendente: trocar apaga o antigo.
+        $gestor->atualizar($this->ana, $d->fresh(), [], $pdf('certo.pdf'));
+        $segundo = $d->fresh()->recibo_caminho;
+        $this->assertFalse($disco->exists($primeiro));
+        $this->assertTrue($disco->exists($segundo));
+
+        // Rejeitada e corrigida com outro recibo: também.
+        $gestor->decidir($this->admin, $d->fresh(), 'rejeitada', 'Ilegível');
+        $gestor->atualizar($this->ana, $d->fresh(), [], $pdf('legivel.pdf'));
+        $terceiro = $d->fresh()->recibo_caminho;
+        $this->assertFalse($disco->exists($segundo));
+
+        // Retirar o recibo: apaga-o.
+        $gestor->atualizar($this->ana, $d->fresh(), [], null, retirarRecibo: true);
+        $this->assertNull($d->fresh()->recibo_caminho);
+        $this->assertFalse($disco->exists($terceiro));
+
+        // Apagar a despesa guarda o recibo (pode voltar a ser precisa).
+        $outra = $gestor->criar($this->ana, $dados, $pdf('guardar.pdf'));
+        $gestor->apagar($this->ana, $outra->fresh());
+        $this->assertTrue($disco->exists($outra->recibo_caminho));
+    }
+
     // --- Relatórios de tempo ---
 
     public function test_etiquetas_do_filtro_sao_so_as_de_quem_ve(): void

@@ -149,6 +149,29 @@ class AprovacaoDespesasTest extends TestCase
             ->assertSee('wire:click="aprovar('.$d->id.', \''.$d->fresh()->versao().'\')"', false);
     }
 
+    public function test_email_diz_quem_lancou_em_nome_de_outra_pessoa(): void
+    {
+        // Notas §53: o email dizia «Ana lançou» quando quem a lançou foi um admin.
+        Notification::fake();
+        $html = function () {
+            $aviso = null;
+            Notification::assertSentTo($this->paulo, DespesaPorAprovar::class, function (DespesaPorAprovar $n) use (&$aviso) {
+                $aviso = $n;
+
+                return true;
+            });
+
+            return (string) $aviso->toMail($this->paulo)->render();
+        };
+
+        $this->despesa($this->julio, ['utilizador_id' => $this->ana->id]);
+        $this->assertStringContainsString('Julio Santos lançou, em nome de Ana Martins, uma despesa', $html());
+
+        Notification::fake();
+        $this->despesa($this->ana);
+        $this->assertStringContainsString('Ana Martins lançou uma despesa', $html());
+    }
+
     public function test_aprovada_fica_fechada_ate_o_paulo_a_voltar_a_pendente(): void
     {
         $d = $this->despesa($this->ana);

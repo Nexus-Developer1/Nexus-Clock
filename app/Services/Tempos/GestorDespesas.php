@@ -55,6 +55,8 @@ class GestorDespesas
     /** @param array<string, mixed> $dados */
     public function atualizar(User $autor, DespesaTempo $d, array $dados, ?UploadedFile $recibo = null, bool $retirarRecibo = false): DespesaTempo
     {
+        $reciboAntes = $d->getOriginal('recibo_caminho');
+
         $reenviada = DB::transaction(function () use ($autor, $d, $dados, $recibo, $retirarRecibo) {
             // A linha como está agora, bloqueada até ao fim: um pedido com uma leitura antiga (ainda
             // pendente) não grava por cima de uma aprovação que entrou entretanto (notas §52).
@@ -84,6 +86,13 @@ class GestorDespesas
 
             return $reenviada;
         });
+
+        // Recibo trocado ou retirado: o ficheiro antigo sai do disco — quem mandou um documento por
+        // engano julga que desapareceu (notas §53). Só depois de gravado; só chega aqui uma despesa que
+        // se podia alterar (pendente ou rejeitada: as aprovadas estão fechadas). Apagar a despesa guarda-o.
+        if ($reciboAntes && $reciboAntes !== $d->recibo_caminho) {
+            Storage::disk(DespesaTempo::DISCO)->delete($reciboAntes);
+        }
 
         if ($reenviada) {
             $this->pedirAprovacao($d, reenvio: true);
@@ -203,10 +212,13 @@ class GestorDespesas
     private function pedirAprovacao(DespesaTempo $d, bool $reenvio = false): void
     {
         $d->loadMissing(['utilizador:id,nome', 'projeto.cliente:id,nome', 'categoria:id,nome']);
+        // Quem lançou (ou corrigiu), se não foi a própria pessoa: «Julio lançou, em nome de Ana» (notas §53).
+        $quemAgiu = $reenvio ? $d->alterado_por : $d->criado_por;
         $dados = [
             'id' => $d->id,
             'referencia' => $d->referencia(),
             'membro' => $d->utilizador?->nome ?? '—',
+            'por' => $quemAgiu && $quemAgiu !== $d->utilizador_id ? User::whereKey($quemAgiu)->value('nome') : null,
             'data' => $d->data->format('d/m/Y'),
             'valor' => Dinheiro::formatar($d->valor_cent),
             'faturavel' => $d->faturavel,
