@@ -128,14 +128,19 @@
                                         $horas = Detalhado::temHorasReais($r);
                                         $podeMexer = auth()->user()->can('update', $r);
                                     @endphp
-                                    {{-- A linha abre o «Alterar» do registo; o projeto e o cliente abrem a página deles; caixa, links e menu fazem o que já faziam (notas §50). --}}
+                                    {{-- A linha abre o formulário do registo (já não há «Alterar» no menu); o projeto e o cliente abrem a página deles; caixa, links e menu fazem o que já faziam (notas §50). --}}
                                     <tr wire:key="registo-{{ $r->id }}" class="{{ in_array((string) $r->id, $selecionados, true) ? '!bg-verde-50/60' : '' }} {{ $podeMexer ? 'cursor-pointer' : '' }}"
                                         @if ($podeMexer) @click="$event.target.closest('a, button, input, select, textarea, label, [role=menu], [role=dialog]') || $wire.editar({{ $r->id }})" @endif>
                                         <td class="max-w-0">
                                             <div class="flex items-start gap-3">
                                                 <input type="checkbox" wire:model.live="selecionados" value="{{ $r->id }}" class="mt-0.5 h-4 w-4 shrink-0 rounded border-borda text-verde-600 focus:ring-verde-500 print:hidden" aria-label="Selecionar registo de {{ $r->dia()->format('d/m') }}">
                                                 <div class="min-w-0">
-                                                    <div class="truncate {{ $r->descricao ? 'text-texto-forte' : 'text-texto-fraco' }}" title="{{ $r->descricao }}">{{ $r->descricao ?: 'Sem descrição' }}</div>
+                                                    @if ($podeMexer)
+                                                        {{-- Botão para o teclado (a linha só responde ao rato); o «Alterar» saiu do menu ⋯. --}}
+                                                        <button type="button" wire:click="editar({{ $r->id }})" class="block max-w-full truncate text-left hover:underline {{ $r->descricao ? 'text-texto-forte' : 'text-texto-fraco' }}" title="{{ $r->descricao }}">{{ $r->descricao ?: 'Sem descrição' }}</button>
+                                                    @else
+                                                        <div class="truncate {{ $r->descricao ? 'text-texto-forte' : 'text-texto-fraco' }}" title="{{ $r->descricao }}">{{ $r->descricao ?: 'Sem descrição' }}</div>
+                                                    @endif
                                                     <div class="mt-0.5 flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs">
                                                         <span class="inline-flex max-w-[45%] shrink-0 items-center gap-1.5 {{ $r->projeto ? 'font-medium text-texto-forte' : 'text-texto-fraco' }}">
                                                             <span class="h-2 w-2 shrink-0 rounded-full" style="background: {{ $r->projeto?->cor ?? '#cbd5e1' }}"></span>
@@ -184,9 +189,6 @@
                                                 <div class="relative" x-data="menuFlutuante('direita')" @click.outside="fechar()" @keydown.escape="fechar()" @scroll.window="fechar()" @resize.window="fechar()">
                                                     <button type="button" x-ref="botao" @click="alternar()" class="botao-icone h-8 w-8" aria-label="Opções do registo de {{ $r->dia()->format('d/m') }}" :aria-expanded="aberto"><x-icone nome="mais-opcoes" /></button>
                                                     <div x-ref="menu" x-show="aberto" :style="estilo" x-cloak x-transition.opacity class="fixed z-50 w-44 overflow-hidden rounded-xl border border-borda bg-white py-1 text-sm shadow-lg" role="menu">
-                                                        @if ($podeMexer)
-                                                            <button type="button" wire:click="editar({{ $r->id }})" @click="aberto = false" class="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-fundo" role="menuitem"><x-icone nome="lapis" /> Alterar</button>
-                                                        @endif
                                                         <button type="button" wire:click="duplicar({{ $r->id }})" @click="aberto = false" class="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-fundo" role="menuitem"><x-icone nome="duplicar" /> Duplicar</button>
                                                         @if ($r->faturado_em && $podeAnular)
                                                             <button type="button" wire:click="pedirAnulacao({{ $r->id }})" @click="aberto = false" class="flex w-full items-center gap-2 px-4 py-2 text-left text-perigo-600 hover:bg-perigo-100" role="menuitem"><x-icone nome="lixo" /> Anular</button>

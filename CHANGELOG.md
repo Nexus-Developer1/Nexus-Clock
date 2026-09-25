@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-25
 
+- 🎨 **Detalhado: sai o «Alterar» do menu ⋯** — a pedido: o registo abre-se carregando na linha (ou, pelo teclado, na descrição). Notas §50. 294 testes.
 - 🎨 **Detalhado: projeto, cliente e linha clicáveis** — a pedido: o nome do projeto e o do cliente de cada registo abrem a página deles (se quem vê a puder abrir); o resto da linha abre o «Alterar» do registo. Notas §50. 294 testes.
 - 🧹 **Dados de demonstração: ninguém regista em projetos privados de que não é membro** — o cartão «Projeto principal» não abria porque o projeto era privado e o utilizador não era membro, mas os dados de demonstração tinham-lhe dado horas lá. O `tempos:demo` passa a respeitar os membros; em produção corrigiram-se as 254 horas e 1 despesa que estavam mal (só dados de demonstração). Notas §49. 293 testes.
 - 🎨 **Painel: os cartões do resumo abrem a página correspondente** — a pedido: o tempo total abre os registos do período no Detalhado, o faturável os registos faturáveis, o projeto principal a página do projeto e o cliente principal a do cliente. Se quem vê não puder abrir o projeto (privado) ou este estiver arquivado, o cartão fica sem ligação. Notas §49. 292 testes.

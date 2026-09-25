@@ -224,7 +224,8 @@ class RelatorioDetalhadoTest extends TestCase
             ->assertSeeHtml('href="'.route('clientes.ver', $cliente).'"')
             ->assertSee('Projeto Secreto')
             ->assertDontSeeHtml(route('projetos.ver', $segredo))
-            ->assertSeeHtml('$wire.editar(');
+            ->assertSeeHtml('$wire.editar(')
+            ->assertDontSee('Alterar'); // saiu do menu ⋯: abre-se pela linha (ou pela descrição, no teclado)
 
         // Cliente apagado: o nome fica, sem ligação.
         $cliente->delete();
