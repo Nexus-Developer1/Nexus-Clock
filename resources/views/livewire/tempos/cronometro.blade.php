@@ -19,8 +19,8 @@
                     <input type="text" wire:model.blur="descricao" class="campo-input campo-barra w-full min-w-[14rem] text-base lg:flex-1" placeholder="Em que está a trabalhar?" aria-label="Descrição">
 
                     <div class="flex w-full flex-wrap items-center gap-3 lg:w-auto">
-                        <select wire:model.live="barraProjeto" class="campo-select campo-barra w-full sm:w-56" aria-label="Projeto">
-                            <option value="">Sem projeto</option>
+                        <select wire:model.live="barraProjeto" class="campo-select campo-barra w-full sm:w-56" aria-label="Projeto do registo">
+                            <option value="">Escolher projeto…</option>
                             @foreach ($projetos as $p)
                                 <option value="{{ $p->id }}">{{ $p->nome }}{{ $p->cliente ? ' · '.$p->cliente->nome : '' }}</option>
                             @endforeach
@@ -61,7 +61,7 @@
 
             {{-- Semana --}}
             <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     <div class="flex items-center rounded-lg border border-borda bg-white">
                         <button type="button" wire:click="semanaAnterior" class="h-[38px] rounded-l-lg px-2.5 text-texto-medio hover:bg-fundo" aria-label="Semana anterior"><x-icone nome="seta-esq" traco="2" /></button>
                         <span class="inline-flex h-[38px] min-w-[11rem] items-center justify-center border-x border-borda px-3 text-sm text-texto-forte">{{ $rotuloSemana }}</span>
@@ -70,8 +70,16 @@
                     @unless ($estaSemana)
                         <button type="button" wire:click="estaSemana" class="botao-secundario">Hoje</button>
                     @endunless
+                    {{-- Filtro da lista — o projeto da barra lá em cima é o do registo a começar (notas §46). --}}
+                    <select wire:model.live="filtroProjeto" class="campo-select campo-barra w-full sm:w-56 {{ $filtroProjeto !== '' ? '!border-verde-300 !bg-verde-50 text-verde-800' : '' }}" aria-label="Filtrar os registos por projeto">
+                        <option value="">Todos os projetos</option>
+                        <option value="0">Sem projeto</option>
+                        @foreach ($projetosFiltro as $id => $nome)
+                            <option value="{{ $id }}">{{ $nome }}</option>
+                        @endforeach
+                    </select>
                 </div>
-                <div class="text-sm text-texto-medio">Total da semana <span class="ml-1 text-lg font-semibold tabular-nums text-texto-forte">{{ PainelTempos::hms($totalSemana) }}</span></div>
+                <div class="text-sm text-texto-medio">{{ $filtroProjeto !== '' ? 'Total do filtro' : 'Total da semana' }} <span class="ml-1 text-lg font-semibold tabular-nums text-texto-forte">{{ PainelTempos::hms($totalSemana) }}</span></div>
             </div>
 
             {{-- Registos por dia --}}
@@ -128,9 +136,15 @@
                     </section>
                 @empty
                     <section class="cartao">
-                        <x-estado-vazio icone="relogio" titulo="Sem horas nesta semana" class="py-16">
-                            <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Acrescentar tempo</button>
-                        </x-estado-vazio>
+                        @if ($filtroProjeto !== '')
+                            <x-estado-vazio icone="filtro" titulo="Sem horas deste projeto nesta semana" class="py-16">
+                                <button type="button" wire:click="$set('filtroProjeto', '')" class="botao-secundario">Ver todos os projetos</button>
+                            </x-estado-vazio>
+                        @else
+                            <x-estado-vazio icone="relogio" titulo="Sem horas nesta semana" class="py-16">
+                                <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Acrescentar tempo</button>
+                            </x-estado-vazio>
+                        @endif
                     </section>
                 @endforelse
             </div>

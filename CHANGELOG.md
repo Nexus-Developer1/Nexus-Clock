@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-25
+
+- 🧰 **Cronómetro: filtro por projeto** — a pedido: o campo de projeto da barra de cima era o do registo a começar, não um filtro, e confundia. Passa a dizer «Escolher projeto…», e ao lado da semana entra um filtro a sério («Todos os projetos», «Sem projeto» ou um projeto), com o total do filtro. Notas §46. 287 testes.
+
 ## 2026-09-24
 
 - 🔒 **Revisão de segurança, lote 2** — nos CSV, um texto começado por `=`, `+`, `-` ou `@` (nota, descrição, nome de cliente) deixa de ser executado como fórmula pelo Excel: leva um apóstrofo à frente; os números, também negativos, ficam números. Os recibos passam a ser verificados pelo conteúdo: tem de ser mesmo PDF ou imagem (JPG, PNG, WEBP, HEIC), não basta o nome. Notas §45. 286 testes.

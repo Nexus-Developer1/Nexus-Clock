@@ -47,6 +47,11 @@ class Cronometro extends Component
     #[Url(as: 'de')]
     public string $semana = ''; // segunda-feira mostrada
 
+    // Filtro da lista (não confundir com o projeto da barra, que é o do registo a começar): '' = todos,
+    // '0' = sem projeto, ou o id do projeto. Só filtra as horas de quem está a ver — notas §46.
+    #[Url(as: 'projeto')]
+    public string $filtroProjeto = '';
+
     public function mount(): void
     {
         $this->semana = $this->segunda($this->semana)->toDateString();
@@ -114,6 +119,9 @@ class Cronometro extends Component
         if (in_array($propriedade, ['descricao', 'barraProjeto', 'barraEtiquetas', 'barraFaturavel'], true)) {
             $this->sincronizar();
         }
+        if ($propriedade === 'filtroProjeto' && ! ctype_digit($this->filtroProjeto)) {
+            $this->filtroProjeto = '';
+        }
     }
 
     // --- Semana ---
@@ -150,6 +158,8 @@ class Cronometro extends Component
             'rotuloSemana' => $this->rotuloSemana($inicio, $fim),
             'estaSemana' => $inicio->equalTo($this->semanaDeHoje()),
             'projetos' => ProjetoTempo::visiveisPara(auth()->user())->ativos()->with('cliente:id,nome')->orderByRaw('lower(nome)')->get(['id', 'nome', 'cor', 'cliente_id']),
+            // No filtro também os arquivados (semanas antigas têm horas neles), no fim da lista.
+            'projetosFiltro' => ProjetoTempo::visiveisPara(auth()->user())->orderByRaw('arquivado_em is not null, lower(nome)')->pluck('nome', 'id'),
         ] + $this->dadosDoFormulario());
     }
 
@@ -164,6 +174,8 @@ class Cronometro extends Component
             ->doTecnico(auth()->user())
             ->whereNotNull('fim')
             ->whereBetween('inicio', [$inicio->utc(), $fim->endOfDay()->utc()])
+            ->when($this->filtroProjeto === '0', fn ($q) => $q->whereNull('projeto_id'))
+            ->when(ctype_digit($this->filtroProjeto) && $this->filtroProjeto !== '0', fn ($q) => $q->where('projeto_id', (int) $this->filtroProjeto))
             ->with(['projeto:id,nome,cor,cliente_id', 'projeto.cliente:id,nome'])
             ->orderByDesc('inicio')
             ->limit(500)

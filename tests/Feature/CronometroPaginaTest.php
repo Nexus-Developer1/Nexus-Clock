@@ -133,6 +133,34 @@ class CronometroPaginaTest extends TestCase
             ->assertSee('Reunião');
     }
 
+    public function test_filtro_da_lista_por_projeto_nao_mexe_na_barra(): void
+    {
+        $cliente = $this->cliente('Hospital');
+        $this->registo($this->ana, $cliente, '2026-09-15', 3600, ['descricao' => 'Na obra', 'projeto_id' => $this->obra->id]);
+        $this->registo($this->ana, $cliente, '2026-09-16', 1800, ['descricao' => 'Sem nada']);
+        $this->registo($this->rui, $cliente, '2026-09-15', 7200, ['descricao' => 'Obra do Rui', 'projeto_id' => $this->obra->id]);
+
+        $this->pagina()
+            // A barra (registo a começar) e o filtro (lista) dizem coisas diferentes — notas §46.
+            ->assertSee('Escolher projeto…')->assertSee('Todos os projetos')
+            ->assertSee('Total da semana')->assertSee('1:30:00')
+            ->set('filtroProjeto', (string) $this->obra->id)
+            ->assertSee('Na obra')->assertDontSee('Sem nada')->assertDontSee('Obra do Rui')
+            ->assertSee('Total do filtro')->assertSee('1:00:00')
+            ->assertSet('barraProjeto', '')
+            ->set('filtroProjeto', '0')
+            ->assertSee('Sem nada')->assertDontSee('Na obra')->assertSee('0:30:00')
+            ->set('filtroProjeto', 'abc')
+            ->assertSet('filtroProjeto', '')
+            ->assertSee('Na obra')->assertSee('Sem nada');
+
+        // Filtro sem horas: diz porquê e deixa voltar a todos.
+        $vazio = ProjetoTempo::create(['nome' => 'Vazio']);
+        $this->pagina()->set('filtroProjeto', (string) $vazio->id)
+            ->assertSee('Sem horas deste projeto nesta semana')
+            ->assertSee('Ver todos os projetos');
+    }
+
     public function test_continuar_alterar_duplicar_e_apagar(): void
     {
         $cliente = $this->cliente('Hospital');
