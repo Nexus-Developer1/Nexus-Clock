@@ -65,7 +65,7 @@ class SegurancaFicheirosTest extends TestCase
 
         // Disfarçados: o nome diz PDF ou imagem, o conteúdo não é.
         $disfarcados = [
-            'fatura.pdf' => '<?php system($_GET["c"]); ?>',
+            'fatura.pdf' => '<?php echo "não sou um recibo"; ?>', // PHP disfarçado de PDF (uma webshell a sério era apagada pelo antivírus do PC)
             'talao.jpg' => '<html><script>alert(1)</script></html>',
             'recibo.png' => "MZ\x90\x00 programa do Windows",
             'vazio.pdf' => str_repeat("\0", 2048),
