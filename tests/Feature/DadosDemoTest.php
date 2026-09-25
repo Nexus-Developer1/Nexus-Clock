@@ -97,6 +97,26 @@ class DadosDemoTest extends TestCase
         $this->assertLessThanOrEqual(9 * 3600, (int) $maximo->total);
     }
 
+    public function test_ninguem_regista_num_projeto_privado_de_que_nao_e_membro(): void
+    {
+        // Mais pessoas do que os três membros dos projetos privados.
+        $this->tecnico();
+        $this->tecnico();
+        $this->artisan('tempos:demo')->assertExitCode(0);
+
+        $privados = ProjetoTempo::withTrashed()->where('publico', false)->get();
+        $this->assertCount(2, $privados);
+        foreach ($privados as $p) {
+            $membros = $p->membros()->pluck('utilizador_id')->all();
+            $this->assertCount(3, $membros);
+            $this->assertSame(0, RegistoTempo::where('projeto_id', $p->id)->whereNotIn('tecnico_id', $membros)->count(), $p->nome.': registos');
+            $this->assertSame(0, DespesaTempo::where('projeto_id', $p->id)->whereNotIn('utilizador_id', $membros)->count(), $p->nome.': despesas');
+            $this->assertSame(0, AtribuicaoTempo::where('projeto_id', $p->id)->whereNotIn('utilizador_id', $membros)->count(), $p->nome.': atribuições');
+            $this->assertGreaterThan(0, RegistoTempo::where('projeto_id', $p->id)->count(), $p->nome.': os membros registam lá');
+        }
+        $this->assertSame(5, AtribuicaoTempo::count());
+    }
+
     public function test_nao_corre_duas_vezes_sem_apagar(): void
     {
         $this->artisan('tempos:demo')->assertExitCode(0);

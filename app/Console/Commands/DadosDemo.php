@@ -174,7 +174,7 @@ class DadosDemo extends Command
     /**
      * @param  list<ClienteTempo>  $clientes
      * @param  Collection<int, MembroEquipa>  $membros
-     * @return list<array{projeto: ProjetoTempo, cliente: int, descricoes: list<string>}>
+     * @return list<array{projeto: ProjetoTempo, cliente: int, descricoes: list<string>, membros: list<int>|null}>
      */
     private function criarProjetos(array $clientes, Collection $membros, CarbonImmutable $agora): array
     {
@@ -211,11 +211,14 @@ class DadosDemo extends Command
                 $p->arquivado_em = $agora->subWeeks(3);
             }
             $p->save();
+            $privados = null;
             if (! $publico) {
                 $p->membros()->sync($membros->take(3)->pluck('id')->all());
+                $privados = $membros->take(3)->pluck('utilizador_id')->all();
             }
             $this->criados['projetos_tempos'][] = $p->id;
-            $lista[] = ['projeto' => $p, 'cliente' => $clienteIdx ?? 0, 'descricoes' => $descricoes];
+            // membros: quem pode registar num projeto privado (null = público, toda a gente).
+            $lista[] = ['projeto' => $p, 'cliente' => $clienteIdx ?? 0, 'descricoes' => $descricoes, 'membros' => $privados];
         }
 
         return $lista;
@@ -299,6 +302,8 @@ class DadosDemo extends Command
         $segundaAtual = $agora->startOfWeek();
 
         foreach ($pessoas->values() as $i => $pessoa) {
+            // Cada um só regista nos projetos que pode ver: os públicos e os privados de que é membro.
+            $seus = $this->daPessoa($ativos, $pessoa);
             $semanaDeFerias = $i === 1 ? self::SEMANAS - 3 : null; // a segunda pessoa esteve de férias
 
             for ($s = self::SEMANAS; $s >= 0; $s--) {
@@ -347,7 +352,7 @@ class DadosDemo extends Command
                         // Projetos arquivados só têm horas antigas.
                         $escolha = $s >= 5 && $arquivados && mt_rand(1, 100) <= 15
                             ? $arquivados[mt_rand(0, count($arquivados) - 1)]
-                            : $ativos[mt_rand(0, count($ativos) - 1)];
+                            : $seus[mt_rand(0, count($seus) - 1)];
 
                         $this->gravarRegisto($pessoa, $escolha, $cursor, $fim, $segundos, [
                             'etiquetas' => $etiquetas[mt_rand(0, count($etiquetas) - 1)],
@@ -364,8 +369,20 @@ class DadosDemo extends Command
         // Cronómetro a correr para quem administra (é quem normalmente está a ver a demonstração).
         if (! RegistoTempo::query()->doTecnico($admin)->whereNull('fim')->exists()) {
             $inicio = $agora->subMinutes(mt_rand(8, 40));
-            $this->gravarRegisto($admin, $ativos[0], $inicio, null, null, ['origem' => OrigemRegistoTempo::Cronometro]);
+            $this->gravarRegisto($admin, $this->daPessoa($ativos, $admin)[0], $inicio, null, null, ['origem' => OrigemRegistoTempo::Cronometro]);
         }
+    }
+
+    /**
+     * Os projetos em que a pessoa pode registar horas, despesas ou ter atribuições (como na aplicação):
+     * os públicos e os privados de que é membro. Pela ordem dada.
+     *
+     * @param  list<array{projeto: ProjetoTempo, cliente: int, descricoes: list<string>, membros: list<int>|null}>  $projetos
+     * @return list<array{projeto: ProjetoTempo, cliente: int, descricoes: list<string>, membros: list<int>|null}>
+     */
+    private function daPessoa(array $projetos, User $pessoa): array
+    {
+        return array_values(array_filter($projetos, fn (array $p) => $p['membros'] === null || in_array($pessoa->id, $p['membros'], true)));
     }
 
     /**
@@ -427,9 +444,11 @@ class DadosDemo extends Command
         $ativos = array_values(array_filter($projetos, fn (array $p) => ! $p['projeto']->estaArquivado()));
         foreach ($dados as $i => [$cat, $valor, $nota, $faturavel, $estado]) {
             $d = new DespesaTempo;
-            $d->utilizador_id = $pessoas[$i % $pessoas->count()]->id;
+            $pessoa = $pessoas[$i % $pessoas->count()];
+            $seus = $this->daPessoa($ativos, $pessoa);
+            $d->utilizador_id = $pessoa->id;
             $d->data = $agora->subDays(mt_rand(1, 6 * 7))->toDateString();
-            $d->projeto_id = $ativos[$i % count($ativos)]['projeto']->id;
+            $d->projeto_id = $seus[$i % count($seus)]['projeto']->id;
             $d->categoria_id = $categorias[$cat]->id;
             $d->valor_cent = $valor;
             $d->faturavel = $faturavel;
@@ -467,8 +486,15 @@ class DadosDemo extends Command
 
         foreach ($dados as [$p, $proj, $semana, $dias, $horas, $nota]) {
             $a = new AtribuicaoTempo;
-            $a->utilizador_id = $pessoas[$p % $pessoas->count()]->id;
-            $a->projeto_id = $ativos[$proj % count($ativos)]['projeto']->id;
+            // Se o projeto pedido é privado e a pessoa não é membro, vai para o primeiro seguinte que pode ver.
+            $pessoa = $pessoas[$p % $pessoas->count()];
+            $escolhido = $ativos[$proj % count($ativos)];
+            if (! in_array($escolhido, $this->daPessoa($ativos, $pessoa), true)) {
+                $seus = $this->daPessoa(array_merge(array_slice($ativos, $proj % count($ativos)), array_slice($ativos, 0, $proj % count($ativos))), $pessoa);
+                $escolhido = $seus[0];
+            }
+            $a->utilizador_id = $pessoa->id;
+            $a->projeto_id = $escolhido['projeto']->id;
             $a->de = $segunda->addWeeks($semana)->toDateString();
             $a->ate = $segunda->addWeeks($semana)->addDays($dias - 1 + ($dias > 5 ? 2 : 0))->toDateString();
             $a->horas_dia_seg = $horas * 3600;
