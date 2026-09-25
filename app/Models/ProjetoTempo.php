@@ -69,6 +69,18 @@ class ProjetoTempo extends Model
         $query->whereNotNull('arquivado_em');
     }
 
+    /**
+     * Um projeto sem nome, para pôr no lugar de um privado que quem vê não pode ver (nas despesas e
+     * nas atribuições dos colegas): «Projeto privado», cinzento, sem cliente. Não se grava (notas §52).
+     */
+    public static function mascarado(): self
+    {
+        $p = (new self)->forceFill(['nome' => 'Projeto privado', 'cor' => '#cbd5e1', 'publico' => false]);
+        $p->setRelation('cliente', null);
+
+        return $p;
+    }
+
     /** Projetos que a pessoa pode ver: públicos e, se privados, só administradores e membros. */
     public function scopeVisiveisPara(Builder $query, User $utilizador): void
     {

@@ -29,6 +29,9 @@ return [
     // Capacidade diária de quem não a tem definida na página Equipa (relatório Presenças), em horas.
     'capacidade_diaria_horas' => (float) env('TEMPOS_CAPACIDADE_DIARIA_HORAS', 8),
 
+    // Teto do ZIP dos recibos (página Despesas), em MB: acima disto pede-se um período mais curto.
+    'zip_recibos_max_mb' => (int) env('TEMPOS_ZIP_RECIBOS_MAX_MB', 500),
+
     // Duração máxima de um registo (um dia inteiro). Igual à constraint da tabela.
     'duracao_maxima_seg' => 86400,
 

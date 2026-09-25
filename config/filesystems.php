@@ -33,7 +33,8 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Não se serve por URL: os recibos saem pelo ReciboDespesaController, com autorização (notas §52).
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

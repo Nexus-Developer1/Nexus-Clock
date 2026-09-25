@@ -76,7 +76,8 @@ class Detalhado extends Component
 
     public function ordenarPor(string $campo): void
     {
-        if (in_array($campo, self::ORDENS, true)) {
+        // Ordenar pelo valor escondido deixava adivinhar as taxas (notas §52).
+        if (in_array($campo, self::ORDENS, true) && ($campo !== 'valor' || $this->valorVisivel())) {
             $this->ordem = ltrim($this->ordem, '-') === $campo
                 ? (str_starts_with($this->ordem, '-') ? $campo : '-'.$campo)
                 : (in_array($campo, ['membro', 'descricao'], true) ? $campo : '-'.$campo);
@@ -286,11 +287,11 @@ class Detalhado extends Component
         if (! isset(ResumoTempos::AUDITORIA[$this->auditoria])) {
             $this->auditoria = '';
         }
-        if (! in_array(ltrim($this->ordem, '-'), self::ORDENS, true)) {
-            $this->ordem = '-data';
-        }
         if (! in_array($this->mostrarValor, ['faturavel', 'custo', 'lucro', 'nao'], true)) {
             $this->mostrarValor = 'faturavel';
+        }
+        if (! in_array(ltrim($this->ordem, '-'), self::ORDENS, true) || (ltrim($this->ordem, '-') === 'valor' && ! $this->valorVisivel())) {
+            $this->ordem = '-data';
         }
     }
 }

@@ -26,12 +26,15 @@ class Detalhe extends Component
 
     public function mount(ProjetoTempo $projeto): void
     {
-        abort_unless(ProjetoTempo::visiveisPara(auth()->user())->whereKey($projeto->id)->exists(), 404);
         $this->projeto = $projeto;
     }
 
     public function render()
     {
+        // Em cada pedido, não só ao abrir: quem sai do projeto com a página aberta deixa de ver o que
+        // lá entra depois (notas §52).
+        abort_unless(ProjetoTempo::visiveisPara(auth()->user())->whereKey($this->projeto->id)->exists(), 404);
+
         $p = $this->projeto->loadMissing(['cliente:id,nome,deleted_at', 'membros.utilizador:id,nome']);
         $podeGerir = Gate::allows('tempos-gerir-projetos');
         $hoje = CarbonImmutable::now(config('tempos.fuso'))->startOfDay();

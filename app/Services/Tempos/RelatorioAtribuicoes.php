@@ -14,10 +14,19 @@ use Illuminate\Support\Collection;
  * Relatório Atribuições (como o "Assignments report" do Clockify): por pessoa e projeto, horas agendadas
  * (atribuições, só a parte dentro do período) contra horas registadas nesse projeto, diferença e estado.
  * Agrupa por membro, projeto ou cliente (do projeto), em dois níveis. Registos sem projeto não entram.
+ *
+ * Com `$quem`, os projetos privados de que essa pessoa não é membro não aparecem pelo nome: as horas
+ * contam, mas vão para «Outros projetos (privados)» (também no agrupar por cliente), e as atribuições
+ * desses projetos perdem o nome e a nota (notas §52, como na página do membro, §48).
  */
 class RelatorioAtribuicoes
 {
     public const AGRUPAMENTOS = ['membro' => 'Membro', 'projeto' => 'Projeto', 'cliente' => 'Cliente'];
+
+    /** Chave da linha que junta os projetos privados que quem vê não pode ver. */
+    public const PRIVADOS = -1;
+
+    public const ROTULO_PRIVADOS = 'Outros projetos (privados)';
 
     public const ESTADOS = [
         'por_comecar' => 'Por começar',
@@ -33,7 +42,7 @@ class RelatorioAtribuicoes
      * @param  array{membros?: list<int>|null, clientes?: list<int>, projetos?: list<int>}  $filtros  membros null = todos
      * @return array{grupos: list<array<string, mixed>>, agendado: int, registado: int, atribuicoes: Collection<int, AtribuicaoTempo>}
      */
-    public function gerar(array $filtros, CarbonImmutable $de, CarbonImmutable $ate, string $agrupar1, ?string $agrupar2, bool $semTempo = false, ?CarbonImmutable $hoje = null): array
+    public function gerar(array $filtros, CarbonImmutable $de, CarbonImmutable $ate, string $agrupar1, ?string $agrupar2, bool $semTempo = false, ?CarbonImmutable $hoje = null, ?User $quem = null): array
     {
         $agrupar1 = isset(self::AGRUPAMENTOS[$agrupar1]) ? $agrupar1 : 'membro';
         $agrupar2 = $agrupar2 !== null && isset(self::AGRUPAMENTOS[$agrupar2]) && $agrupar2 !== $agrupar1 ? $agrupar2 : null;
@@ -42,6 +51,16 @@ class RelatorioAtribuicoes
         $membros = $filtros['membros'] ?? null;
         $projetos = $filtros['projetos'] ?? [];
         $clientes = $filtros['clientes'] ?? [];
+
+        // null = vê todos os projetos (admin, ou sem quem).
+        $visiveis = $quem && ! $quem->ehAdminTempos()
+            ? ProjetoTempo::withTrashed()->visiveisPara($quem)->pluck('id')->map(fn ($id) => (int) $id)->flip()->all()
+            : null;
+        if ($visiveis !== null && $projetos !== []) {
+            // Um id que não pode ver, posto à mão no filtro, não filtra por ele (não serve para sondar).
+            $projetos = array_values(array_filter($projetos, fn ($id) => isset($visiveis[(int) $id]))) ?: [0];
+        }
+        $oculto = fn (int $projeto) => $visiveis !== null && ! isset($visiveis[$projeto]);
         $filtrarProjetos = fn ($q, string $coluna) => $q
             ->when($projetos !== [], fn ($q) => $q->whereIn($coluna, $projetos))
             ->when($clientes !== [], fn ($q) => $q->whereIn($coluna, ProjetoTempo::withTrashed()->whereIn('cliente_id', $clientes)->select('id')));
@@ -86,9 +105,9 @@ class RelatorioAtribuicoes
         $projetosInfo = ProjetoTempo::withTrashed()->whereIn('id', collect($pares)->pluck('projeto')->unique())->get(['id', 'nome', 'cor', 'cliente_id'])->keyBy('id');
         $nomesClientes = ClienteTempo::withTrashed()->whereIn('id', $projetosInfo->pluck('cliente_id')->filter()->unique())->pluck('nome', 'id');
 
-        $pares = collect($pares)->map(fn ($l) => $l + [
-            'cliente' => $projetosInfo->get($l['projeto'])?->cliente_id ?? 0,
-        ]);
+        $pares = collect($pares)->map(fn ($l) => $oculto($l['projeto'])
+            ? ['projeto' => self::PRIVADOS, 'cliente' => self::PRIVADOS] + $l
+            : $l + ['cliente' => $projetosInfo->get($l['projeto'])?->cliente_id ?? 0]);
 
         // Pessoas sem tempo (nem agendado nem registado), a pedido, quando se agrupa por membro.
         $semTempoIds = [];
@@ -99,9 +118,10 @@ class RelatorioAtribuicoes
                 ->orderBy('nome')->pluck('nome', 'id')->all();
         }
 
-        $nome = fn (string $agrupar, int $chave) => match ($agrupar) {
-            'membro' => $nomesMembros[$chave] ?? '—',
-            'projeto' => $projetosInfo->get($chave)?->nome ?? '—',
+        $nome = fn (string $agrupar, int $chave) => match (true) {
+            $agrupar !== 'membro' && $chave === self::PRIVADOS => self::ROTULO_PRIVADOS,
+            $agrupar === 'membro' => $nomesMembros[$chave] ?? '—',
+            $agrupar === 'projeto' => $projetosInfo->get($chave)?->nome ?? '—',
             default => $chave ? ($nomesClientes[$chave] ?? '—') : 'Sem cliente',
         };
         $cor = fn (string $agrupar, int $chave) => $agrupar === 'projeto' ? ($projetosInfo->get($chave)?->cor ?? null) : null;
@@ -134,6 +154,14 @@ class RelatorioAtribuicoes
 
         foreach ($semTempoIds as $id => $nomeMembro) {
             $grupos->push(['chave' => (string) $id, 'nome' => $nomeMembro, 'cor' => null, 'agendado' => 0, 'registado' => 0, 'diferenca' => 0, 'estado' => 'sem_tempo', 'filhos' => []]);
+        }
+
+        // Na lista das atribuições do período, os projetos que quem vê não pode ver ficam sem nome nem nota.
+        foreach ($atribuicoes as $a) {
+            if ($oculto((int) $a->projeto_id)) {
+                $a->setRelation('projeto', ProjetoTempo::mascarado());
+                $a->nota = null;
+            }
         }
 
         return [

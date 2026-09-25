@@ -74,7 +74,8 @@ class Listagem extends Component
 
     public function ordenarPor(string $campo): void
     {
-        if (in_array($campo, self::ORDENS, true)) {
+        // O valor é de quem gere os projetos: ordenar por ele, escondido, dava o ranking das taxas (notas §52).
+        if (in_array($campo, self::ORDENS, true) && ($campo !== 'valor' || Gate::allows('tempos-gerir-projetos'))) {
             $this->ordem = $this->ordem === $campo ? '-'.$campo : $campo;
         }
     }
@@ -284,7 +285,7 @@ class Listagem extends Component
         if ($this->filtroCliente !== 'sem' && ! ctype_digit($this->filtroCliente)) {
             $this->filtroCliente = '';
         }
-        if (! in_array(ltrim($this->ordem, '-'), self::ORDENS, true)) {
+        if (! in_array(ltrim($this->ordem, '-'), self::ORDENS, true) || (ltrim($this->ordem, '-') === 'valor' && ! Gate::allows('tempos-gerir-projetos'))) {
             $this->ordem = 'nome';
         }
     }

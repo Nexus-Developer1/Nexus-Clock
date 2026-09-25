@@ -137,7 +137,7 @@
                                                         @endif
                                                         @if ($podeDecidir)
                                                             @if ($d->estado !== 'aprovada')
-                                                                <button type="button" wire:click="aprovar({{ $d->id }})" @click="fechar()" class="flex w-full items-center gap-2 px-4 py-2 text-left text-verde-700 hover:bg-verde-50" role="menuitem"><x-icone nome="visto" /> Aprovar</button>
+                                                                <button type="button" wire:click="aprovar({{ $d->id }}, '{{ $d->versao() }}')" @click="fechar()" class="flex w-full items-center gap-2 px-4 py-2 text-left text-verde-700 hover:bg-verde-50" role="menuitem"><x-icone nome="visto" /> Aprovar</button>
                                                             @endif
                                                             @if ($d->estado !== 'rejeitada')
                                                                 <button type="button" wire:click="pedirRejeicao({{ $d->id }})" @click="fechar()" class="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-fundo" role="menuitem"><x-icone nome="fechar" /> Rejeitar</button>
@@ -269,7 +269,7 @@
                                 <button type="button" wire:click="pedirRejeicao({{ $det->id }})" class="botao-secundario"><x-icone nome="fechar" /> Rejeitar</button>
                             @endif
                             @if ($det->estado !== 'aprovada')
-                                <button type="button" wire:click="aprovar({{ $det->id }})" class="botao-primario"><x-icone nome="visto" traco="2" /> Aprovar</button>
+                                <button type="button" wire:click="aprovar({{ $det->id }}, '{{ $det->versao() }}')" class="botao-primario"><x-icone nome="visto" traco="2" /> Aprovar</button>
                             @endif
                         @endif
                     </footer>

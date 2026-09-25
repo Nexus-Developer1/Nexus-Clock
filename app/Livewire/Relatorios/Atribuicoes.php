@@ -16,6 +16,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -42,7 +43,9 @@ class Atribuicoes extends Component
     #[Url(as: 'ordem')]
     public string $ordem = 'nome'; // nome | agendado | registado | diferenca, "-" = descendente
 
-    // Formulário (null = fechado, 0 = nova).
+    // Formulário (null = fechado, 0 = nova). Só nova()/editar() o abrem, e só a quem gere: mudado pelo
+    // browser, abria o formulário com a lista de todos os projetos, privados incluídos (notas §52).
+    #[Locked]
     public ?int $editarId = null;
 
     /** @var array{utilizador_id: string, projeto_id: string, de: string, ate: string, horas_dia: string, fins_de_semana: bool, nota: string} */
@@ -169,8 +172,8 @@ class Atribuicoes extends Component
                 'clientes' => ClienteTempo::orderByRaw('lower(nome)')->pluck('nome', 'id')->all(),
                 'projetos' => ProjetoTempo::visiveisPara(auth()->user())->orderByRaw('arquivado_em is not null, lower(nome)')->pluck('nome', 'id')->all(),
             ],
-            'projetosFormulario' => $this->editarId !== null
-                ? ProjetoTempo::where(fn ($q) => $q->whereNull('arquivado_em')->orWhere('id', (int) ($this->formulario['projeto_id'] ?? 0)))->orderByRaw('lower(nome)')->pluck('nome', 'id')->all()
+            'projetosFormulario' => $this->editarId !== null && $podeGerir
+                ? ProjetoTempo::visiveisPara(auth()->user())->where(fn ($q) => $q->whereNull('arquivado_em')->orWhere('id', (int) ($this->formulario['projeto_id'] ?? 0)))->orderByRaw('lower(nome)')->pluck('nome', 'id')->all()
                 : [],
             'agrupamentos' => RelatorioAtribuicoes::AGRUPAMENTOS,
             'estados' => RelatorioAtribuicoes::ESTADOS,
@@ -212,6 +215,7 @@ class Atribuicoes extends Component
         return app(RelatorioAtribuicoes::class)->gerar(
             ['membros' => $membros, 'clientes' => $f['clientes'], 'projetos' => $f['projetos']],
             $de, $ate, $this->agrupar1, $this->agrupar2 !== '' ? $this->agrupar2 : null, $this->semTempo,
+            quem: auth()->user(), // os privados de que não é membro ficam sem nome (notas §52)
         );
     }
 

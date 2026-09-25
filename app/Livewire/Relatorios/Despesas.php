@@ -11,7 +11,10 @@ use App\Models\User;
 use App\Services\Tempos\GestorDespesas;
 use App\Services\Tempos\RelatorioDespesas;
 use App\Support\Dinheiro;
+use App\Support\LimiteExportacoes;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -163,9 +166,10 @@ class Despesas extends Component
         $this->executar(fn () => app(GestorDespesas::class)->apagar(auth()->user(), $this->despesa($id)), 'Despesa apagada.');
     }
 
-    public function aprovar(int $id): void
+    /** $versao: a da despesa que estava no ecrã — se mudou entretanto, não se aprova (notas §52). */
+    public function aprovar(int $id, ?string $versao = null): void
     {
-        $this->executar(fn () => app(GestorDespesas::class)->decidir(auth()->user(), $this->despesa($id), 'aprovada'), 'Despesa aprovada.');
+        $this->executar(fn () => app(GestorDespesas::class)->decidir(auth()->user(), $this->despesa($id), 'aprovada', versao: $versao), 'Despesa aprovada.');
     }
 
     public function reabrir(int $id): void
@@ -232,7 +236,7 @@ class Despesas extends Component
     public function exportar(string $formato = 'csv')
     {
         [$de, $ate] = $this->periodo();
-        $linhas = $this->consulta()->limit(20000)->get()->map(fn (DespesaTempo $d) => [
+        $linhas = $this->ocultarPrivados($this->consulta()->limit(20000)->get())->map(fn (DespesaTempo $d) => [
             $d->data->format('d/m/Y'), $d->utilizador?->nome ?? '', $d->projeto?->nome ?? '', $d->projeto?->cliente?->nome ?? '',
             $d->categoria?->nome ?? '', (string) $d->nota, Dinheiro::decimal($d->valor_cent), $d->faturavel ? 'Sim' : 'Não',
             DespesaTempo::ESTADOS[$d->estado], $d->recibo_caminho ? 'Sim' : 'Não',
@@ -241,17 +245,42 @@ class Despesas extends Component
         return $this->descarregar($formato, 'despesas', 'Despesas', $de, $ate, ['Data', 'Membro', 'Projeto', 'Cliente', 'Categoria', 'Nota', 'Valor (€)', 'Faturável', 'Estado', 'Recibo'], $linhas->all());
     }
 
+    /**
+     * O ZIP monta-se no disco e o browser vai buscá-lo a um link assinado (ZipRecibosController): pela
+     * ação do Livewire ia em base64 dentro da resposta, e um ZIP grande esgotava a memória (notas §52).
+     */
     public function descarregarRecibos()
     {
+        LimiteExportacoes::verificar('zip', LimiteExportacoes::ZIPS_POR_MINUTO);
         [$de, $ate] = $this->periodo();
-        $zip = app(RelatorioDespesas::class)->zipRecibos($this->consulta()->whereNotNull('recibo_caminho')->limit(2000)->cursor());
+        $this->erro = null;
+
+        // ZIPs pedidos e nunca descarregados não ficam: os com mais de uma hora vão fora.
+        $disco = Storage::disk(DespesaTempo::DISCO);
+        foreach ($disco->files('zips') as $antigo) {
+            if ($disco->lastModified($antigo) < now()->subHour()->getTimestamp()) {
+                $disco->delete($antigo);
+            }
+        }
+        $disco->makeDirectory('zips');
+        $ficheiro = 'recibos-'.auth()->id().'-'.Str::random(32);
+
+        try {
+            $zip = app(RelatorioDespesas::class)->zipRecibos($this->consulta()->whereNotNull('recibo_caminho')->limit(2000)->cursor(), $disco->path('zips/'.$ficheiro.'.zip'));
+        } catch (ValidationException $e) {
+            $this->erro = collect($e->errors())->flatten()->first();
+
+            return null;
+        }
         if (! $zip) {
             $this->erro = 'Não há recibos nas despesas mostradas.';
 
             return null;
         }
 
-        return response()->download($zip, 'recibos-'.$de->format('Ymd').'-'.$ate->format('Ymd').'.zip')->deleteFileAfterSend();
+        return redirect()->to(url()->temporarySignedRoute('despesas.recibos-zip', now()->addMinutes(10), [
+            'ficheiro' => $ficheiro, 'nome' => 'recibos-'.$de->format('Ymd').'-'.$ate->format('Ymd').'.zip',
+        ]));
     }
 
     public function render()
@@ -268,11 +297,13 @@ class Despesas extends Component
         if (! $emDetalhe) {
             $this->verId = null;
         }
+        $pagina = $this->consulta()->paginate(self::POR_PAGINA);
+        $this->ocultarPrivados(collect($pagina->items())->when($emDetalhe, fn ($c) => $c->push($emDetalhe)));
 
         return view('livewire.relatorios.despesas', [
             'emDetalhe' => $emDetalhe,
             'nomesRegisto' => $emDetalhe ? User::whereIn('id', array_filter([$emDetalhe->criado_por, $emDetalhe->alterado_por]))->pluck('nome', 'id') : collect(),
-            'pagina' => $this->consulta()->paginate(self::POR_PAGINA),
+            'pagina' => $pagina,
             'totais' => app(RelatorioDespesas::class)->totais($this->filtros(), $de, $ate),
             'de' => $de,
             'ate' => $ate,
@@ -316,12 +347,18 @@ class Despesas extends Component
 
         // Quem vê as despesas da equipa escolhe as pessoas no filtro (vazio = todas); quem não vê, só as suas.
         // (O filtrosDoServico() prende o técnico às suas horas — nas despesas a regra é outra, notas §41.)
+        // Um projeto que não pode ver, posto à mão no filtro, não filtra por ele (não serve para sondar).
+        $projetos = $f['projetos'];
+        if ($projetos !== [] && ($visiveis = $this->projetosVisiveis()) !== null) {
+            $projetos = array_values(array_filter($projetos, fn ($id) => $id === 0 || isset($visiveis[$id]))) ?: [-1];
+        }
+
         return [
             'membros' => app(GestorDespesas::class)->veTodas(auth()->user())
                 ? ($this->membros === [] ? null : array_map('intval', $this->membros))
                 : [auth()->id()],
             'clientes' => $f['clientes'],
-            'projetos' => $f['projetos'],
+            'projetos' => $projetos,
             'categorias' => array_map('intval', $this->categorias),
             'estado' => $this->situacao,
             'nota' => $this->descricao,
@@ -333,6 +370,47 @@ class Despesas extends Component
         [$de, $ate] = $this->periodo();
 
         return app(RelatorioDespesas::class)->consulta($this->filtros(), $de, $ate, $this->ordem);
+    }
+
+    /** @var array<int, int>|null ids dos projetos que quem vê pode ver (null = todos); por pedido. */
+    private ?array $visiveis = null;
+
+    private bool $visiveisCalculados = false;
+
+    /** @return array<int, int>|null */
+    private function projetosVisiveis(): ?array
+    {
+        if (! $this->visiveisCalculados) {
+            $quem = auth()->user();
+            $this->visiveis = $quem->ehAdminTempos() ? null
+                : ProjetoTempo::withTrashed()->visiveisPara($quem)->pluck('id')->map(fn ($id) => (int) $id)->flip()->all();
+            $this->visiveisCalculados = true;
+        }
+
+        return $this->visiveis;
+    }
+
+    /**
+     * As despesas dos colegas em projetos privados de que quem vê não é membro mostram «Projeto
+     * privado», sem nome nem cliente — na lista, no detalhe e nas exportações (notas §52).
+     *
+     * @template T of iterable<DespesaTempo>
+     *
+     * @param  T  $despesas
+     * @return T
+     */
+    private function ocultarPrivados(iterable $despesas): iterable
+    {
+        $visiveis = $this->projetosVisiveis();
+        if ($visiveis !== null) {
+            foreach ($despesas as $d) {
+                if ($d->projeto_id && ! isset($visiveis[(int) $d->projeto_id])) {
+                    $d->setRelation('projeto', ProjetoTempo::mascarado());
+                }
+            }
+        }
+
+        return $despesas;
     }
 
     private function despesa(int $id): DespesaTempo

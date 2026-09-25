@@ -160,7 +160,7 @@
     </main>
 
     {{-- Nova / alterar atribuição --}}
-    @if ($editarId !== null)
+    @if ($editarId !== null && $podeGerir)
         <div class="janela-fundo fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-10" wire:keydown.escape="fechar" role="dialog" aria-modal="true" aria-labelledby="titulo-atribuicao">
             <div class="absolute inset-0" wire:click="fechar"></div>
             <form wire:submit="guardar" class="janela relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">

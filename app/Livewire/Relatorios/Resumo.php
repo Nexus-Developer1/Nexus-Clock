@@ -105,7 +105,8 @@ class Resumo extends Component
 
     public function ordenarPor(string $campo): void
     {
-        if (in_array($campo, ['titulo', 'duracao', 'valor'], true)) {
+        // Ordenar pelo valor escondido deixava adivinhar as taxas (notas §52).
+        if (in_array($campo, ['titulo', 'duracao', 'valor'], true) && ($campo !== 'valor' || $this->valorVisivel())) {
             $this->ordem = ltrim($this->ordem, '-') === $campo
                 ? (str_starts_with($this->ordem, '-') ? $campo : '-'.$campo)
                 : ($campo === 'titulo' ? $campo : '-'.$campo);
@@ -232,7 +233,7 @@ class Resumo extends Component
         if ($this->agrupar2 === $this->agrupar1 || ($this->agrupar2 !== '' && ! isset(ResumoTempos::AGRUPAMENTOS[$this->agrupar2]))) {
             $this->agrupar2 = '';
         }
-        if (! in_array(ltrim($this->ordem, '-'), ['titulo', 'duracao', 'valor'], true)) {
+        if (! in_array(ltrim($this->ordem, '-'), ['titulo', 'duracao', 'valor'], true) || (ltrim($this->ordem, '-') === 'valor' && ! $this->valorVisivel())) {
             $this->ordem = '-duracao';
         }
     }

@@ -33,10 +33,6 @@ tar -xzf "$PACOTE" -C "$APP"
 mkdir -p "$APP"/storage/app/public "$APP"/storage/framework/cache/data "$APP"/storage/framework/sessions \
          "$APP"/storage/framework/views "$APP"/storage/logs "$APP"/bootstrap/cache
 cd "$APP"
-COMPOSER_HOME=/tmp/composer-tempos COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev -o --no-interaction --no-progress 2>&1 | tail -2
-# Ficheiros do Livewire em public/vendor/livewire: assim o script é servido por baixo de /tempos e
-# não pela raiz do host (onde dá 404). O endereço dos pedidos trata-o App\Support\LivewireSubpasta.
-php artisan livewire:publish --assets -n >/dev/null && echo "livewire: ficheiros publicados"
 
 # ---------------------------------------------------------------- utilizador
 passo "Utilizador $UTIL"
@@ -46,11 +42,22 @@ fi
 mkdir -p /var/lib/nexus-apps/$UTIL
 chown $UTIL:$UTIL /var/lib/nexus-apps/$UTIL; chmod 700 /var/lib/nexus-apps/$UTIL
 
+# O composer e o artisan correm como $UTIL, não como root: os scripts das dependências (package:discover…)
+# e da aplicação não ganham root (notas §52).
+chown -R $UTIL:$UTIL "$APP"
+COMO="sudo -u $UTIL env HOME=/var/lib/nexus-apps/$UTIL COMPOSER_HOME=/var/lib/nexus-apps/$UTIL/.composer"
+$COMO composer install --no-dev -o --no-interaction --no-progress 2>&1 | tail -2
+# Ficheiros do Livewire em public/vendor/livewire: assim o script é servido por baixo de /tempos e
+# não pela raiz do host (onde dá 404). O endereço dos pedidos trata-o App\Support\LivewireSubpasta.
+$COMO php artisan livewire:publish --assets -n >/dev/null && echo "livewire: ficheiros publicados"
+
 # ---------------------------------------------------------------- .env
 if [ ! -f .env ]; then
     passo ".env a partir do da Nexus Ops"
     cp .env.example .env
-    for k in DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
+    # A APP_KEY vem também da Nexus Ops: a sessão é partilhada na suite e tem de ser a mesma chave
+    # (antes fazia-se key:generate, que gerava outra e partia a sessão partilhada — notas §52).
+    for k in APP_KEY DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
              SESSION_DRIVER SESSION_STORE SESSION_SERIALIZATION SESSION_COOKIE SESSION_LIFETIME SESSION_ENCRYPT \
              SESSION_SECURE_COOKIE SESSION_PATH SESSION_DOMAIN \
              REDIS_CLIENT REDIS_HOST REDIS_PASSWORD REDIS_PORT REDIS_PREFIX CACHE_STORE QUEUE_CONNECTION \
@@ -70,18 +77,23 @@ PY
         fi
     done
     sed -i "s#^APP_URL=.*#APP_URL=$URL#; s#^PORTAL_URL=.*#PORTAL_URL=$PORTAL#; s#^APP_ENV=.*#APP_ENV=production#; s#^APP_DEBUG=.*#APP_DEBUG=false#" .env
-    php artisan key:generate --force -n | tail -1
+    grep -qE '^APP_KEY=.+' .env || { echo "Falta a APP_KEY em $ORIG: sem ela a sessão da suite não é a mesma."; exit 1; }
 else
     passo ".env já existe — mantido"
 fi
 
 # ---------------------------------------------------------------- permissões
 passo "Permissões"
-chown -R $UTIL:www-data "$APP"
+# O Apache (www-data) só precisa de LER o public/ (e de atravessar a pasta da aplicação): nada lhe é
+# gravável, nem o .env lhe é legível. Antes tinha escrita no storage e no bootstrap/cache — vistas
+# compiladas e caches que o PHP executa como $UTIL — e lia o .env (notas §52).
+chown -R $UTIL:$UTIL "$APP"
 find "$APP" -type d -exec chmod 750 {} +
 find "$APP" -type f -exec chmod 640 {} +
-chmod -R g+w "$APP/storage" "$APP/bootstrap/cache"
-chmod 640 .env
+chgrp www-data "$APP"
+chgrp -R www-data "$APP/public"
+find "$APP/public" -type d -exec chmod 2750 {} +
+chmod 600 .env
 
 # ---------------------------------------------------------------- php-fpm
 passo "Pool PHP-FPM nexus-tempos"
@@ -179,7 +191,11 @@ sudo -u $UTIL HOME=/var/lib/nexus-apps/$UTIL php artisan migrate --force -n 2>&1
 passo "Caches"
 # Sem route:cache: com as rotas em cache o Laravel tira a barra final ao REQUEST_URI e, numa
 # instalação por subpasta (/tempos), deixa de reconhecer a raiz — dá 405 em /tempos/.
-sudo -u $UTIL HOME=/var/lib/nexus-apps/$UTIL php artisan optimize:clear -n >/dev/null
+# Sem optimize:clear nem cache:clear: fazem FLUSHDB à base Redis da cache, que é também a da Nexus
+# Infra (estado da sincronização com o ERP) — notas §52. Limpa-se cada coisa à parte.
+for c in config:clear event:clear view:clear route:clear; do
+    sudo -u $UTIL HOME=/var/lib/nexus-apps/$UTIL php artisan $c -n >/dev/null
+done
 for c in config:cache event:cache view:cache; do
     sudo -u $UTIL HOME=/var/lib/nexus-apps/$UTIL php artisan $c -n | tail -1
 done

@@ -376,8 +376,9 @@ class Membros extends Component
                 || str_contains(mb_strtolower($m->nomeVisivel()), $termo)
                 || str_contains(mb_strtolower((string) $m->emailVisivel()), $termo));
 
+        // Os filtros «com/sem taxa» são de quem gere: aos outros diziam quem tem taxa definida (notas §52).
         foreach (['faturavel' => $this->filtroFaturavel, 'custo' => $this->filtroCusto] as $tipo => $filtro) {
-            if (in_array($filtro, ['com', 'sem'], true)) {
+            if (in_array($filtro, ['com', 'sem'], true) && Gate::allows('tempos-gerir-equipa')) {
                 $membros = $membros->filter(fn (MembroEquipa $m) => ($m->taxaEm($tipo, $hoje) !== null) === ($filtro === 'com'));
             }
         }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CabecalhosSeguranca;
 use App\Http\Middleware\ExigeAcessoAplicacao;
 use App\Http\Middleware\GarantirContaActiva;
 use Illuminate\Foundation\Application;
@@ -18,8 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'acesso' => ExigeAcessoAplicacao::class,
         ]);
 
-        // Quem ficar com a conta desativada é posto fora no pedido seguinte.
-        $middleware->web(append: [GarantirContaActiva::class]);
+        // Quem ficar com a conta desativada é posto fora no pedido seguinte. Cabeçalhos de segurança
+        // em todas as respostas (notas §52).
+        $middleware->web(append: [GarantirContaActiva::class, CabecalhosSeguranca::class]);
 
         // Sem sessão, vai-se ao portal fazer o login (esta aplicação não tem login próprio).
         $middleware->redirectGuestsTo(fn () => config('app.portal_url'));

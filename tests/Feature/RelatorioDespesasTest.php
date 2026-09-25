@@ -308,9 +308,9 @@ class RelatorioDespesasTest extends TestCase
     {
         $this->despesa($this->ana, [], $this->pdf());
 
-        Livewire::actingAs($this->admin)->test(Despesas::class)
-            ->call('descarregarRecibos')
-            ->assertFileDownloaded('recibos-20260914-20260920.zip');
+        // Vai por um link assinado (notas §52), que descarrega o ZIP.
+        $url = Livewire::actingAs($this->admin)->test(Despesas::class)->call('descarregarRecibos')->effects['redirect'];
+        $this->actingAs($this->admin)->get($url)->assertOk()->assertDownload('recibos-20260914-20260920.zip');
     }
 
     public function test_tecnico_ve_as_de_todos_mas_nao_decide_nem_altera_as_dos_outros(): void

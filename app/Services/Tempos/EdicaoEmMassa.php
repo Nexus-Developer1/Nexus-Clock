@@ -8,6 +8,7 @@ use App\Services\Auditor;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -37,7 +38,7 @@ class EdicaoEmMassa
             throw ValidationException::withMessages(['massa' => 'Escolha pelo menos uma alteração.']);
         }
 
-        $registos = $this->registos($ids);
+        $registos = $this->registos($autor, $ids);
 
         DB::transaction(function () use ($autor, $registos, $alteracoes) {
             foreach ($registos as $registo) {
@@ -79,7 +80,7 @@ class EdicaoEmMassa
      */
     public function apagar(User $autor, array $ids): int
     {
-        $registos = $this->registos($ids);
+        $registos = $this->registos($autor, $ids);
 
         DB::transaction(function () use ($autor, $registos) {
             foreach ($registos as $registo) {
@@ -101,7 +102,7 @@ class EdicaoEmMassa
      * @param  list<int>  $ids
      * @return Collection<int, RegistoTempo>
      */
-    private function registos(array $ids): Collection
+    private function registos(User $autor, array $ids): Collection
     {
         $ids = array_values(array_unique(array_map('intval', $ids)));
 
@@ -112,7 +113,15 @@ class EdicaoEmMassa
             throw ValidationException::withMessages(['massa' => 'No máximo '.self::MAXIMO.' registos de cada vez.']);
         }
 
-        return RegistoTempo::with('cliente')->whereKey($ids)->orderBy('inicio')->get();
+        $registos = RegistoTempo::with('cliente')->whereKey($ids)->orderBy('inicio')->get();
+
+        // Ids que não existem ou que a pessoa não pode ver: uma mensagem só, sem dia nem cliente — a de
+        // cada registo (porRegisto) dizia de quem era um id alheio posto à mão (notas §52).
+        if ($registos->count() !== count($ids) || $registos->contains(fn (RegistoTempo $r) => Gate::forUser($autor)->denies('view', $r))) {
+            throw ValidationException::withMessages(['massa' => 'Algum dos registos escolhidos não existe ou não é seu. Nada foi alterado.']);
+        }
+
+        return $registos;
     }
 
     /** Normaliza e deixa só o que é para mudar. */

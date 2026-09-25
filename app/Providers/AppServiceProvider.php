@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
+use function Livewire\on;
+
 class AppServiceProvider extends ServiceProvider
 {
     // Bases onde migrate:fresh / db:wipe podem correr. Todas as outras são (ou podem ser) a base
@@ -85,5 +87,15 @@ class AppServiceProvider extends ServiceProvider
         // Livewire: sem isto, a quem se retirasse o acesso no portal, a página já aberta continuava a
         // funcionar (notas §42).
         Livewire::addPersistentMiddleware([ExigeAcessoAplicacao::class]);
+
+        // Segunda linha, por trás desse middleware: nenhuma ação do Livewire corre sem acesso à aplicação,
+        // venha o pedido por onde vier (o middleware persistente só se aplica quando o caminho de origem
+        // da página é uma rota desta aplicação — notas §52). O relatório partilhado por link é a exceção:
+        // tem as regras dele (§40).
+        on('hydrate', function ($componente) {
+            if (! $componente instanceof Partilhado && ! auth()->user()?->temAcesso()) {
+                abort(403);
+            }
+        });
     }
 }

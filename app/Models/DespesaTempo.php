@@ -49,6 +49,19 @@ class DespesaTempo extends Model
         return 'SUP-'.$this->id;
     }
 
+    /**
+     * Impressão digital do que se aprova: muda se mudar o valor, a data, o recibo, o projeto, a
+     * categoria, a nota ou o estado. O botão «Aprovar» leva a que estava no ecrã; se a despesa mudou
+     * entretanto, não se aprova às cegas (notas §52).
+     */
+    public function versao(): string
+    {
+        return substr(hash('sha256', (string) json_encode([
+            $this->utilizador_id, $this->data?->toDateString(), (int) $this->valor_cent, (bool) $this->faturavel,
+            $this->projeto_id, $this->categoria_id, (string) $this->nota, $this->recibo_caminho, $this->estado,
+        ])), 0, 16);
+    }
+
     /** @return BelongsTo<User, $this> */
     public function utilizador(): BelongsTo
     {

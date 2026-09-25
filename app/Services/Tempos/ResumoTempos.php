@@ -10,6 +10,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Relatório Resumo (como o "Summary report" do Clockify): total, faturável, valor e custo do período,
@@ -240,7 +241,10 @@ class ResumoTempos
             'membros' => User::comAcessoAosTempos()->orderBy('nome')->pluck('nome', 'id')->all(),
             'clientes' => [0 => 'Sem cliente'] + ClienteTempo::withTrashed()->whereIn('id', ProjetoTempo::withTrashed()->whereNotNull('cliente_id')->select('cliente_id'))->orderByRaw('lower(nome)')->pluck('nome', 'id')->all(),
             'projetos' => [0 => 'Sem projeto'] + ProjetoTempo::visiveisPara($quem)->orderByRaw('arquivado_em is not null, lower(nome)')->pluck('nome', 'id')->all(),
-            'etiquetas' => DB::table('registos_tempo')->whereNull('deleted_at')->selectRaw('distinct unnest(etiquetas) as e')->orderBy('e')->pluck('e')->mapWithKeys(fn ($e) => [$e => $e])->all(),
+            // Só as etiquetas das horas que a pessoa vê: as dos colegas diziam no que eles andam (notas §52).
+            'etiquetas' => DB::table('registos_tempo')->whereNull('deleted_at')
+                ->when(! Gate::forUser($quem)->allows('tempos-ver-todos'), fn ($q) => $q->where('tecnico_id', $quem->id))
+                ->selectRaw('distinct unnest(etiquetas) as e')->orderBy('e')->pluck('e')->mapWithKeys(fn ($e) => [$e => $e])->all(),
         ];
     }
 

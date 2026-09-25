@@ -13,6 +13,7 @@ use Carbon\CarbonImmutable;
 use finfo;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -54,29 +55,36 @@ class GestorDespesas
     /** @param array<string, mixed> $dados */
     public function atualizar(User $autor, DespesaTempo $d, array $dados, ?UploadedFile $recibo = null, bool $retirarRecibo = false): DespesaTempo
     {
-        $this->autorizarAlteracao($autor, $d);
+        $reenviada = DB::transaction(function () use ($autor, $d, $dados, $recibo, $retirarRecibo) {
+            // A linha como está agora, bloqueada até ao fim: um pedido com uma leitura antiga (ainda
+            // pendente) não grava por cima de uma aprovação que entrou entretanto (notas §52).
+            $this->bloquearAtual($autor, $d);
 
-        $this->preencher($autor, $d, $dados);
-        if ($retirarRecibo && ! $recibo) {
-            $d->recibo_caminho = null;
-            $d->recibo_nome = null;
-        }
-        $this->guardarRecibo($d, $recibo);
+            $this->preencher($autor, $d, $dados);
+            if ($retirarRecibo && ! $recibo) {
+                $d->recibo_caminho = null;
+                $d->recibo_nome = null;
+            }
+            $this->guardarRecibo($d, $recibo);
 
-        // Uma despesa rejeitada corrigida por quem não aprova (o dono ou outro admin) volta a ser avaliada
-        // — e o aprovador recebe outra vez o pedido (notas §44).
-        $reenviada = $d->estado === 'rejeitada' && ! $this->podeDecidir($autor) && $d->isDirty();
-        if ($reenviada) {
-            $d->forceFill(['estado' => 'pendente', 'decidido_por' => null, 'decidido_em' => null, 'motivo_rejeicao' => null]);
-        }
+            // Uma despesa rejeitada corrigida por quem não aprova (o dono ou outro admin) volta a ser avaliada
+            // — e o aprovador recebe outra vez o pedido (notas §44).
+            $reenviada = $d->estado === 'rejeitada' && ! $this->podeDecidir($autor) && $d->isDirty();
+            if ($reenviada) {
+                $d->forceFill(['estado' => 'pendente', 'decidido_por' => null, 'decidido_em' => null, 'motivo_rejeicao' => null]);
+            }
 
-        $campos = array_keys($d->getDirty());
-        $d->alterado_por = $autor->id;
-        $d->save();
+            $campos = array_keys($d->getDirty());
+            $d->alterado_por = $autor->id;
+            $d->save();
 
-        if ($campos !== []) {
-            Auditor::registar('tempo_despesa_alterada', $d, $this->resumo($d) + ['campos' => $campos]);
-        }
+            if ($campos !== []) {
+                Auditor::registar('tempo_despesa_alterada', $d, $this->resumo($d) + ['campos' => $campos]);
+            }
+
+            return $reenviada;
+        });
+
         if ($reenviada) {
             $this->pedirAprovacao($d, reenvio: true);
         }
@@ -86,15 +94,20 @@ class GestorDespesas
 
     public function apagar(User $autor, DespesaTempo $d): void
     {
-        $this->autorizarAlteracao($autor, $d);
+        DB::transaction(function () use ($autor, $d) {
+            $this->bloquearAtual($autor, $d);
 
-        $d->forceFill(['alterado_por' => $autor->id])->save();
-        $d->delete();
-        Auditor::registar('tempo_despesa_apagada', $d, $this->resumo($d));
+            $d->forceFill(['alterado_por' => $autor->id])->save();
+            $d->delete();
+            Auditor::registar('tempo_despesa_apagada', $d, $this->resumo($d));
+        });
     }
 
-    /** Aprovar ou rejeitar (com motivo), ou voltar a pendente. */
-    public function decidir(User $autor, DespesaTempo $d, string $estado, ?string $motivo = null): DespesaTempo
+    /**
+     * Aprovar ou rejeitar (com motivo), ou voltar a pendente. Com `$versao` (a que estava no ecrã de
+     * quem decide), recusa se a despesa mudou entretanto (notas §52).
+     */
+    public function decidir(User $autor, DespesaTempo $d, string $estado, ?string $motivo = null, ?string $versao = null): DespesaTempo
     {
         if (! $this->podeDecidir($autor)) {
             throw new AuthorizationException('Só quem aprova as despesas pode fazer isto.');
@@ -108,21 +121,30 @@ class GestorDespesas
             throw ValidationException::withMessages(['motivo' => 'Indique o motivo da rejeição.']);
         }
 
-        $d->forceFill([
-            'estado' => $estado,
-            'decidido_por' => $estado === 'pendente' ? null : $autor->id,
-            'decidido_em' => $estado === 'pendente' ? null : now(),
-            'motivo_rejeicao' => $estado === 'rejeitada' ? mb_substr($motivo, 0, 500) : null,
-            'alterado_por' => $autor->id,
-        ])->save();
+        return DB::transaction(function () use ($autor, $d, $estado, $motivo, $versao) {
+            // Decide-se sobre a linha como está agora (bloqueada), não sobre a que se leu antes.
+            $atual = DespesaTempo::lockForUpdate()->findOrFail($d->id);
+            if ($versao !== null && ! hash_equals($atual->versao(), $versao)) {
+                throw ValidationException::withMessages(['versao' => 'Esta despesa foi alterada entretanto: veja-a de novo antes de aprovar.']);
+            }
 
-        Auditor::registar('tempo_despesa_'.match ($estado) {
-            'aprovada' => 'aprovada',
-            'rejeitada' => 'rejeitada',
-            default => 'reaberta',
-        }, $d, $this->resumo($d) + ($estado === 'rejeitada' ? ['motivo' => $d->motivo_rejeicao] : []));
+            $atual->forceFill([
+                'estado' => $estado,
+                'decidido_por' => $estado === 'pendente' ? null : $autor->id,
+                'decidido_em' => $estado === 'pendente' ? null : now(),
+                'motivo_rejeicao' => $estado === 'rejeitada' ? mb_substr($motivo, 0, 500) : null,
+                'alterado_por' => $autor->id,
+            ])->save();
+            $d->setRawAttributes($atual->getAttributes(), true);
 
-        return $d;
+            Auditor::registar('tempo_despesa_'.match ($estado) {
+                'aprovada' => 'aprovada',
+                'rejeitada' => 'rejeitada',
+                default => 'reaberta',
+            }, $atual, $this->resumo($atual) + ($estado === 'rejeitada' ? ['motivo' => $atual->motivo_rejeicao] : []));
+
+            return $atual;
+        });
     }
 
     public function criarCategoria(User $autor, string $nome): CategoriaDespesaTempo
@@ -193,7 +215,9 @@ class GestorDespesas
             'categoria' => $d->categoria?->nome ?? '—',
             'nota' => (string) $d->nota,
             'recibo' => $d->recibo_caminho !== null,
-            'url' => route('relatorios.despesas', ['ver' => $d->id]),
+            // Endereço a partir do APP_URL, não do pedido: o cabeçalho Host de um pedido forjado não entra
+            // no botão do email que o aprovador recebe (notas §52).
+            'url' => rtrim((string) config('app.url'), '/').route('relatorios.despesas', ['ver' => $d->id], false),
         ];
 
         foreach (config('tempos.aprovam_despesas') as $email) {
@@ -218,6 +242,22 @@ class GestorDespesas
     {
         if (! $this->gere($autor)) {
             throw new AuthorizationException('Só quem gere as despesas pode fazer isto.');
+        }
+    }
+
+    /**
+     * Bloqueia a linha até ao fim da transação e autoriza sobre o estado ATUAL dela. Se entretanto mudou
+     * de estado (aprovada, rejeitada), a cópia que se tem na mão está desatualizada: não se grava.
+     */
+    private function bloquearAtual(User $autor, DespesaTempo $d): void
+    {
+        $atual = DespesaTempo::lockForUpdate()->find($d->id);
+        if (! $atual) {
+            throw ValidationException::withMessages(['despesa' => 'Esta despesa já não existe.']);
+        }
+        $this->autorizarAlteracao($autor, $atual);
+        if ($atual->estado !== $d->getOriginal('estado')) {
+            throw ValidationException::withMessages(['despesa' => 'Esta despesa mudou entretanto ('.mb_strtolower(DespesaTempo::ESTADOS[$atual->estado]).'): abra-a de novo.']);
         }
     }
 

@@ -17,6 +17,8 @@ final class Csv
      */
     public static function resposta(string $ficheiro, array $cabecalho, iterable $linhas): StreamedResponse
     {
+        LimiteExportacoes::verificar();
+
         return response()->streamDownload(function () use ($cabecalho, $linhas) {
             $saida = fopen('php://output', 'w');
             fwrite($saida, "\xEF\xBB\xBF");

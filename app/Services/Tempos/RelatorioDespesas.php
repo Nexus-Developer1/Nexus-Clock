@@ -7,6 +7,7 @@ use App\Models\ProjetoTempo;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use ZipArchive;
 
 /**
@@ -69,22 +70,35 @@ class RelatorioDespesas
         return ['total' => (int) $t->total, 'faturavel' => (int) $t->faturavel, 'registos' => (int) $t->registos, 'pendentes' => (int) $t->pendentes, 'recibos' => (int) $t->recibos];
     }
 
-    /** Um ZIP com os recibos das despesas (nomes: data, pessoa, valor e nome original). Null se não houver. */
-    public function zipRecibos(iterable $despesas): ?string
+    /**
+     * Um ZIP com os recibos das despesas (nomes: data, pessoa, valor e nome original), em `$destino` (ou
+     * num ficheiro temporário). Null se não houver. Os recibos entram pelo caminho no disco, não pelo
+     * conteúdo (não ficam todos em memória), e o total tem teto: config('tempos.zip_recibos_max_mb').
+     */
+    public function zipRecibos(iterable $despesas, ?string $destino = null): ?string
     {
         $disco = Storage::disk(DespesaTempo::DISCO);
-        $caminho = tempnam(sys_get_temp_dir(), 'recibos');
+        $caminho = $destino ?? tempnam(sys_get_temp_dir(), 'recibos');
+        $maximoMb = (int) config('tempos.zip_recibos_max_mb', 500);
         $zip = new ZipArchive;
-        $zip->open($caminho, ZipArchive::OVERWRITE);
+        $zip->open($caminho, ZipArchive::CREATE | ZipArchive::OVERWRITE);
         $n = 0;
+        $bytes = 0;
 
         foreach ($despesas as $d) {
             if (! $d->recibo_caminho || ! $disco->exists($d->recibo_caminho)) {
                 continue;
             }
+            $bytes += $disco->size($d->recibo_caminho);
+            if ($bytes > $maximoMb * 1024 * 1024) {
+                $zip->close();
+                @unlink($caminho);
+
+                throw ValidationException::withMessages(['recibos' => 'Os recibos destas despesas passam de '.$maximoMb.' MB: escolha um período mais curto ou filtre.']);
+            }
             $pessoa = preg_replace('/[^\pL\pN]+/u', '-', (string) ($d->utilizador?->nome ?? 'sem-nome'));
             $nome = sprintf('%s_%s_%s_%d_%s', $d->data->format('Y-m-d'), trim($pessoa, '-'), number_format($d->valor_cent / 100, 2, ',', ''), $d->id, basename((string) $d->recibo_nome));
-            $zip->addFromString($nome, $disco->get($d->recibo_caminho));
+            $zip->addFile($disco->path($d->recibo_caminho), $nome);
             $n++;
         }
         $zip->close();

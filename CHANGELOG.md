@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-25
 
+- 🛠️ **Permissões no servidor** — os ficheiros do Suporte deixam de ter escrita para o grupo do Apache (eram 85, vindos do umask dos git pull) e o .env deixa de lhe ser legível; os deploys passam a correr com umask 022 e sem optimize:clear. Notas §52.
+- 🔒 **Segunda revisão de segurança, lote A** — os projetos privados deixam de aparecer pelo nome a quem não é membro nas Atribuições e nas Despesas; o Paulo só aprova a despesa tal como a viu (se mudou entretanto, avisa) e uma alteração antiga já não passa por cima de uma aprovação; etiquetas, ordenar por valor, filtro de taxas e edição em massa deixam de mostrar dados dos outros; páginas abertas voltam a verificar o acesso em cada pedido; limite nas exportações e ZIP dos recibos por link assinado, com teto; cabeçalhos de segurança; o deploy deixa de apagar a cache da Nexus Infra; `portal.sql` já não devolve acessos retirados; `tempos:demo` pede confirmação em produção. Notas §52. 311 testes.
 - 🎨 **Grupos: membros e linha clicáveis** — a pedido: cada membro de um grupo abre a página dele; a quem gere, a linha abre o «Alterar» do grupo. Notas §51. 294 testes.
 - 🎨 **Detalhado: sai o «Alterar» do menu ⋯** — a pedido: o registo abre-se carregando na linha (ou, pelo teclado, na descrição). Notas §50. 294 testes.
 - 🎨 **Detalhado: projeto, cliente e linha clicáveis** — a pedido: o nome do projeto e o do cliente de cada registo abrem a página deles (se quem vê a puder abrir); o resto da linha abre o «Alterar» do registo. Notas §50. 294 testes.

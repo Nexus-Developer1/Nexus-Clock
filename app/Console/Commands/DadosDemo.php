@@ -15,6 +15,7 @@ use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\TaxaMembro;
 use App\Models\User;
+use App\Providers\AppServiceProvider;
 use App\Services\Tempos\GestorEquipa;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -34,7 +35,8 @@ use Illuminate\Support\Facades\Storage;
  */
 class DadosDemo extends Command
 {
-    protected $signature = 'tempos:demo {--apagar : Apaga os dados de demonstração criados antes}';
+    protected $signature = 'tempos:demo {--apagar : Apaga os dados de demonstração criados antes}
+        {--em-producao : Confirma que é para correr numa base a sério (produção)}';
 
     protected $description = 'Cria (ou apaga, com --apagar) dados de demonstração nas tabelas dos Tempos';
 
@@ -49,6 +51,16 @@ class DadosDemo extends Command
 
     public function handle(GestorEquipa $equipa): int
     {
+        // Numa base a sério, horas falsas entram nos lembretes, nos relatórios partilhados enviados por
+        // email e nos valores: só com confirmação explícita (notas §52).
+        $base = (string) config('database.connections.'.config('database.default').'.database');
+        if ((app()->isProduction() || ! in_array($base, AppServiceProvider::BASES_DESCARTAVEIS, true)) && ! $this->option('em-producao')) {
+            $this->error('A base «'.$base.'» é a sério (produção). Os dados de demonstração misturam-se com os verdadeiros'
+                .' (lembretes, relatórios enviados por email, valores). Para continuar mesmo assim: --em-producao');
+
+            return self::FAILURE;
+        }
+
         if ($this->option('apagar')) {
             return $this->apagar();
         }

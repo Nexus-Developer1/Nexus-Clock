@@ -73,6 +73,9 @@ class Pagina extends Component
 
     public function render()
     {
+        // Em cada pedido: quem deixou de ver a equipa (perdeu o papel de admin) com a página aberta volta
+        // às suas horas no pedido seguinte (notas §52).
+        $this->normalizar();
         $de = CarbonImmutable::parse($this->inicio);
         $ate = $this->fim($de);
         $equipa = $this->quem === 'equipa';

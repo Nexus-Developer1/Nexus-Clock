@@ -66,7 +66,7 @@ class AprovacaoDespesasTest extends TestCase
         Livewire::actingAs($this->julio)->test(Despesas::class)
             ->call('ver', $d->id)
             ->assertSee('Almoço em deslocação')
-            ->assertDontSee('wire:click="aprovar('.$d->id.')"', false)
+            ->assertDontSee('wire:click="aprovar('.$d->id.', \''.$d->fresh()->versao().'\')"', false)
             ->assertDontSee('wire:click="pedirRejeicao('.$d->id.')"', false)
             ->call('aprovar', $d->id)->assertSet('erro', 'Só quem aprova as despesas pode fazer isto.')
             ->call('pedirRejeicao', $d->id)->assertForbidden();
@@ -79,7 +79,7 @@ class AprovacaoDespesasTest extends TestCase
         // O Paulo decide.
         Livewire::actingAs($this->paulo)->test(Despesas::class)
             ->call('ver', $d->id)
-            ->assertSee('wire:click="aprovar('.$d->id.')"', false)
+            ->assertSee('wire:click="aprovar('.$d->id.', \''.$d->fresh()->versao().'\')"', false)
             ->call('aprovar', $d->id)
             ->assertSee('Aprovada por Paulo Gouveia');
         $this->assertSame(['aprovada', $this->paulo->id], [$d->fresh()->estado, $d->fresh()->decidido_por]);
@@ -146,7 +146,7 @@ class AprovacaoDespesasTest extends TestCase
         Livewire::actingAs($this->paulo)->withQueryParams(['ver' => (string) $d->id])->test(Despesas::class)
             ->assertSet('verId', $d->id)
             ->assertSee('SUP-'.$d->id.' · Ana Martins')
-            ->assertSee('wire:click="aprovar('.$d->id.')"', false);
+            ->assertSee('wire:click="aprovar('.$d->id.', \''.$d->fresh()->versao().'\')"', false);
     }
 
     public function test_aprovada_fica_fechada_ate_o_paulo_a_voltar_a_pendente(): void

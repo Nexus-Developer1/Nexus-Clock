@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ReciboDespesaController;
+use App\Http\Controllers\ZipRecibosController;
 use App\Livewire\Clientes\Detalhe as ClientesDetalhe;
 use App\Livewire\Clientes\Listagem as ClientesListagem;
 use App\Livewire\Clientes\Novo as ClientesNovo;
@@ -44,6 +45,9 @@ Route::middleware(['auth', 'acesso'])->group(function () {
     Route::redirect('/relatorios/tarefas', '/relatorios/atribuicoes');
     Route::get('/relatorios/despesas', RelatorioDespesas::class)->name('relatorios.despesas');
     Route::get('/despesas/{despesa}/recibo', ReciboDespesaController::class)->name('despesas.recibo');
+    // ZIP dos recibos já montado pela página Despesas, por link assinado (notas §52).
+    Route::get('/despesas/recibos/{ficheiro}', ZipRecibosController::class)
+        ->where('ficheiro', 'recibos-[0-9]+-[A-Za-z0-9]{32}')->middleware('signed')->name('despesas.recibos-zip');
     Route::get('/relatorios/semanal', RelatorioSemanal::class)->name('relatorios.semanal');
 
     Route::get('/projetos', ProjetosListagem::class)->name('projetos');
