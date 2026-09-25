@@ -9,6 +9,7 @@ use App\Livewire\Equipa\Lembretes as EquipaLembretes;
 use App\Livewire\Equipa\Limitados as EquipaLimitados;
 use App\Livewire\Equipa\Membros as EquipaMembros;
 use App\Livewire\Painel\Pagina as PainelPagina;
+use App\Livewire\Projetos\Detalhe as ProjetosDetalhe;
 use App\Livewire\Projetos\Listagem as ProjetosListagem;
 use App\Livewire\Relatorios\Atribuicoes as RelatorioAtribuicoes;
 use App\Livewire\Relatorios\Despesas as RelatorioDespesas;
@@ -45,6 +46,7 @@ Route::middleware(['auth', 'acesso'])->group(function () {
     Route::get('/relatorios/semanal', RelatorioSemanal::class)->name('relatorios.semanal');
 
     Route::get('/projetos', ProjetosListagem::class)->name('projetos');
+    Route::get('/projetos/{projeto}', ProjetosDetalhe::class)->whereNumber('projeto')->name('projetos.ver');
     // Equipa: membros plenos (acesso dado no portal), limitados, grupos e lembretes.
     Route::get('/equipa', EquipaMembros::class)->name('equipa');
     Route::get('/equipa/limitados', EquipaLimitados::class)->name('equipa.limitados');

@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-25
 
+- 🧰 **Página de cada projeto** — a pedido: o nome de cada projeto (na lista de Projetos e na página do cliente) abre a página dele, com cliente, horas registadas e faturáveis, progresso face à estimativa, despesas, a equipa (quem registou horas e quantas), os membros se for privado, e as atribuições em curso e futuras. Um projeto privado não abre a quem não é membro; taxa e valor em euros só para quem gere. Notas §47. 289 testes.
 - 🧰 **Cronómetro: filtro por projeto** — a pedido: o campo de projeto da barra de cima era o do registo a começar, não um filtro, e confundia. Passa a dizer «Escolher projeto…», e ao lado da semana entra um filtro a sério («Todos os projetos», «Sem projeto» ou um projeto), com o total do filtro. Notas §46. 287 testes.
 
 ## 2026-09-24

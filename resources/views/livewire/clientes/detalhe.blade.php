@@ -102,7 +102,7 @@
                                             <td>
                                                 <div class="flex items-center gap-2.5">
                                                     <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {{ $p->cor }}" aria-hidden="true"></span>
-                                                    <span class="truncate font-medium {{ $p->estaArquivado() ? 'text-texto-medio' : 'text-texto-forte' }}">{{ $p->nome }}</span>
+                                                    <a href="{{ route('projetos.ver', $p) }}" wire:navigate class="truncate font-medium hover:underline {{ $p->estaArquivado() ? 'text-texto-medio' : 'text-texto-forte' }}">{{ $p->nome }}</a>
                                                     @if ($p->estaArquivado())
                                                         <span class="etiqueta bg-slate-100 text-texto-medio">Arquivado</span>
                                                     @endif

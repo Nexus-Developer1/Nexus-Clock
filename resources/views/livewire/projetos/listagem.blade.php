@@ -126,7 +126,7 @@
                                                     <input type="checkbox" wire:model.live="selecionados" value="{{ $p->id }}" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500" aria-label="Selecionar {{ $p->nome }}">
                                                 @endif
                                                 <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {{ $p->cor }}" aria-hidden="true"></span>
-                                                <span class="truncate font-medium {{ $p->estaArquivado() ? 'text-texto-medio' : 'text-texto-forte' }}">{{ $p->nome }}</span>
+                                                <a href="{{ route('projetos.ver', $p) }}" wire:navigate class="truncate font-medium hover:underline {{ $p->estaArquivado() ? 'text-texto-medio' : 'text-texto-forte' }}">{{ $p->nome }}</a>
                                                 @if ($p->estaArquivado())
                                                     <span class="etiqueta bg-slate-100 text-texto-medio">Arquivado</span>
                                                 @endif
