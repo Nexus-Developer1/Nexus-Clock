@@ -200,7 +200,9 @@
                             <tbody>
                                 @foreach ($membros as $m)
                                     @php $gruposDoMembro = $m->grupos->pluck('id')->all(); @endphp
-                                    <tr wire:key="membro-{{ $m->id }}" class="{{ in_array((string) $m->id, $selecionados, true) ? '!bg-verde-50/60' : '' }}">
+                                    {{-- A linha toda abre o membro (a pedido), a não ser que o clique seja num link, botão, campo ou menu —
+                                         a linha tem muitos controlos para quem gere, e os que vierem ficam protegidos na mesma. --}}
+                                    <tr wire:key="membro-{{ $m->id }}" @click="$event.target.closest('a, button, input, select, textarea, label, [role=menu], [role=dialog]') || Livewire.navigate(@js(route('equipa.ver', $m)))" class="cursor-pointer {{ in_array((string) $m->id, $selecionados, true) ? '!bg-verde-50/60' : '' }}">
                                         <td>
                                             <div class="flex items-center gap-3">
                                                 @if ($podeGerir)
@@ -209,7 +211,7 @@
                                                 <x-avatar :nome="$m->nomeVisivel()" tom="claro" class="h-8 w-8 text-[10px]" />
                                                 <div class="min-w-0">
                                                     <div class="truncate font-medium text-texto-forte">
-                                                        {{ $m->nomeVisivel() }}@if ($m->utilizador_id === auth()->id())<span class="font-normal text-texto-fraco"> (você)</span>@endif
+                                                        <a href="{{ route('equipa.ver', $m) }}" wire:navigate class="hover:underline">{{ $m->nomeVisivel() }}</a>@if ($m->utilizador_id === auth()->id())<span class="font-normal text-texto-fraco"> (você)</span>@endif
                                                     </div>
                                                     <div class="max-w-[16rem] truncate text-xs text-texto-medio" title="{{ $m->emailVisivel() }}">{{ $m->emailVisivel() ?: '—' }}</div>
                                                 </div>

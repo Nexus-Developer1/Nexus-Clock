@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-25
 
+- 🧰 **Página de cada membro da equipa** — a pedido: em Equipa › Membros a linha toda abre a página do membro, com papel, grupos, dias e capacidade, horas desta semana (face à capacidade) e do mês, os projetos do mês com as horas de cada um e as atribuições em curso e futuras. Um projeto privado de que quem vê não é membro não aparece pelo nome («Outros projetos (privados)»); as taxas só aparecem a quem gere a equipa. Notas §48. 291 testes.
 - 🎨 **Clientes: a linha toda abre o cliente** — a pedido, como nos Projetos: não só o nome; a caixa de seleção, o lápis e o menu ⋯ continuam a fazer o que faziam. 289 testes.
 - 🎨 **Projetos: a linha toda abre o projeto** — a pedido: não só o nome; a caixa de seleção, a estrela e o menu ⋯ continuam a fazer o que faziam. 289 testes.
 - 🧰 **Página de cada projeto** — a pedido: o nome de cada projeto (na lista de Projetos e na página do cliente) abre a página dele, com cliente, horas registadas e faturáveis, progresso face à estimativa, despesas, a equipa (quem registou horas e quantas), os membros se for privado, e as atribuições em curso e futuras. Um projeto privado não abre a quem não é membro; taxa e valor em euros só para quem gere. Notas §47. 289 testes.
