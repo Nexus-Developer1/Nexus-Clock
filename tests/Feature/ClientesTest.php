@@ -144,7 +144,8 @@ class ClientesTest extends TestCase
         RegistoTempo::create(['tecnico_id' => $tecnico->id, 'cliente_id' => $infra->id, 'projeto_id' => $publico->id, 'inicio' => '2026-09-17 08:00:00+00']);
 
         // Na listagem o nome é um link para a página.
-        $this->actingAs($tecnico)->get(route('clientes'))->assertOk()->assertSee(route('clientes.ver', $cliente));
+        $this->actingAs($tecnico)->get(route('clientes'))->assertOk()->assertSee(route('clientes.ver', $cliente))
+            ->assertSee('@click="Livewire.navigate(', false);
 
         // O técnico não é membro do projeto privado: não o vê e as horas dele ficam de fora.
         $this->actingAs($tecnico)->get(route('clientes.ver', $cliente))->assertOk()

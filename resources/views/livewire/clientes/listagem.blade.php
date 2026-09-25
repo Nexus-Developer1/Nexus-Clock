@@ -89,14 +89,15 @@
                             </thead>
                             <tbody>
                                 @foreach ($clientes as $c)
-                                    <tr wire:key="cliente-{{ $c->id }}" class="{{ in_array((string) $c->id, $selecionados, true) ? '!bg-verde-50/60' : '' }}">
+                                    {{-- A linha toda abre o cliente (a pedido); a seleção, o lápis e o menu param o clique. --}}
+                                    <tr wire:key="cliente-{{ $c->id }}" @click="Livewire.navigate(@js(route('clientes.ver', $c)))" class="cursor-pointer {{ in_array((string) $c->id, $selecionados, true) ? '!bg-verde-50/60' : '' }}">
                                         <td>
                                             <div class="flex items-center gap-3">
                                                 @if ($podeGerir)
-                                                    <input type="checkbox" wire:model.live="selecionados" value="{{ $c->id }}" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500" aria-label="Selecionar {{ $c->nome }}">
+                                                    <input type="checkbox" wire:model.live="selecionados" value="{{ $c->id }}" @click.stop class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500" aria-label="Selecionar {{ $c->nome }}">
                                                 @endif
                                                 <div class="min-w-0">
-                                                    <a href="{{ route('clientes.ver', $c) }}" wire:navigate class="block truncate font-medium hover:underline {{ $c->estaArquivado() ? 'text-texto-medio' : 'text-texto-forte' }}">{{ $c->nome }}</a>
+                                                    <a href="{{ route('clientes.ver', $c) }}" wire:navigate @click.stop class="block truncate font-medium hover:underline {{ $c->estaArquivado() ? 'text-texto-medio' : 'text-texto-forte' }}">{{ $c->nome }}</a>
                                                     @if ($c->email)<div class="truncate text-xs text-texto-fraco">{{ $c->email }}</div>@endif
                                                 </div>
                                                 @if ($c->estaArquivado())
@@ -106,7 +107,7 @@
                                         </td>
                                         <td class="max-w-xs truncate text-texto-medio" title="{{ $c->morada }}">{{ $c->morada ? \Illuminate\Support\Str::of($c->morada)->replace("\n", ', ') : '—' }}</td>
                                         <td class="tabular-nums text-texto-forte">{{ $c->moeda }}</td>
-                                        <td>
+                                        <td @click.stop>
                                             @if ($podeGerir)
                                                 <div class="flex justify-end gap-1.5">
                                                     <button type="button" wire:click="editar({{ $c->id }})" class="botao-icone h-8 w-8" title="Alterar" aria-label="Alterar {{ $c->nome }}"><x-icone nome="lapis" /></button>
