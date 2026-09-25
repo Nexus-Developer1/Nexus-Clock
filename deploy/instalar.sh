@@ -77,6 +77,8 @@ PY
         fi
     done
     sed -i "s#^APP_URL=.*#APP_URL=$URL#; s#^PORTAL_URL=.*#PORTAL_URL=$PORTAL#; s#^APP_ENV=.*#APP_ENV=production#; s#^APP_DEBUG=.*#APP_DEBUG=false#" .env
+    # A cache é a base Redis 2, só do Suporte (vem do .env.example; a 1 é da Nexus Infra — notas §54).
+    grep -qE '^REDIS_CACHE_DB=2$' .env || { echo "Falta REDIS_CACHE_DB=2 no .env."; exit 1; }
     grep -qE '^APP_KEY=.+' .env || { echo "Falta a APP_KEY em $ORIG: sem ela a sessão da suite não é a mesma."; exit 1; }
 else
     passo ".env já existe — mantido"
