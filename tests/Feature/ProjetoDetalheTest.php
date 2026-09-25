@@ -60,7 +60,9 @@ class ProjetoDetalheTest extends TestCase
             'horas_dia_seg' => 3600, 'fins_de_semana' => false, 'nota' => 'Já acabou', 'criado_por' => $this->admin->id]);
 
         // Na lista, o nome é um link para a página.
-        $this->actingAs($this->ana)->get(route('projetos'))->assertOk()->assertSee(route('projetos.ver', $obra));
+        // Na lista, a linha toda abre a página (e o nome continua a ser um link).
+        $this->actingAs($this->ana)->get(route('projetos'))->assertOk()->assertSee(route('projetos.ver', $obra))
+            ->assertSee('@click="Livewire.navigate(', false);
 
         $this->actingAs($this->ana)->get(route('projetos.ver', $obra))->assertOk()
             ->assertSee('Manutenção UPS — Nexus Suporte', false)

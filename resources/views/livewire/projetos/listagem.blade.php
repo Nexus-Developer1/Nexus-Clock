@@ -119,14 +119,15 @@
                             </thead>
                             <tbody>
                                 @foreach ($projetos as $p)
-                                    <tr wire:key="projeto-{{ $p->id }}" class="{{ in_array((string) $p->id, $selecionados, true) ? '!bg-verde-50/60' : '' }}">
+                                    {{-- A linha toda abre o projeto (a pedido); a seleção, a estrela e o menu param o clique. --}}
+                                    <tr wire:key="projeto-{{ $p->id }}" @click="Livewire.navigate(@js(route('projetos.ver', $p)))" class="cursor-pointer {{ in_array((string) $p->id, $selecionados, true) ? '!bg-verde-50/60' : '' }}">
                                         <td>
                                             <div class="flex items-center gap-3">
                                                 @if ($podeGerir)
-                                                    <input type="checkbox" wire:model.live="selecionados" value="{{ $p->id }}" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500" aria-label="Selecionar {{ $p->nome }}">
+                                                    <input type="checkbox" wire:model.live="selecionados" value="{{ $p->id }}" @click.stop class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500" aria-label="Selecionar {{ $p->nome }}">
                                                 @endif
                                                 <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {{ $p->cor }}" aria-hidden="true"></span>
-                                                <a href="{{ route('projetos.ver', $p) }}" wire:navigate class="truncate font-medium hover:underline {{ $p->estaArquivado() ? 'text-texto-medio' : 'text-texto-forte' }}">{{ $p->nome }}</a>
+                                                <a href="{{ route('projetos.ver', $p) }}" wire:navigate @click.stop class="truncate font-medium hover:underline {{ $p->estaArquivado() ? 'text-texto-medio' : 'text-texto-forte' }}">{{ $p->nome }}</a>
                                                 @if ($p->estaArquivado())
                                                     <span class="etiqueta bg-slate-100 text-texto-medio">Arquivado</span>
                                                 @endif
@@ -155,7 +156,7 @@
                                                 {{ $p->publico ? 'Público' : 'Privado' }}
                                             </span>
                                         </td>
-                                        <td>
+                                        <td @click.stop>
                                             <div class="flex items-center justify-end gap-1.5">
                                                 <button type="button" wire:click="alternarFavorito({{ $p->id }})"
                                                     class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-fundo {{ $p->favorito ? 'text-amber-400' : 'text-texto-fraco hover:text-texto-medio' }}"
