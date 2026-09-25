@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Painel;
 
+use App\Models\ClienteTempo;
+use App\Models\ProjetoTempo;
 use App\Services\Tempos\PainelTempos;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
@@ -14,7 +16,8 @@ use Livewire\Component;
  * faturável, projeto e cliente com mais horas, horas por dia, distribuição e atividades mais registadas,
  * num período (semana ou mês, com anterior/seguinte), para as horas de quem está a ver ou da equipa
  * (quem vê os tempos de todos, que vê também a atividade da equipa). Barras, grupos e atividades
- * abrem o relatório Detalhado já filtrado.
+ * abrem o relatório Detalhado já filtrado. Os cartões do resumo também abrem: o tempo total e o faturável
+ * no Detalhado; o projeto e o cliente principais na página deles (notas §49).
  */
 #[Layout('components.layouts.app', ['ativo' => 'painel', 'titulo' => 'Painel'])]
 class Pagina extends Component
@@ -79,8 +82,17 @@ class Pagina extends Component
         // Período anterior, para a comparação do tempo total.
         $deAnterior = $this->tipo === 'mes' ? $de->subMonthNoOverflow() : $de->subWeek();
 
+        $dados = $servico->gerar($tecnicoId, $this->agrupar, $de, $ate, $this->top);
+
+        // Só se liga ao que quem vê pode abrir: um projeto privado de que não é membro, ou um
+        // projeto/cliente arquivado, ficam sem ligação (as páginas deles dariam 404).
+        $topProjeto = $dados['topProjeto']['id'] ?? null;
+        $topCliente = $dados['topCliente']['id'] ?? null;
+
         return view('livewire.painel.pagina', [
-            'dados' => $servico->gerar($tecnicoId, $this->agrupar, $de, $ate, $this->top),
+            'dados' => $dados,
+            'urlProjeto' => $topProjeto && ProjetoTempo::visiveisPara(auth()->user())->whereKey($topProjeto)->exists() ? route('projetos.ver', $topProjeto) : null,
+            'urlCliente' => $topCliente && ClienteTempo::whereKey($topCliente)->exists() ? route('clientes.ver', $topCliente) : null,
             'anterior' => $servico->totais($tecnicoId, $deAnterior, $this->fim($deAnterior))['total'],
             'equipa' => $equipa ? $servico->equipa($de, $ate) : [],
             'de' => $de,

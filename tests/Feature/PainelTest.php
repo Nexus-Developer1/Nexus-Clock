@@ -73,8 +73,8 @@ class PainelTest extends TestCase
         $dados = $this->gerar($this->ana);
 
         $this->assertSame(8100, $dados['total']);
-        $this->assertSame(['nome' => 'Obra H', 'segundos' => 5400], $dados['topProjeto']);
-        $this->assertSame(['nome' => 'Hospital da Luz', 'segundos' => 5400], $dados['topCliente']);
+        $this->assertSame(['id' => $this->obraH->id, 'nome' => 'Obra H', 'segundos' => 5400], $dados['topProjeto']);
+        $this->assertSame(['id' => $this->obraH->cliente_id, 'nome' => 'Hospital da Luz', 'segundos' => 5400], $dados['topCliente']);
         $this->assertCount(7, $dados['dias']);
         $this->assertSame([3600, 4500, 0, 0, 0, 0, 0], array_column($dados['dias'], 'total'));
         $this->assertSame([(string) $this->obraH->id => 1800, (string) $this->obraB->id => 2700, 'outros' => 0], $dados['dias'][1]['partes']);
@@ -99,7 +99,7 @@ class PainelTest extends TestCase
 
         $porCliente = $this->gerar($this->ana, 'cliente');
         $this->assertSame(['Hospital da Luz', 'Banco Atlântico', 'Sem cliente'], array_column($porCliente['grupos'], 'nome'));
-        $this->assertSame(['nome' => 'Hospital da Luz', 'segundos' => 3600], $porCliente['topCliente']);
+        $this->assertSame(['id' => $this->obraH->cliente_id, 'nome' => 'Hospital da Luz', 'segundos' => 3600], $porCliente['topCliente']);
 
         $porEtiqueta = collect($this->gerar($this->ana, 'etiqueta')['grupos'])->pluck('segundos', 'nome')->all();
         $this->assertSame(['urgente' => 5400, 'noturno' => 3600, 'Sem etiqueta' => 600], $porEtiqueta);
@@ -225,5 +225,26 @@ class PainelTest extends TestCase
         Livewire::actingAs($this->ana)->withQueryParams(['agrupar' => 'membro'])->test(Pagina::class)
             ->assertSet('agrupar', 'projeto')
             ->assertSee('▼ 1:00 vs. período anterior');
+    }
+
+    // Os cartões do resumo abrem a página correspondente (notas §49): o total e o faturável no
+    // Detalhado; o projeto e o cliente principais na página deles, se quem vê a puder abrir.
+    public function test_cartoes_do_resumo_abrem_a_pagina_correspondente(): void
+    {
+        $this->registo($this->ana, $this->hospital, '2026-09-14', 3600, ['projeto_id' => $this->obraH->id, 'faturavel' => true]);
+
+        Livewire::actingAs($this->ana)->test(Pagina::class)
+            ->assertSeeHtml('href="'.e(route('projetos.ver', $this->obraH)).'"')
+            ->assertSeeHtml('href="'.e(route('clientes.ver', $this->obraH->cliente_id)).'"')
+            ->assertSeeHtml('estado=faturavel')
+            ->assertSeeHtml('periodo=semana&amp;de=2026-09-14"');
+
+        // Projeto privado de que já não é membro, com o cliente arquivado: sem ligação.
+        $this->obraH->update(['publico' => false]);
+        ClienteTempo::whereKey($this->obraH->cliente_id)->delete();
+        Livewire::actingAs($this->ana)->test(Pagina::class)
+            ->assertSee('Obra H')
+            ->assertDontSeeHtml(route('projetos.ver', $this->obraH))
+            ->assertDontSeeHtml(route('clientes.ver', $this->obraH->cliente_id));
     }
 }

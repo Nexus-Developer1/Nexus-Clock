@@ -25,7 +25,7 @@ class PainelTempos
 
     /**
      * @param  int|null  $tecnicoId  null = equipa toda
-     * @return array{total: int, topProjeto: array{nome: string, segundos: int}|null, topCliente: array{nome: string, segundos: int}|null,
+     * @return array{total: int, topProjeto: array{id: int, nome: string, segundos: int}|null, topCliente: array{id: int, nome: string, segundos: int}|null,
      *     dias: list<array{dia: CarbonImmutable, total: int, partes: array<string, int>}>, grupos: list<array{chave: string, nome: string, segundos: int, percentagem: float}>,
      *     series: list<string>, atividades: list<array{descricao: string, detalhe: string, segundos: int}>, maximoDia: int}
      */
@@ -158,7 +158,7 @@ class PainelTempos
             return null;
         }
 
-        return ['nome' => (string) ($nomesDe([$linha->id])[$linha->id] ?? '—'), 'segundos' => (int) $linha->segundos];
+        return ['id' => (int) $linha->id, 'nome' => (string) ($nomesDe([$linha->id])[$linha->id] ?? '—'), 'segundos' => (int) $linha->segundos];
     }
 
     /** @return list<array{descricao: string, detalhe: string, segundos: int}> */

@@ -46,11 +46,13 @@
         default => ['texto' => '= período anterior', 'classe' => 'text-texto-fraco'],
     };
     $notaTopo = fn (?array $topo) => $topo ? Horas::hm($topo['segundos']).' · '.$pct(round($topo['segundos'] * 100 / max(1, $dados['total']), 1)) : '';
+    // Cada cartão abre a página correspondente: os registos do período no Detalhado (os faturáveis, no
+    // segundo) e a página do projeto e do cliente principais.
     $resumo = [
-        ['rotulo' => 'Tempo total', 'valor' => PainelTempos::hms($dados['total']), 'nota' => $notaTotal['texto'], 'classe' => $notaTotal['classe'], 'numero' => true],
-        ['rotulo' => 'Faturável', 'valor' => PainelTempos::hms($dados['faturavel']), 'nota' => $dados['total'] ? $pct(round($dados['faturavel'] * 100 / $dados['total'], 1)).' do total' : '', 'classe' => 'text-texto-fraco', 'numero' => true],
-        ['rotulo' => 'Projeto principal', 'valor' => $dados['topProjeto']['nome'] ?? '—', 'nota' => $notaTopo($dados['topProjeto']), 'classe' => 'text-texto-fraco', 'numero' => false],
-        ['rotulo' => 'Cliente principal', 'valor' => $dados['topCliente']['nome'] ?? '—', 'nota' => $notaTopo($dados['topCliente']), 'classe' => 'text-texto-fraco', 'numero' => false],
+        ['rotulo' => 'Tempo total', 'valor' => PainelTempos::hms($dados['total']), 'nota' => $notaTotal['texto'], 'classe' => $notaTotal['classe'], 'numero' => true, 'url' => $ligacao()],
+        ['rotulo' => 'Faturável', 'valor' => PainelTempos::hms($dados['faturavel']), 'nota' => $dados['total'] ? $pct(round($dados['faturavel'] * 100 / $dados['total'], 1)).' do total' : '', 'classe' => 'text-texto-fraco', 'numero' => true, 'url' => $ligacao(['estado' => 'faturavel'])],
+        ['rotulo' => 'Projeto principal', 'valor' => $dados['topProjeto']['nome'] ?? '—', 'nota' => $notaTopo($dados['topProjeto']), 'classe' => 'text-texto-fraco', 'numero' => false, 'url' => $urlProjeto],
+        ['rotulo' => 'Cliente principal', 'valor' => $dados['topCliente']['nome'] ?? '—', 'nota' => $notaTopo($dados['topCliente']), 'classe' => 'text-texto-fraco', 'numero' => false, 'url' => $urlCliente],
     ];
 @endphp
 
@@ -93,11 +95,16 @@
             {{-- Resumo --}}
             <div class="mt-6 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
                 @foreach ($resumo as $r)
-                    <div class="cartao min-w-0 px-4 py-4 sm:px-6 sm:py-5">
-                        <div class="text-xs font-medium text-texto-medio">{{ $r['rotulo'] }}</div>
-                        <div class="mt-2 truncate text-lg font-semibold sm:text-2xl text-texto-forte {{ $r['numero'] ? 'tabular-nums' : '' }}" title="{{ $r['valor'] }}">{{ $r['valor'] }}</div>
+                    @php $etiqueta = $r['url'] ? 'a' : 'div'; @endphp
+                    <{{ $etiqueta }} @if ($r['url']) href="{{ $r['url'] }}" wire:navigate @endif
+                        class="cartao block min-w-0 px-4 py-4 sm:px-6 sm:py-5 {{ $r['url'] ? 'group transition hover:border-verde-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verde-500' : '' }}">
+                        <div class="flex items-center justify-between gap-2 text-xs font-medium text-texto-medio">
+                            {{ $r['rotulo'] }}
+                            @if ($r['url'])<x-icone nome="seta-dir" traco="2" class="h-3.5 w-3.5 text-texto-fraco opacity-0 transition group-hover:opacity-100" />@endif
+                        </div>
+                        <div class="mt-2 truncate text-lg font-semibold sm:text-2xl text-texto-forte {{ $r['numero'] ? 'tabular-nums' : '' }} {{ $r['url'] ? 'group-hover:text-verde-700' : '' }}" title="{{ $r['valor'] }}">{{ $r['valor'] }}</div>
                         <div class="mt-1 h-4 truncate text-xs tabular-nums {{ $r['classe'] }}">{{ $r['nota'] }}</div>
-                    </div>
+                    </{{ $etiqueta }}>
                 @endforeach
             </div>
 

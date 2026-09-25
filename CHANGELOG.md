@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-25
 
+- 🎨 **Painel: os cartões do resumo abrem a página correspondente** — a pedido: o tempo total abre os registos do período no Detalhado, o faturável os registos faturáveis, o projeto principal a página do projeto e o cliente principal a do cliente. Se quem vê não puder abrir o projeto (privado) ou este estiver arquivado, o cartão fica sem ligação. Notas §49. 292 testes.
 - 🧰 **Página de cada membro da equipa** — a pedido: em Equipa › Membros a linha toda abre a página do membro, com papel, grupos, dias e capacidade, horas desta semana (face à capacidade) e do mês, os projetos do mês com as horas de cada um e as atribuições em curso e futuras. Um projeto privado de que quem vê não é membro não aparece pelo nome («Outros projetos (privados)»); as taxas só aparecem a quem gere a equipa. Notas §48. 291 testes.
 - 🎨 **Clientes: a linha toda abre o cliente** — a pedido, como nos Projetos: não só o nome; a caixa de seleção, o lápis e o menu ⋯ continuam a fazer o que faziam. 289 testes.
 - 🎨 **Projetos: a linha toda abre o projeto** — a pedido: não só o nome; a caixa de seleção, a estrela e o menu ⋯ continuam a fazer o que faziam. 289 testes.
