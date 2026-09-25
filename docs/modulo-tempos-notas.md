@@ -839,3 +839,9 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - Um registo não tem página própria: o **resto da linha abre o «Alterar»** desse registo (o mesmo do menu ⋯), só em linhas que a pessoa pode alterar — nas faturadas ou fechadas (cadeado) a linha não reage. A caixa de seleção, os links e o menu continuam a fazer o que faziam (a mesma guarda `closest(...)` da Equipa, §48).
 - O relatório partilhado por link tem vista própria e não ganhou ligações: quem o recebe pode não ter sessão na suite.
 - **Logo a seguir, a pedido: sai o «Alterar» do menu ⋯**, que ficou repetido com o clique na linha. O menu fica com Duplicar e Apagar (ou Anular). Para quem usa o teclado — a linha só responde ao rato — a descrição passa a ser um botão que abre o mesmo formulário (só nas linhas que se podem alterar).
+
+## 51. Grupos: membros e linha clicáveis (2026-09-25, a pedido)
+
+- Pedido: «deixa clicável aqui também», em Equipa › Grupos.
+- Cada **membro** do grupo (a pastilha com as iniciais) abre a página dele (§48), para toda a gente — a Equipa é visível a todos.
+- Não há página de grupo (o grupo é só um nome e uma lista de pessoas): **a quem gere, o resto da linha abre o «Alterar» do grupo**, como no Detalhado (§50). Para um técnico, a linha não faz nada. O lápis e o caixote do lixo continuam lá; o lápis passou a ser redundante com a linha, mas fica até o utilizador pedir para o tirar (no Detalhado pediu).

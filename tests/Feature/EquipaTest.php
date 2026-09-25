@@ -330,6 +330,15 @@ class EquipaTest extends TestCase
             ->assertSee('Ana Martins');
 
         $this->assertSame(['Ana Martins'], GrupoEquipa::sole()->membros->map->nomeVisivel()->all());
+
+        // Notas §51: cada membro abre a página dele; a quem gere, a linha abre o «Alterar» do grupo.
+        $grupo = GrupoEquipa::sole();
+        $this->actingAs($this->admin)->get(route('equipa.grupos'))->assertOk()
+            ->assertSee(route('equipa.ver', $this->membroDe($this->ana)))
+            ->assertSee('$wire.abrir('.$grupo->id.')', false);
+        $this->actingAs($this->ana)->get(route('equipa.grupos'))->assertOk()
+            ->assertSee(route('equipa.ver', $this->membroDe($this->ana)))
+            ->assertDontSee('$wire.abrir(', false);
     }
 
     public function test_pagina_lembretes_cria_e_desliga(): void

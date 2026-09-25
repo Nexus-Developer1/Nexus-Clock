@@ -50,7 +50,8 @@
                             </thead>
                             <tbody>
                                 @foreach ($grupos as $g)
-                                    <tr wire:key="grupo-{{ $g->id }}">
+                                    {{-- Cada membro abre a página dele; a quem gere, o resto da linha abre o «Alterar» do grupo (notas §51). --}}
+                                    <tr wire:key="grupo-{{ $g->id }}" @if ($podeGerir) class="cursor-pointer" @click="$event.target.closest('a, button, input, select, textarea, label, [role=menu], [role=dialog]') || $wire.abrir({{ $g->id }})" @endif>
                                         <td class="font-medium text-texto-forte">{{ $g->nome }}</td>
                                         <td>
                                             @if ($g->membros->isEmpty())
@@ -58,9 +59,9 @@
                                             @else
                                                 <div class="flex flex-wrap items-center gap-1.5">
                                                     @foreach ($g->membros->sortBy(fn ($m) => mb_strtolower($m->nomeVisivel()))->take(8) as $m)
-                                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-fundo py-0.5 pl-0.5 pr-2.5 text-xs text-texto-forte">
+                                                        <a href="{{ route('equipa.ver', $m) }}" wire:navigate class="inline-flex items-center gap-1.5 rounded-full bg-fundo py-0.5 pl-0.5 pr-2.5 text-xs text-texto-forte hover:bg-verde-50 hover:text-verde-700">
                                                             <x-avatar :nome="$m->nomeVisivel()" tom="claro" class="h-5 w-5 text-[8px]" /> {{ $m->nomeVisivel() }}
-                                                        </span>
+                                                        </a>
                                                     @endforeach
                                                     @if ($g->membros->count() > 8)
                                                         <span class="text-xs text-texto-medio">e mais {{ $g->membros->count() - 8 }}</span>
