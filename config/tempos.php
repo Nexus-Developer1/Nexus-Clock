@@ -32,9 +32,6 @@ return [
     // Teto do ZIP dos recibos (página Despesas), em MB: acima disto pede-se um período mais curto.
     'zip_recibos_max_mb' => (int) env('TEMPOS_ZIP_RECIBOS_MAX_MB', 500),
 
-    // Duração máxima de um registo (um dia inteiro). Igual à constraint da tabela.
-    'duracao_maxima_seg' => 86400,
-
     // As tabelas da Nexus Infra (clientes, contratos, intervenções…) são só de leitura aqui. Só os
     // testes e o seeder da base de desenvolvimento ligam isto, para criarem dados de exemplo.
     // NUNCA ligar em produção.

@@ -88,16 +88,6 @@ class RegistoTempo extends Model
         return $this->belongsTo(Intervencao::class);
     }
 
-    public function criadoPor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'criado_por');
-    }
-
-    public function alteradoPor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'alterado_por');
-    }
-
     // --- Datas no fuso da empresa ---
 
     /** Instante (UTC) da meia-noite local de um dia — o `inicio` de um registo da timesheet. */

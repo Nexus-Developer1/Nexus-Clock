@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-28
+
+- 🧹 **Limpeza de código morto** — a pedido: saem uma vista, uma chave de configuração, três ícones, quatro classes de CSS, dois métodos e sete relações que nada usava (cerca de 90 linhas). Nada muda para quem usa. O código guardado de propósito (folha semanal, faturação, tarifas, relatórios da especificação) fica para decidir. Notas §55. 313 testes.
+
 ## 2026-09-25
 
 - 🛠️ **Cache do Suporte numa base Redis só dele** — `REDIS_CACHE_DB=2` em produção: os deploys do Suporte deixam de poder apagar a cache da Nexus Infra (base 1). As sessões não mudam (base 0). Combinado com a sessão da Nexus Infra. Notas §54.

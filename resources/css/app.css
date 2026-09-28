@@ -156,15 +156,7 @@
         @apply bg-sidebar-ativo text-verde-300 hover:bg-sidebar-ativo hover:text-verde-300;
     }
 
-    /* ---- Página inicial: cartões grandes e pílulas ---- */
-    .painel-cartao {
-        @apply rounded-2xl border border-borda bg-superficie shadow-cartao;
-    }
-
-    .pilula {
-        @apply inline-flex items-center gap-2 rounded-full border border-borda bg-white px-3 py-1.5 text-xs font-medium text-texto-medio;
-    }
-
+    /* ---- Botões em pílula (ações de seleção nas listas) ---- */
     .pilula-botao {
         @apply inline-flex items-center gap-2 rounded-full border border-borda bg-white px-4 py-2 text-sm font-medium text-texto-forte transition hover:border-verde-300 hover:bg-verde-50;
     }
@@ -214,18 +206,6 @@
 
     .segmento-ativo {
         @apply bg-verde-900 text-white hover:text-white;
-    }
-
-    /* ---- Folha de horas: célula de duração ---- */
-    .celula-horas {
-        @apply h-10 w-full rounded-lg border border-borda bg-fundo px-1 text-center text-sm tabular-nums
-            text-texto-forte outline-none transition placeholder:text-texto-fraco
-            hover:border-verde-300 hover:bg-white focus:border-verde-500 focus:bg-white focus:ring-2 focus:ring-verde-100
-            disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:hover:bg-transparent;
-    }
-
-    .celula-horas-preenchida {
-        @apply border-verde-200 bg-verde-50 font-semibold text-verde-800;
     }
 }
 

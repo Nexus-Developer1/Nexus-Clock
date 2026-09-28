@@ -43,21 +43,6 @@ class SemanaTempo extends Model
         return $this->belongsTo(User::class, 'tecnico_id');
     }
 
-    public function reabertaPor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'reaberta_por');
-    }
-
-    public function aprovadaPor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'aprovada_por');
-    }
-
-    public function rejeitadaPor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'rejeitada_por');
-    }
-
     /** Segunda-feira da semana de um dia (data local). */
     public static function segundaDe(CarbonInterface|string $dia): CarbonImmutable
     {

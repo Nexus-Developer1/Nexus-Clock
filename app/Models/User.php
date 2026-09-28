@@ -89,13 +89,6 @@ class User extends Authenticatable
         });
     }
 
-    /** Esquece o acesso lido (útil quando o acesso muda a meio do mesmo pedido, ex.: testes). */
-    public function esquecerAcesso(): void
-    {
-        $this->acessoLido = false;
-        $this->acessoEmMemoria = null;
-    }
-
     public function temAcesso(): bool
     {
         return $this->acessoAEstaAplicacao() !== null;

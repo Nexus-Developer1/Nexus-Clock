@@ -43,12 +43,6 @@ enum EstadoSemanaTempo: string
         return $this === self::Submetida || $this === self::Aprovada;
     }
 
-    /** @return list<string> valores dos estados entregues, para consultas */
-    public static function valoresEntregues(): array
-    {
-        return [self::Submetida->value, self::Aprovada->value];
-    }
-
     // Entregue fica fechada ao técnico; rascunho, rejeitada e reaberta são editáveis.
     public function bloqueiaTecnico(): bool
     {

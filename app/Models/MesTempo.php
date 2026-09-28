@@ -5,7 +5,6 @@ namespace App\Models;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 // Estado de um mês para a faturação (aberto / fechado). Sem linha = aberto.
 // Perguntas "este dia está num mês fechado?": Services\Tempos\Faturacao\MesesFechados.
@@ -30,16 +29,6 @@ class MesTempo extends Model
             'fechado_em' => 'immutable_datetime',
             'reaberto_em' => 'immutable_datetime',
         ];
-    }
-
-    public function fechadoPor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'fechado_por');
-    }
-
-    public function reabertoPor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'reaberto_por');
     }
 
     public function estaFechado(): bool
