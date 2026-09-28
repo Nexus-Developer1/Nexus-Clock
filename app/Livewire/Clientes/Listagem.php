@@ -120,7 +120,7 @@ class Listagem extends Component
             'clientes' => ClienteTempo::query()
                 ->when($this->mostrar === 'ativos', fn ($q) => $q->ativos())
                 ->when($this->mostrar === 'arquivados', fn ($q) => $q->arquivados())
-                ->when($termo !== '', fn ($q) => $q->where('nome', 'ilike', '%'.$termo.'%'))
+                ->when($termo !== '', fn ($q) => $q->where('nome', 'ilike', '%'.addcslashes($termo, '%_\\').'%'))
                 ->orderByRaw('lower(nome)')
                 ->get(),
             'podeGerir' => Gate::allows('tempos-gerir-clientes'),

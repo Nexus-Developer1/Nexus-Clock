@@ -3,6 +3,7 @@
 use App\Jobs\AtualizarConsumoContratos;
 use App\Jobs\EnviarLembretesEquipa;
 use App\Jobs\EnviarRelatoriosPartilhados;
+use App\Services\Tempos\RelatorioDespesas;
 use Illuminate\Support\Facades\Schedule;
 
 // Consumo dos contratos (view materializada contrato_consumo_periodo) refrescado todas as noites
@@ -27,4 +28,11 @@ Schedule::job(new EnviarRelatoriosPartilhados)
     ->name('tempos-relatorios-partilhados')
     ->timezone('Europe/Lisbon')
     ->hourly()
+    ->onOneServer();
+
+// ZIPs dos recibos (página Despesas) pedidos e nunca descarregados: o link vale 10 minutos, depois
+// disso o ficheiro já não serve a ninguém (notas §56).
+Schedule::call(fn () => RelatorioDespesas::limparZips())
+    ->name('tempos-limpar-zips')
+    ->everyFiveMinutes()
     ->onOneServer();

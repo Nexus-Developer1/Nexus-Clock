@@ -36,7 +36,9 @@ class GestorPartilhados
         $this->preencher($relatorio, $dados + ['nome' => '']);
         $relatorio->save();
 
-        Auditor::registar('tempo_relatorio_partilhado', $relatorio, ['nome' => $relatorio->nome, 'publico' => $relatorio->publico]);
+        // Com os destinatários: para onde vão os envios agendados fica registado (notas §56).
+        Auditor::registar('tempo_relatorio_partilhado', $relatorio, ['nome' => $relatorio->nome, 'publico' => $relatorio->publico]
+            + ($relatorio->email_ativo ? ['destinatarios' => $relatorio->email_destinatarios, 'frequencia' => $relatorio->email_frequencia] : []));
 
         return $relatorio;
     }
@@ -54,7 +56,8 @@ class GestorPartilhados
         $relatorio->save();
 
         if ($campos !== []) {
-            Auditor::registar('tempo_relatorio_partilhado_alterado', $relatorio, ['nome' => $relatorio->nome, 'campos' => $campos]);
+            Auditor::registar('tempo_relatorio_partilhado_alterado', $relatorio, ['nome' => $relatorio->nome, 'campos' => $campos]
+                + (array_intersect($campos, ['email_ativo', 'email_destinatarios', 'email_frequencia']) !== [] ? ['email_ativo' => $relatorio->email_ativo, 'destinatarios' => $relatorio->email_destinatarios] : []));
         }
 
         return $relatorio;

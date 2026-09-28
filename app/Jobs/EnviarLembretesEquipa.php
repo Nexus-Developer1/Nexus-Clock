@@ -23,6 +23,9 @@ class EnviarLembretesEquipa implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** O cadeado de «um de cada vez» expira: um trabalho perdido na fila não prende os seguintes. */
+    public int $uniqueFor = 3300;
+
     public function handle(): void
     {
         $agora = CarbonImmutable::now(config('tempos.fuso'));
@@ -30,7 +33,8 @@ class EnviarLembretesEquipa implements ShouldBeUnique, ShouldQueue
 
         $devidos = LembreteEquipa::query()
             ->where('ativo', true)
-            ->where('hora', $agora->hour)
+            // Esta hora ou a anterior: se a fila atrasou, o lembrete sai na mesma (uma vez por dia).
+            ->whereIn('hora', [$agora->hour, $agora->hour - 1])
             ->whereRaw('? = any(dias)', [$agora->isoWeekday()])
             ->where(fn ($q) => $q->whereNull('enviado_em')->orWhere('enviado_em', '<', $hoje))
             ->get();

@@ -92,7 +92,9 @@ class RelatoriosPartilhadosTest extends TestCase
 
         $this->assertSame(40, strlen($r->token));
         $this->assertSame(['Horas da Ana', true, true, false, ['a@x.pt', 'b@x.pt'], 9], [$r->nome, $r->publico, $r->sempre_atual, $r->bloquear_datas, $r->email_destinatarios, $r->email_hora]);
-        $this->assertSame(['nome' => 'Horas da Ana', 'publico' => true], Auditoria::where('acao', 'tempo_relatorio_partilhado')->sole()->detalhe);
+        // Com os destinatários dos envios agendados (notas §56).
+        $this->assertEquals(['nome' => 'Horas da Ana', 'publico' => true, 'destinatarios' => ['a@x.pt', 'b@x.pt'], 'frequencia' => $r->email_frequencia],
+            Auditoria::where('acao', 'tempo_relatorio_partilhado')->sole()->detalhe);
 
         $this->assertSame(['nome' => 'O nome tem de ter entre 2 e 250 caracteres.'], $this->erros(fn () => $this->partilhar($this->ana, ['nome' => 'x'])));
         $this->assertSame(['email_destinatarios' => 'Indique pelo menos um email.'], $this->erros(fn () => $this->partilhar($this->ana, ['email_ativo' => true, 'email_destinatarios' => ''])));

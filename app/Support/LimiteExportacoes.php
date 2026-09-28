@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\RateLimiter;
  * Limite de exportações (CSV, PDF, ZIP de recibos) por pessoa — ou por endereço, num link partilhado
  * sem sessão. Cada uma ocupa um processo do PHP a gerar o ficheiro; sem limite, meia dúzia de cliques
  * seguidos (ou um script) enchiam o servidor partilhado (notas §52). Quem passa leva 429.
+ *
+ * Verifica-se ANTES do método `exportar` de qualquer componente (gancho no AppServiceProvider): antes
+ * estava no Csv/Pdf, e o 429 só saía depois de a consulta pesada ter corrido (notas §56).
  */
 class LimiteExportacoes
 {

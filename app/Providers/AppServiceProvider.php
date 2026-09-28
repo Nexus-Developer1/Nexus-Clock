@@ -8,6 +8,7 @@ use App\Mail\Transport\GraphTransport;
 use App\Models\User;
 use App\Services\Tempos\Faturacao\MesesFechados;
 use App\Services\Tempos\ResolvedorTarifa;
+use App\Support\LimiteExportacoes;
 use App\Support\LivewireSubpasta;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
+use function Livewire\before;
 use function Livewire\on;
 
 class AppServiceProvider extends ServiceProvider
@@ -92,6 +94,13 @@ class AppServiceProvider extends ServiceProvider
         // venha o pedido por onde vier (o middleware persistente só se aplica quando o caminho de origem
         // da página é uma rota desta aplicação — notas §52). O relatório partilhado por link é a exceção:
         // tem as regras dele (§40).
+        // Limite de exportações, antes de o `exportar` de qualquer página ir buscar os dados (notas §56).
+        before('call', function ($componente, $metodo) {
+            if ($metodo === 'exportar') {
+                LimiteExportacoes::verificar();
+            }
+        });
+
         on('hydrate', function ($componente) {
             if (! $componente instanceof Partilhado && ! auth()->user()?->temAcesso()) {
                 abort(403);

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -46,6 +47,9 @@ class Despesas extends Component
     public string $ordem = '-data';
 
     // Formulário (null = fechado, 0 = nova).
+    // Só nova()/editar() o abrem: mudado pelo browser, abria o formulário de qualquer despesa sem passar
+    // pelo podeVer (hoje todos veem todas, §41; deixava de ser assim no dia em que isso fechasse — §56).
+    #[Locked]
     public ?int $editarId = null;
 
     /** @var array{utilizador_id: string, data: string, projeto_id: string, categoria_id: string, valor: string, faturavel: bool, nota: string} */
@@ -255,13 +259,9 @@ class Despesas extends Component
         [$de, $ate] = $this->periodo();
         $this->erro = null;
 
-        // ZIPs pedidos e nunca descarregados não ficam: os com mais de uma hora vão fora.
+        // ZIPs pedidos e nunca descarregados não ficam (também de 5 em 5 minutos, pelo scheduler).
+        RelatorioDespesas::limparZips();
         $disco = Storage::disk(DespesaTempo::DISCO);
-        foreach ($disco->files('zips') as $antigo) {
-            if ($disco->lastModified($antigo) < now()->subHour()->getTimestamp()) {
-                $disco->delete($antigo);
-            }
-        }
         $disco->makeDirectory('zips');
         $ficheiro = 'recibos-'.auth()->id().'-'.Str::random(32);
 

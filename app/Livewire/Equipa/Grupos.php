@@ -138,7 +138,7 @@ class Grupos extends Component
         return view('livewire.equipa.grupos', [
             'grupos' => GrupoEquipa::query()
                 ->with(['membros' => fn ($q) => $q->with('utilizador:id,nome')])
-                ->when($termo !== '', fn ($q) => $q->where('nome', 'ilike', '%'.$termo.'%'))
+                ->when($termo !== '', fn ($q) => $q->where('nome', 'ilike', '%'.addcslashes($termo, '%_\\').'%'))
                 ->orderByRaw('lower(nome)')
                 ->get(),
             'podeGerir' => Gate::allows('tempos-gerir-equipa'),

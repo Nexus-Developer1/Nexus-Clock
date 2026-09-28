@@ -35,6 +35,13 @@ use Illuminate\Validation\ValidationException;
  */
 class GravadorRegistos
 {
+    /**
+     * Campos que a auditoria guarda, antes e depois. Só se audita o que é sensível: horas de outra pessoa
+     * (um admin a mexer nas de um técnico) ou de um registo fechado — as do próprio, no dia a dia, não
+     * enchiam a tabela partilhada da auditoria de ruído (notas §56).
+     */
+    private const CAMPOS_AUDITADOS = ['tecnico_id', 'inicio', 'fim', 'duracao_seg', 'projeto_id', 'faturavel', 'descricao', 'etiquetas'];
+
     /** @param array<string, mixed> $dados */
     public function criar(User $autor, array $dados): RegistoTempo
     {
@@ -48,12 +55,20 @@ class GravadorRegistos
         $registo->alterado_por = $autor->id;
         $this->gravar($registo);
 
+        if ((int) $registo->tecnico_id !== $autor->id || $registo->fechado_em !== null) {
+            Auditor::registar('tempo_registo_criado', $registo, ['tecnico_id' => $registo->tecnico_id, 'depois' => $this->retrato($registo)]);
+        }
+
         return $registo;
     }
 
     /** @param array<string, mixed> $dados */
     public function atualizar(User $autor, RegistoTempo $registo, array $dados): RegistoTempo
     {
+        $donoAntes = (int) $registo->getOriginal('tecnico_id');
+        $eraFechado = $registo->getOriginal('fechado_em') !== null;
+        $antes = $this->retrato($registo, original: true);
+
         $this->preencher($registo, $dados);
 
         Gate::forUser($autor)->authorize('update', $registo);
@@ -61,6 +76,12 @@ class GravadorRegistos
 
         $registo->alterado_por = $autor->id;
         $this->gravar($registo);
+
+        $depois = $this->retrato($registo);
+        $sensivel = $donoAntes !== $autor->id || (int) $registo->tecnico_id !== $autor->id || $eraFechado || $registo->fechado_em !== null;
+        if ($sensivel && $antes !== $depois) {
+            Auditor::registar('tempo_registo_alterado', $registo, ['tecnico_id' => $registo->tecnico_id, 'antes' => $antes, 'depois' => $depois]);
+        }
 
         return $registo;
     }
@@ -72,6 +93,22 @@ class GravadorRegistos
         $registo->alterado_por = $autor->id;
         $registo->saveQuietly();
         $registo->delete();
+
+        if ((int) $registo->tecnico_id !== $autor->id || $registo->fechado_em !== null) {
+            Auditor::registar('tempo_registo_apagado', $registo, ['tecnico_id' => $registo->tecnico_id, 'antes' => $this->retrato($registo)]);
+        }
+    }
+
+    /** @return array<string, mixed> os campos auditados, como estão (ou como estavam, com $original) */
+    private function retrato(RegistoTempo $registo, bool $original = false): array
+    {
+        $valores = [];
+        foreach (self::CAMPOS_AUDITADOS as $campo) {
+            $valor = $original ? $registo->getOriginal($campo) : $registo->getAttribute($campo);
+            $valores[$campo] = $valor instanceof \DateTimeInterface ? $valor->format(DATE_ATOM) : $valor;
+        }
+
+        return $valores;
     }
 
     /**
@@ -188,7 +225,8 @@ class GravadorRegistos
         // Projeto: tem de existir, quem grava tem de o poder ver (um privado só para os membros — notas §42)
         // e, ao escolhê-lo, estar ativo. Registos antigos continuam editáveis sem mudar de projeto. Um
         // privado que não se vê dá a mesma mensagem de um que não existe: não revela o nome a quem tenta ids.
-        if ($registo->projeto_id && $registo->isDirty('projeto_id')) {
+        // (0 também: «sem projeto» chega como null, e um 0 rebentava na chave estrangeira — notas §56.)
+        if ($registo->projeto_id !== null && $registo->isDirty('projeto_id')) {
             $projeto = ProjetoTempo::find($registo->projeto_id);
             if (! $projeto || ! ProjetoTempo::visiveisPara($autor)->whereKey($projeto->id)->exists()) {
                 $erros['projeto_id'] = 'O projeto não existe.';

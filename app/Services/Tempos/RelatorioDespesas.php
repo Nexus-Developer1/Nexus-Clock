@@ -71,6 +71,25 @@ class RelatorioDespesas
     }
 
     /**
+     * Apaga os ZIPs dos recibos com mais de 10 minutos: o link assinado para os descarregar já expirou
+     * (notas §56). Corre de 5 em 5 minutos (routes/console.php) e sempre que se pede um ZIP.
+     */
+    public static function limparZips(): void
+    {
+        $disco = Storage::disk(DespesaTempo::DISCO);
+        $limite = now()->subMinutes(10)->getTimestamp();
+        foreach ($disco->files('zips') as $ficheiro) {
+            try {
+                if ($disco->lastModified($ficheiro) < $limite) {
+                    $disco->delete($ficheiro);
+                }
+            } catch (\Throwable) {
+                // Descarregado (e apagado) entretanto por outro pedido: nada a fazer.
+            }
+        }
+    }
+
+    /**
      * Um ZIP com os recibos das despesas (nomes: data, pessoa, valor e nome original), em `$destino` (ou
      * num ficheiro temporário). Null se não houver. Os recibos entram pelo caminho no disco, não pelo
      * conteúdo (não ficam todos em memória), e o total tem teto: config('tempos.zip_recibos_max_mb').

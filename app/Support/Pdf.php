@@ -20,8 +20,6 @@ final class Pdf
      */
     public static function resposta(string $ficheiro, string $titulo, string $periodo, array $cabecalho, iterable $linhas): StreamedResponse
     {
-        LimiteExportacoes::verificar();
-
         $linhas = collect($linhas)->values();
 
         $pdf = DomPdf::loadView('pdf.relatorio', [

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\RelatorioPartilhado;
 use App\Notifications\RelatorioPartilhadoEmail;
+use App\Services\Auditor;
 use App\Services\Tempos\ResumoTempos;
 use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
@@ -22,6 +23,9 @@ class EnviarRelatoriosPartilhados implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** O cadeado de «um de cada vez» expira: um trabalho perdido na fila não prende os seguintes. */
+    public int $uniqueFor = 3300;
+
     public function handle(ResumoTempos $resumo): void
     {
         $agora = CarbonImmutable::now(config('tempos.fuso'));
@@ -30,7 +34,8 @@ class EnviarRelatoriosPartilhados implements ShouldBeUnique, ShouldQueue
         $devidos = RelatorioPartilhado::query()
             ->with('autor')
             ->where('email_ativo', true)
-            ->where('email_hora', $agora->hour)
+            // Esta hora ou a anterior: se a fila atrasou, o envio sai na mesma (uma vez por dia).
+            ->whereIn('email_hora', [$agora->hour, $agora->hour - 1])
             ->where(fn ($q) => $q->whereNull('email_enviado_em')->orWhere('email_enviado_em', '<', $hoje->utc()))
             ->get()
             ->filter(fn (RelatorioPartilhado $r) => match ($r->email_frequencia) {
@@ -80,6 +85,7 @@ class EnviarRelatoriosPartilhados implements ShouldBeUnique, ShouldQueue
             ));
 
             $r->forceFill(['email_enviado_em' => now()])->save();
+            Auditor::registar('tempo_relatorio_partilhado_enviado', $r, ['nome' => $r->nome, 'destinatarios' => $r->email_destinatarios]);
             Log::info('Relatório partilhado enviado por email.', ['relatorio' => $r->id, 'destinatarios' => count($r->email_destinatarios)]);
         }
     }

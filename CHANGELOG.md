@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-28
 
+- 🔒 **Terceira revisão de segurança, lote C (o que não se vê)** — horas mexidas por outra pessoa ou em registos fechados passam a ficar na auditoria, com o antes e o depois; os envios agendados registam para quem vão; o limite de exportações trava antes da consulta; o formulário das despesas já não abre mexendo no campo; os ZIPs esquecidos apagam-se sozinhos; lembretes e relatórios agendados não se perdem com a fila atrasada nem ficam presos; `%` e `_` pesquisam-se como texto; projeto 0 dá mensagem em vez de erro. Notas §56. 321 testes.
 - 🧹 **Limpeza de código morto** — a pedido: saem uma vista, uma chave de configuração, três ícones, quatro classes de CSS, dois métodos e sete relações que nada usava (cerca de 90 linhas). Nada muda para quem usa. O código guardado de propósito (folha semanal, faturação, tarifas, relatórios da especificação) fica para decidir. Notas §55. 313 testes.
 
 ## 2026-09-25

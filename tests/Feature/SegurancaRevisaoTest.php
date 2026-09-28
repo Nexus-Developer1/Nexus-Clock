@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\EnviarLembretesEquipa;
+use App\Jobs\EnviarRelatoriosPartilhados;
 use App\Livewire\Equipa\Membros;
 use App\Livewire\Projetos\Listagem as ProjetosListagem;
 use App\Livewire\Relatorios\Atribuicoes;
@@ -10,6 +12,7 @@ use App\Livewire\Relatorios\Detalhado;
 use App\Livewire\Relatorios\Resumo;
 use App\Livewire\Tempos\Cronometro;
 use App\Models\AtribuicaoTempo;
+use App\Models\Auditoria;
 use App\Models\CategoriaDespesaTempo;
 use App\Models\ClienteTempo;
 use App\Models\DespesaTempo;
@@ -17,9 +20,13 @@ use App\Models\MembroEquipa;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\User;
+use App\Notifications\LembreteHoras;
 use App\Services\Tempos\GestorDespesas;
 use App\Services\Tempos\GestorEquipa;
+use App\Services\Tempos\GestorPartilhados;
 use App\Services\Tempos\GestorProjetos;
+use App\Services\Tempos\GravadorRegistos;
+use App\Services\Tempos\RelatorioDespesas;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -27,6 +34,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Livewire\Mechanisms\HandleRequests\HandleRequests;
@@ -349,6 +357,120 @@ class SegurancaRevisaoTest extends TestCase
         $this->assertFalse(config('filesystems.disks.local.serve'), 'o disco privado não se serve por URL');
         $this->assertSame('throttle:10,1', config('livewire.temporary_file_upload.middleware'));
         $this->assertSame(['required', 'file', 'max:10240'], config('livewire.temporary_file_upload.rules'));
+    }
+
+    // --- Lote C, a parte que não se vê (notas §56) ---
+
+    public function test_horas_mexidas_por_outra_pessoa_ou_num_mes_fechado_ficam_na_auditoria(): void
+    {
+        $gravador = app(GravadorRegistos::class);
+        $cliente = $this->cliente();
+        $auditoria = fn (string $acao) => Auditoria::where('acao', $acao)->get();
+
+        // As do próprio, no dia a dia, não enchem a auditoria.
+        $daAna = $gravador->criar($this->ana, ['dia' => '2026-09-15', 'duracao_seg' => 3600]);
+        $gravador->atualizar($this->ana, $daAna, ['duracao_seg' => 5400]);
+        $this->assertCount(0, Auditoria::where('acao', 'like', 'tempo_registo_%')->get());
+
+        // O admin mexe nas horas da Ana: fica quem, o quê, antes e depois.
+        $this->actingAs($this->admin); // a auditoria regista quem tem a sessão
+        $gravador->atualizar($this->admin, $daAna->fresh(), ['duracao_seg' => 1800, 'descricao' => 'Corrigido pelo admin']);
+        $alterado = $auditoria('tempo_registo_alterado')->sole();
+        $this->assertSame($this->admin->id, $alterado->user_id);
+        $this->assertSame($this->ana->id, $alterado->detalhe['tecnico_id']);
+        $this->assertEquals(['duracao_seg' => 5400, 'descricao' => null], array_intersect_key($alterado->detalhe['antes'], ['duracao_seg' => 1, 'descricao' => 1]));
+        $this->assertEquals(['duracao_seg' => 1800, 'descricao' => 'Corrigido pelo admin'], array_intersect_key($alterado->detalhe['depois'], ['duracao_seg' => 1, 'descricao' => 1]));
+
+        $gravador->criar($this->admin, ['tecnico_id' => $this->ana->id, 'dia' => '2026-09-16', 'duracao_seg' => 3600]);
+        $this->assertCount(1, $auditoria('tempo_registo_criado'));
+        $gravador->apagar($this->admin, $daAna->fresh());
+        $this->assertSame(1800, $auditoria('tempo_registo_apagado')->sole()->detalhe['antes']['duracao_seg']);
+
+        // Num registo fechado, mesmo do próprio (quem pode reabrir).
+        $fechado = $this->registo($this->admin, $cliente, '2026-08-10', 3600, ['fechado_em' => now()]);
+        config(['tempos.pode_reabrir' => [strtolower($this->admin->email)]]);
+        $gravador->atualizar($this->admin, $fechado, ['duracao_seg' => 7200]);
+        $this->assertCount(2, $auditoria('tempo_registo_alterado'));
+    }
+
+    public function test_envios_agendados_ficam_com_os_destinatarios(): void
+    {
+        Carbon::setTestNow('2026-09-17 08:05:00'); // 09:05 em Lisboa
+        $r = app(GestorPartilhados::class)->criar($this->ana, 'resumo', ['nome' => 'Horas', 'email_ativo' => true, 'email_destinatarios' => 'cliente@exemplo.pt, outro@exemplo.pt', 'email_hora' => 9, 'email_frequencia' => 'diaria'], []);
+        $this->assertSame(['cliente@exemplo.pt', 'outro@exemplo.pt'], Auditoria::where('acao', 'tempo_relatorio_partilhado')->sole()->detalhe['destinatarios']);
+
+        app()->call([new EnviarRelatoriosPartilhados, 'handle']);
+        $envio = Auditoria::where('acao', 'tempo_relatorio_partilhado_enviado')->sole();
+        $this->assertSame([$r->id, ['cliente@exemplo.pt', 'outro@exemplo.pt']], [$envio->entidade_id, $envio->detalhe['destinatarios']]);
+    }
+
+    public function test_limite_de_exportacoes_trava_antes_da_consulta(): void
+    {
+        $pagina = Livewire::actingAs($this->ana)->test(Detalhado::class);
+        for ($i = 0; $i < 20; $i++) {
+            $pagina->call('exportar');
+        }
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $pagina->call('exportar')->assertStatus(429);
+        $consultas = collect(DB::getQueryLog())->pluck('query')->filter(fn ($q) => str_contains($q, 'registos_tempo'));
+        $this->assertCount(0, $consultas, 'o 429 sai antes de se ir buscar os registos');
+    }
+
+    public function test_formulario_das_despesas_nao_abre_pelo_campo(): void
+    {
+        $this->expectException(CannotUpdateLockedPropertyException::class);
+        Livewire::actingAs($this->ana)->test(Despesas::class)->set('editarId', 0);
+    }
+
+    public function test_zips_esquecidos_saem_sozinhos(): void
+    {
+        $disco = Storage::disk(DespesaTempo::DISCO);
+        $disco->put('zips/recibos-1-'.str_repeat('a', 32).'.zip', 'x');
+        $disco->put('zips/recibos-1-'.str_repeat('b', 32).'.zip', 'y');
+        touch($disco->path('zips/recibos-1-'.str_repeat('a', 32).'.zip'), now()->subMinutes(11)->getTimestamp());
+
+        RelatorioDespesas::limparZips();
+        $this->assertFalse($disco->exists('zips/recibos-1-'.str_repeat('a', 32).'.zip'), 'passados 10 minutos o link já expirou');
+        $this->assertTrue($disco->exists('zips/recibos-1-'.str_repeat('b', 32).'.zip'));
+
+        $evento = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())->first(fn ($e) => $e->description === 'tempos-limpar-zips');
+        $this->assertNotNull($evento);
+    }
+
+    public function test_envios_de_hora_a_hora_nao_se_perdem_nem_ficam_presos(): void
+    {
+        Carbon::setTestNow('2026-09-17 09:10:00'); // quinta, 10:10 em Lisboa: a fila atrasou uma hora
+        app(GestorEquipa::class)->guardarLembrete($this->admin, null, ['destinatarios' => 'todos', 'periodo' => 'dia', 'horas_minimas' => '8', 'dias' => [4], 'hora' => 9]);
+        app(GestorEquipa::class)->guardarLembrete($this->admin, null, ['destinatarios' => 'todos', 'periodo' => 'dia', 'horas_minimas' => '8', 'dias' => [4], 'hora' => 8]);
+
+        (new EnviarLembretesEquipa)->handle();
+        Notification::assertSentToTimes($this->ana, LembreteHoras::class, 1); // o das 9h sai; o das 8h (duas horas) não
+
+        // Um trabalho perdido na fila não prende os seguintes para sempre.
+        $this->assertGreaterThan(0, (new EnviarLembretesEquipa)->uniqueFor);
+        $this->assertGreaterThan(0, (new EnviarRelatoriosPartilhados)->uniqueFor);
+    }
+
+    public function test_pesquisa_procura_percentagem_e_sublinhado_como_texto(): void
+    {
+        ClienteTempo::create(['nome' => 'Cliente Normal']);
+        ClienteTempo::create(['nome' => 'Desconto 50%']);
+
+        Livewire::actingAs($this->ana)->test(\App\Livewire\Clientes\Listagem::class)
+            ->set('pesquisa', '%')
+            ->assertSee('Desconto 50%')->assertDontSee('Cliente Normal');
+    }
+
+    public function test_projeto_zero_da_mensagem_e_nao_erro(): void
+    {
+        try {
+            app(GravadorRegistos::class)->criar($this->ana, ['dia' => '2026-09-15', 'duracao_seg' => 3600, 'projeto_id' => 0]);
+            $this->fail('Gravou com o projeto 0.');
+        } catch (ValidationException $e) {
+            $this->assertSame(['projeto_id' => ['O projeto não existe.']], $e->errors());
+        }
     }
 
     // --- auxiliares ---
