@@ -119,6 +119,9 @@ class GestorAtribuicoes
         }
         if (array_key_exists('nota', $dados)) {
             $a->nota = trim((string) $dados['nota']) ?: null;
+            if (mb_strlen((string) $a->nota) > 2000) {
+                $erros['nota'] = 'A nota pode ter até 2000 caracteres.';
+            }
         }
 
         if ($erros !== []) {

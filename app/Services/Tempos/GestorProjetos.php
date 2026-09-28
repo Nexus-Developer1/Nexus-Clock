@@ -203,6 +203,9 @@ class GestorProjetos
 
         if (array_key_exists('nota', $dados)) {
             $projeto->nota = trim((string) $dados['nota']) ?: null;
+            if (mb_strlen((string) $projeto->nota) > 2000) {
+                $erros['nota'] = 'A nota pode ter até 2000 caracteres.';
+            }
         }
 
         $membros = null;

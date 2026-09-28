@@ -473,6 +473,87 @@ class SegurancaRevisaoTest extends TestCase
         }
     }
 
+    // --- Lote C, a parte que se vê (notas §57) ---
+
+    public function test_filtro_por_cliente_nao_revela_projetos_privados(): void
+    {
+        $discreto = $this->privado->cliente_id;
+        app(GestorDespesas::class)->criar($this->rui, ['data' => '2026-09-15', 'valor' => '10', 'projeto_id' => $this->privado->id,
+            'categoria_id' => CategoriaDespesaTempo::firstOrFail()->id, 'nota' => 'Despesa do privado 4417']);
+        AtribuicaoTempo::forceCreate(['utilizador_id' => $this->rui->id, 'projeto_id' => $this->privado->id, 'de' => '2026-09-14', 'ate' => '2026-09-18',
+            'horas_dia_seg' => 4 * 3600, 'fins_de_semana' => false, 'criado_por' => $this->admin->id]);
+
+        // A Ana filtra pelo cliente: não sabe que ele tem trabalho privado.
+        Livewire::actingAs($this->ana)->withQueryParams(['clientes' => [(string) $discreto]])->test(Despesas::class)
+            ->assertDontSee('Despesa do privado 4417')->assertDontSee('Projeto privado');
+        Livewire::actingAs($this->ana)->withQueryParams(['clientes' => [(string) $discreto], 'agrupar' => 'projeto'])->test(Atribuicoes::class)
+            ->assertDontSee('Outros projetos (privados)')->assertDontSee('4:00');
+
+        // O admin e o membro continuam a ver.
+        Livewire::actingAs($this->admin)->withQueryParams(['clientes' => [(string) $discreto]])->test(Despesas::class)->assertSee('Despesa do privado 4417');
+        Livewire::actingAs($this->rui)->withQueryParams(['clientes' => [(string) $discreto], 'agrupar' => 'projeto'])->test(Atribuicoes::class)->assertSee('Projeto Secreto');
+    }
+
+    public function test_despesas_ordenadas_por_projeto_poem_os_privados_no_fim(): void
+    {
+        $gestor = app(GestorDespesas::class);
+        $categoria = CategoriaDespesaTempo::firstOrFail()->id;
+        foreach (['Alfa', 'Zulu'] as $nome) {
+            $p = app(GestorProjetos::class)->criar($this->admin, ['nome' => $nome]);
+            $gestor->criar($this->rui, ['data' => '2026-09-15', 'valor' => '1', 'projeto_id' => $p->id, 'categoria_id' => $categoria, 'nota' => 'Nota '.$nome]);
+        }
+        $gestor->criar($this->rui, ['data' => '2026-09-15', 'valor' => '1', 'projeto_id' => $this->privado->id, 'categoria_id' => $categoria, 'nota' => 'Nota privada']);
+
+        // «Projeto Secreto» ficava entre Alfa e Zulu: dava a inicial. Agora vem no fim.
+        Livewire::actingAs($this->ana)->withQueryParams(['ordem' => 'projeto'])->test(Despesas::class)
+            ->assertSeeInOrder(['Nota Alfa', 'Nota Zulu', 'Nota privada']);
+    }
+
+    public function test_datas_invalidas_ou_absurdas_sao_recusadas(): void
+    {
+        $gravador = app(GravadorRegistos::class);
+        foreach (['2025-09-16', '2027-09-18'] as $dia) {
+            try {
+                $gravador->criar($this->ana, ['dia' => $dia, 'duracao_seg' => 3600]);
+                $this->fail('Gravou em '.$dia.'.');
+            } catch (ValidationException $e) {
+                $this->assertArrayHasKey('dia', $e->errors());
+            }
+        }
+        $gravador->criar($this->ana, ['dia' => '2025-09-18', 'duracao_seg' => 3600]); // dentro do ano: passa
+
+        // Um registo antigo continua a poder corrigir-se sem mudar de dia.
+        $antigo = $this->registo($this->ana, $this->cliente(), '2024-05-10', 3600);
+        $gravador->atualizar($this->ana, $antigo, ['descricao' => 'Corrigido']);
+
+        // «31 de fevereiro» já não grava a 3 de março.
+        Livewire::actingAs($this->ana)->test(Detalhado::class)
+            ->call('novo')->set('formulario.dia', '2026-02-31')->set('formulario.duracao', '1:00')->call('guardar')
+            ->assertHasErrors('formulario.dia');
+        $this->assertSame(0, RegistoTempo::whereDate('inicio', '2026-03-03')->count());
+    }
+
+    public function test_textos_tem_tamanho_maximo(): void
+    {
+        $falha = function (callable $acao, string $campo) {
+            try {
+                $acao();
+                $this->fail('Aceitou um texto grande de mais em '.$campo.'.');
+            } catch (ValidationException $e) {
+                $this->assertArrayHasKey($campo, $e->errors());
+            }
+        };
+        $gravador = app(GravadorRegistos::class);
+        $falha(fn () => $gravador->criar($this->ana, ['dia' => '2026-09-15', 'duracao_seg' => 60, 'descricao' => str_repeat('a', 1001)]), 'descricao');
+        $falha(fn () => $gravador->criar($this->ana, ['dia' => '2026-09-15', 'duracao_seg' => 60, 'etiquetas' => array_map(fn ($i) => 'e'.$i, range(1, 21))]), 'etiquetas');
+        $falha(fn () => $gravador->criar($this->ana, ['dia' => '2026-09-15', 'duracao_seg' => 60, 'etiquetas' => [str_repeat('e', 51)]]), 'etiquetas');
+        $falha(fn () => app(\App\Services\Tempos\GestorClientes::class)->criar($this->ana, ['nome' => 'Cliente Grande', 'morada' => str_repeat('m', 2001)]), 'morada');
+        $falha(fn () => app(GestorProjetos::class)->criar($this->admin, ['nome' => 'Projeto Grande', 'nota' => str_repeat('n', 2001)]), 'nota');
+
+        // No limite, passa.
+        $gravador->criar($this->ana, ['dia' => '2026-09-15', 'duracao_seg' => 60, 'descricao' => str_repeat('a', 1000), 'etiquetas' => array_map(fn ($i) => 'e'.$i, range(1, 20))]);
+    }
+
     // --- auxiliares ---
 
     private function snapshot(string $html): string

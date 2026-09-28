@@ -124,6 +124,9 @@ class GestorClientes
         foreach (['morada', 'nota'] as $campo) {
             if (array_key_exists($campo, $dados)) {
                 $cliente->{$campo} = trim((string) $dados[$campo]) ?: null;
+                if (mb_strlen((string) $cliente->{$campo}) > 2000) {
+                    $erros[$campo] = ($campo === 'morada' ? 'A morada' : 'A nota').' pode ter até 2000 caracteres.';
+                }
             }
         }
 

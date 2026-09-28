@@ -196,8 +196,17 @@ trait FormularioRegisto
      */
     protected function tempoIndicado(string $dia, string $horaInicio, string $horaFim, string $duracao): array
     {
-        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dia) || ! strtotime($dia)) {
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dia)) {
             throw ValidationException::withMessages(['dia' => 'Indique o dia.']);
+        }
+        // Estrito: «2026-02-31» não passa a 3 de março (notas §57).
+        try {
+            $valido = CarbonImmutable::createFromFormat('!Y-m-d', $dia)?->format('Y-m-d') === $dia;
+        } catch (\Throwable) {
+            $valido = false;
+        }
+        if (! $valido) {
+            throw ValidationException::withMessages(['dia' => 'Esse dia não existe.']);
         }
 
         if (trim($horaInicio) !== '' || trim($horaFim) !== '') {

@@ -359,6 +359,7 @@ class Despesas extends Component
                 : [auth()->id()],
             'clientes' => $f['clientes'],
             'projetos' => $projetos,
+            'visiveis' => ($visiveis = $this->projetosVisiveis()) === null ? null : array_keys($visiveis),
             'categorias' => array_map('intval', $this->categorias),
             'estado' => $this->situacao,
             'nota' => $this->descricao,

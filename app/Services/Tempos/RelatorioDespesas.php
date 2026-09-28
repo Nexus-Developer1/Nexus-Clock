@@ -26,6 +26,9 @@ class RelatorioDespesas
     {
         $membros = $filtros['membros'] ?? null;
         $projetos = $filtros['projetos'] ?? [];
+        // Ids dos projetos que quem vê pode ver (null = todos). O filtro por cliente só apanha esses — com
+        // os privados, dizia que o cliente tinha trabalho privado, e quanto (notas §57).
+        $visiveis = $filtros['visiveis'] ?? null;
         $nota = trim((string) ($filtros['nota'] ?? ''));
         $desc = str_starts_with($ordem, '-') ? 'desc' : 'asc';
 
@@ -33,7 +36,8 @@ class RelatorioDespesas
             ->with(['utilizador:id,nome', 'projeto:id,nome,cor,cliente_id', 'projeto.cliente:id,nome', 'categoria:id,nome'])
             ->whereBetween('data', [$de->toDateString(), $ate->toDateString()])
             ->when($membros !== null, fn ($q) => $q->whereIn('utilizador_id', $membros))
-            ->when(($filtros['clientes'] ?? []) !== [], fn ($q) => $q->whereIn('projeto_id', ProjetoTempo::withTrashed()->whereIn('cliente_id', $filtros['clientes'])->select('id')))
+            ->when(($filtros['clientes'] ?? []) !== [], fn ($q) => $q->whereIn('projeto_id', ProjetoTempo::withTrashed()->whereIn('cliente_id', $filtros['clientes'])
+                ->when($visiveis !== null, fn ($p) => $p->whereIn('id', $visiveis ?: [0]))->select('id')))
             ->when($projetos !== [], fn ($q) => $q->where(function ($w) use ($projetos) {
                 $w->whereIn('projeto_id', array_values(array_filter($projetos)) ?: [-1]);
                 if (in_array(0, $projetos, true)) {
@@ -46,7 +50,12 @@ class RelatorioDespesas
 
         match (ltrim($ordem, '-')) {
             'membro' => $q->orderByRaw('(select lower(u.nome) from utilizadores u where u.id = despesas_tempos.utilizador_id) '.$desc),
-            'projeto' => $q->orderByRaw('(select lower(p.nome) from projetos_tempos p where p.id = despesas_tempos.projeto_id) '.$desc.' nulls last'),
+            // Os privados que quem vê não pode ver ordenam-se como «sem nome», no fim: pelo nome verdadeiro,
+            // a posição no meio dos outros dava a inicial (notas §57).
+            'projeto' => $visiveis === null
+                ? $q->orderByRaw('(select lower(p.nome) from projetos_tempos p where p.id = despesas_tempos.projeto_id) '.$desc.' nulls last')
+                : $q->orderByRaw('(select lower(p.nome) from projetos_tempos p where p.id = despesas_tempos.projeto_id and p.id in ('
+                    .implode(',', array_fill(0, count($visiveis ?: [0]), '?')).')) '.$desc.' nulls last', $visiveis ?: [0]),
             'categoria' => $q->orderByRaw('(select lower(c.nome) from categorias_despesa_tempos c where c.id = despesas_tempos.categoria_id) '.$desc),
             'valor' => $q->orderBy('valor_cent', $desc),
             'estado' => $q->orderBy('estado', $desc),

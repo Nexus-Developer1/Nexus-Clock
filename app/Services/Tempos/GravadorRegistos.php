@@ -210,6 +210,24 @@ class GravadorRegistos
 
         if ($registo->inicio === null) {
             $erros['inicio'] = 'Indique o dia.';
+        } elseif ($registo->isDirty('inicio')) {
+            // Um dia a mais de um ano de hoje é engano (2062 por 2026) e partia os relatórios. Um registo
+            // antigo continua a corrigir-se, desde que não mude de dia (notas §57).
+            $hoje = CarbonImmutable::now(config('tempos.fuso'))->startOfDay();
+            if ($registo->dia()->lt($hoje->subYear()) || $registo->dia()->gt($hoje->addYear())) {
+                $erros['dia'] = 'O dia tem de estar a menos de um ano de hoje.';
+            }
+        }
+
+        // Textos com tamanho máximo: sem isto, megabytes numa descrição pesavam em todas as páginas.
+        if (mb_strlen((string) $registo->descricao) > 1000) {
+            $erros['descricao'] = 'A descrição pode ter até 1000 caracteres.';
+        }
+        $etiquetas = (array) $registo->etiquetas;
+        if (count($etiquetas) > 20) {
+            $erros['etiquetas'] = 'No máximo 20 etiquetas por registo.';
+        } elseif (collect($etiquetas)->contains(fn ($e) => mb_strlen((string) $e) > 50)) {
+            $erros['etiquetas'] = 'Cada etiqueta pode ter até 50 caracteres.';
         }
 
         if ($registo->duracao_seg !== null && ($registo->duracao_seg < 0 || $registo->duracao_seg > LeitorDuracao::MAXIMO_SEG)) {

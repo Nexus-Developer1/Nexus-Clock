@@ -63,7 +63,10 @@ class RelatorioAtribuicoes
         $oculto = fn (int $projeto) => $visiveis !== null && ! isset($visiveis[$projeto]);
         $filtrarProjetos = fn ($q, string $coluna) => $q
             ->when($projetos !== [], fn ($q) => $q->whereIn($coluna, $projetos))
-            ->when($clientes !== [], fn ($q) => $q->whereIn($coluna, ProjetoTempo::withTrashed()->whereIn('cliente_id', $clientes)->select('id')));
+            // Só os projetos que quem vê pode ver: com os privados, o filtro por cliente dizia que o cliente
+            // tinha trabalho privado, e quanto (notas §57).
+            ->when($clientes !== [], fn ($q) => $q->whereIn($coluna, ProjetoTempo::withTrashed()->whereIn('cliente_id', $clientes)
+                ->when($visiveis !== null, fn ($p) => $p->whereIn('id', array_keys($visiveis) ?: [0]))->select('id')));
 
         $atribuicoes = AtribuicaoTempo::query()
             ->with(['utilizador:id,nome', 'projeto:id,nome,cor,cliente_id,arquivado_em'])
