@@ -8,7 +8,6 @@ use App\Models\ClienteTempo;
 use App\Models\DespesaTempo;
 use App\Models\ProjetoTempo;
 use App\Models\User;
-use App\Services\Tempos\CamposObrigatorios;
 use App\Services\Tempos\GestorDespesas;
 use App\Services\Tempos\RelatorioDespesas;
 use App\Support\Dinheiro;
@@ -320,7 +319,6 @@ class Despesas extends Component
                 'categorias' => CategoriaDespesaTempo::orderByRaw('arquivada_em is not null, lower(nome)')->pluck('nome', 'id')->all(),
             ],
             'estados' => DespesaTempo::ESTADOS,
-            'obrigatorios' => app(CamposObrigatorios::class)->ativos('despesas'), // Equipa › Regras (notas §59)
             'filtrosAtivos' => ($gere ? count($this->membros) : 0) + count($this->clientes) + count($this->projetos) + count($this->categorias)
                 + ($this->situacao !== '' ? 1 : 0) + (trim($this->descricao) !== '' ? 1 : 0),
             // Formulário

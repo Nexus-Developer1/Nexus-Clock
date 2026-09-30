@@ -6,7 +6,6 @@ use App\Enums\OrigemRegistoTempo;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\User;
-use App\Services\Tempos\CamposObrigatorios;
 use App\Services\Tempos\GravadorRegistos;
 use App\Services\Tempos\LeitorDuracao;
 use Carbon\CarbonImmutable;
@@ -166,8 +165,6 @@ trait FormularioRegisto
         $projetoAtual = (int) ($this->formulario['projeto_id'] ?? 0);
 
         return [
-            // Campos obrigatórios (Equipa › Regras, notas §58): o formulário e a barra marcam-nos.
-            'obrigatorios' => app(CamposObrigatorios::class)->ativos(),
             'membrosDoNovo' => Gate::allows('tempos-editar-todos')
                 ? User::comAcessoAosTempos()->orderBy('nome')->pluck('nome', 'id')->all()
                 : [auth()->id() => auth()->user()->nome],

@@ -84,7 +84,7 @@
 
                 <div class="space-y-5 px-6 py-5">
                     <div>
-                        <span class="campo-label">Avisar quem registou menos de</span>
+                        <span class="campo-label">Avisar quem registou menos de <span class="text-perigo-500">*</span></span>
                         <div class="flex flex-wrap items-center gap-2">
                             <div class="relative w-28">
                                 <input type="text" inputmode="decimal" wire:model="formulario.horas_minimas" class="campo-input pr-8 tabular-nums" aria-label="Horas mínimas">
@@ -99,7 +99,7 @@
                     </div>
 
                     <div>
-                        <span class="campo-label">Dias</span>
+                        <span class="campo-label">Dias <span class="text-perigo-500">*</span></span>
                         <div class="flex flex-wrap gap-1.5">
                             @foreach ($dias as $n => $rotulo)
                                 <label class="cursor-pointer">
@@ -112,7 +112,7 @@
                     </div>
 
                     <div>
-                        <label class="campo-label" for="lembrete-hora">À hora</label>
+                        <label class="campo-label" for="lembrete-hora">À hora <span class="text-perigo-500">*</span></label>
                         <select id="lembrete-hora" wire:model="formulario.hora" class="campo-select w-32">
                             @for ($h = 0; $h < 24; $h++)
                                 <option value="{{ $h }}">{{ sprintf('%02d:00', $h) }}</option>
@@ -122,7 +122,7 @@
                     </div>
 
                     <div>
-                        <span class="campo-label">A quem</span>
+                        <span class="campo-label">A quem <span class="text-perigo-500">*</span></span>
                         <div class="segmentos" role="group" aria-label="A quem">
                             <button type="button" wire:click="$set('formulario.destinatarios', 'todos')" class="segmento {{ ($formulario['destinatarios'] ?? 'todos') === 'todos' ? 'segmento-ativo' : '' }}">Todos os membros</button>
                             <button type="button" wire:click="$set('formulario.destinatarios', 'grupos')" class="segmento {{ ($formulario['destinatarios'] ?? '') === 'grupos' ? 'segmento-ativo' : '' }}">Só alguns grupos</button>

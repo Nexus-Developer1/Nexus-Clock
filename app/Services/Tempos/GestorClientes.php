@@ -146,14 +146,6 @@ class GestorClientes
             $cliente->moeda = (string) $dados['moeda'];
         }
 
-        // Campos obrigatórios (Equipa › Regras, notas §59).
-        $regras = app(CamposObrigatorios::class);
-        foreach (['email' => 'O email é obrigatório.', 'morada' => 'A morada é obrigatória.', 'nif' => 'O NIF é obrigatório.'] as $campo => $mensagem) {
-            if (! isset($erros[$campo]) && $regras->exige('clientes', $campo) && (string) $cliente->{$campo} === '') {
-                $erros[$campo] = $mensagem;
-            }
-        }
-
         if ($erros !== []) {
             throw ValidationException::withMessages($erros);
         }

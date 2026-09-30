@@ -293,7 +293,7 @@
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         @if (count($membrosFormulario) > 1)
                             <div>
-                                <label class="campo-label" for="despesa-membro">Membro</label>
+                                <label class="campo-label" for="despesa-membro">Membro <span class="text-perigo-500">*</span></label>
                                 <select id="despesa-membro" wire:model="formulario.utilizador_id" class="campo-select">
                                     @foreach ($membrosFormulario as $id => $nome)
                                         <option value="{{ $id }}">{{ $nome }}</option>
@@ -311,7 +311,7 @@
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
-                            <label class="campo-label" for="despesa-projeto">Projeto @if (in_array('projeto', $obrigatorios, true))<span class="text-perigo-500">*</span>@endif</label>
+                            <label class="campo-label" for="despesa-projeto">Projeto</label>
                             <select id="despesa-projeto" wire:model="formulario.projeto_id" class="campo-select">
                                 <option value="">Sem projeto</option>
                                 @foreach ($projetosFormulario as $id => $nome)
@@ -355,7 +355,7 @@
                     </div>
 
                     <div>
-                        <span class="campo-label">Recibo @if (in_array('recibo', $obrigatorios, true))<span class="text-perigo-500">*</span>@endif</span>
+                        <span class="campo-label">Recibo</span>
                         @if ($emEdicao?->recibo_caminho && ! $retirarRecibo && ! $recibo)
                             <div class="flex items-center justify-between gap-3 rounded-lg border border-borda px-4 py-2.5 text-sm">
                                 <a href="{{ route('despesas.recibo', $emEdicao) }}" class="inline-flex min-w-0 items-center gap-2 text-verde-700 hover:underline"><x-icone nome="descarregar" /> <span class="truncate">{{ $emEdicao->recibo_nome }}</span></a>

@@ -216,15 +216,6 @@ class GestorProjetos
             }
         }
 
-        // Campos obrigatórios (Equipa › Regras, notas §59).
-        $regras = app(CamposObrigatorios::class);
-        if (! isset($erros['cliente_id']) && $regras->exige('projetos', 'cliente') && $projeto->cliente_id === null) {
-            $erros['cliente_id'] = 'O cliente é obrigatório.';
-        }
-        if (! isset($erros['estimativa']) && $regras->exige('projetos', 'estimativa') && ! $projeto->estimativa_seg) {
-            $erros['estimativa'] = 'A estimativa de horas é obrigatória.';
-        }
-
         if ($erros !== []) {
             throw ValidationException::withMessages($erros);
         }

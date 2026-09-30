@@ -7,7 +7,6 @@
         'equipa.limitados' => ['Limitados', 'pessoa'],
         'equipa.grupos' => ['Grupos', 'camadas'],
         'equipa.lembretes' => ['Lembretes', 'relogio'],
-        'equipa.regras' => ['Regras', 'visto'],
     ];
 @endphp
 

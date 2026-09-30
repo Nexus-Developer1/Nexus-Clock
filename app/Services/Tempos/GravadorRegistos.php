@@ -258,12 +258,6 @@ class GravadorRegistos
             $erros['fim'] = 'Já tem um cronómetro a correr. Pare-o antes de iniciar outro.';
         }
 
-        // Campos obrigatórios (Equipa › Regras, notas §58): num registo terminado. Um cronómetro a correr
-        // ainda não os precisa — só para parar.
-        if ($registo->fim !== null) {
-            $erros += app(CamposObrigatorios::class)->erros($registo);
-        }
-
         if ($erros !== []) {
             throw ValidationException::withMessages($erros);
         }

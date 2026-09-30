@@ -14,7 +14,7 @@
 
                 @if ($editarId === 0 && count($membrosDoNovo) > 1)
                     <div>
-                        <label class="campo-label" for="registo-membro">Membro</label>
+                        <label class="campo-label" for="registo-membro">Membro <span class="text-perigo-500">*</span></label>
                         <select id="registo-membro" wire:model="formulario.tecnico_id" class="campo-select">
                             @foreach ($membrosDoNovo as $id => $nome)
                                 <option value="{{ $id }}">{{ $nome }}</option>
@@ -25,12 +25,12 @@
                 @endif
 
                 <div>
-                    <label class="campo-label" for="registo-descricao">Descrição @if (in_array('descricao', $obrigatorios ?? [], true))<span class="text-perigo-500">*</span>@endif</label>
+                    <label class="campo-label" for="registo-descricao">Descrição</label>
                     <input id="registo-descricao" type="text" wire:model="formulario.descricao" class="campo-input" placeholder="Em que trabalhou?">
                 </div>
 
                 <div>
-                    <label class="campo-label" for="registo-projeto">Projeto @if (in_array('projeto', $obrigatorios ?? [], true))<span class="text-perigo-500">*</span>@endif</label>
+                    <label class="campo-label" for="registo-projeto">Projeto</label>
                     <select id="registo-projeto" wire:model="formulario.projeto_id" class="campo-select">
                         <option value="">Sem projeto</option>
                         @foreach ($projetosDoFormulario as $p)
@@ -42,19 +42,19 @@
 
                 <div class="grid grid-cols-2 gap-4 sm:grid-cols-[1.4fr_1fr_1fr_1fr]">
                     <div class="col-span-2 sm:col-span-1">
-                        <label class="campo-label" for="registo-dia">Dia</label>
+                        <label class="campo-label" for="registo-dia">Dia <span class="text-perigo-500">*</span></label>
                         <input id="registo-dia" type="date" wire:model="formulario.dia" class="campo-input">
                     </div>
                     <div>
-                        <label class="campo-label" for="registo-inicio">Início</label>
+                        <label class="campo-label" for="registo-inicio">Início <span class="text-perigo-500">*</span></label>
                         <input id="registo-inicio" type="time" wire:model="formulario.hora_inicio" class="campo-input tabular-nums">
                     </div>
                     <div>
-                        <label class="campo-label" for="registo-fim">Fim</label>
+                        <label class="campo-label" for="registo-fim">Fim <span class="text-perigo-500">*</span></label>
                         <input id="registo-fim" type="time" wire:model="formulario.hora_fim" class="campo-input tabular-nums">
                     </div>
                     <div class="col-span-2 sm:col-span-1">
-                        <label class="campo-label" for="registo-duracao">ou Duração</label>
+                        <label class="campo-label" for="registo-duracao">ou Duração <span class="text-perigo-500">*</span></label>
                         <input id="registo-duracao" type="text" wire:model="formulario.duracao" class="campo-input tabular-nums" placeholder="1:30">
                     </div>
                 </div>
@@ -64,7 +64,7 @@
 
                 <div class="grid grid-cols-1 items-end gap-4 sm:grid-cols-[1fr_auto]">
                     <div>
-                        <label class="campo-label" for="registo-etiquetas">Etiquetas @if (in_array('etiquetas', $obrigatorios ?? [], true))<span class="text-perigo-500">*</span>@endif</label>
+                        <label class="campo-label" for="registo-etiquetas">Etiquetas</label>
                         <input id="registo-etiquetas" type="text" wire:model="formulario.etiquetas" class="campo-input" placeholder="Separadas por vírgulas">
                     </div>
                     <label class="inline-flex h-11 items-center gap-2 text-sm font-medium text-texto-forte">

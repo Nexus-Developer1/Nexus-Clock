@@ -193,17 +193,17 @@
                     </div>
                     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
                         <div>
-                            <label class="campo-label" for="atribuicao-de">De</label>
+                            <label class="campo-label" for="atribuicao-de">De <span class="text-perigo-500">*</span></label>
                             <input id="atribuicao-de" type="date" wire:model="formulario.de" class="campo-input">
                             @error('formulario.de') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="campo-label" for="atribuicao-ate">Até</label>
+                            <label class="campo-label" for="atribuicao-ate">Até <span class="text-perigo-500">*</span></label>
                             <input id="atribuicao-ate" type="date" wire:model="formulario.ate" class="campo-input">
                             @error('formulario.ate') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>
                         <div class="col-span-2 sm:col-span-1">
-                            <label class="campo-label" for="atribuicao-horas">Horas por dia</label>
+                            <label class="campo-label" for="atribuicao-horas">Horas por dia <span class="text-perigo-500">*</span></label>
                             <div class="relative">
                                 <input id="atribuicao-horas" type="text" inputmode="decimal" wire:model="formulario.horas_dia" class="campo-input pr-8 tabular-nums" placeholder="8">
                                 <span class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-texto-fraco">h</span>

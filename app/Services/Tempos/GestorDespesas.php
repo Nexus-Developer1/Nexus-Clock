@@ -41,7 +41,6 @@ class GestorDespesas
         $d = new DespesaTempo;
         $d->utilizador_id = $autor->id;
         $this->preencher($autor, $d, $dados + ['data' => '', 'valor' => '', 'categoria_id' => null]);
-        $this->exigirObrigatorios($d, temRecibo: $recibo !== null);
         $this->guardarRecibo($d, $recibo);
         $d->criado_por = $autor->id;
         $d->alterado_por = $autor->id;
@@ -68,7 +67,6 @@ class GestorDespesas
                 $d->recibo_caminho = null;
                 $d->recibo_nome = null;
             }
-            $this->exigirObrigatorios($d, temRecibo: $recibo !== null || $d->recibo_caminho !== null);
             $this->guardarRecibo($d, $recibo);
 
             // Uma despesa rejeitada corrigida por quem não aprova (o dono ou outro admin) volta a ser avaliada
@@ -272,25 +270,6 @@ class GestorDespesas
         $this->autorizarAlteracao($autor, $atual);
         if ($atual->estado !== $d->getOriginal('estado')) {
             throw ValidationException::withMessages(['despesa' => 'Esta despesa mudou entretanto ('.mb_strtolower(DespesaTempo::ESTADOS[$atual->estado]).'): abra-a de novo.']);
-        }
-    }
-
-    /**
-     * Campos obrigatórios das despesas (Equipa › Regras, notas §59): antes de guardar o ficheiro do recibo,
-     * para não ficar um ficheiro esquecido no disco quando falta outro campo.
-     */
-    private function exigirObrigatorios(DespesaTempo $d, bool $temRecibo): void
-    {
-        $regras = app(CamposObrigatorios::class);
-        $erros = [];
-        if ($regras->exige('despesas', 'projeto') && ! $d->projeto_id) {
-            $erros['projeto_id'] = 'O projeto é obrigatório.';
-        }
-        if ($regras->exige('despesas', 'recibo') && ! $temRecibo) {
-            $erros['recibo'] = 'O recibo é obrigatório.';
-        }
-        if ($erros !== []) {
-            throw ValidationException::withMessages($erros);
         }
     }
 

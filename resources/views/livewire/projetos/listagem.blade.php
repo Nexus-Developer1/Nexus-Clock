@@ -207,7 +207,7 @@
                     </div>
 
                     <div>
-                        <label class="campo-label" for="projeto-cliente">Cliente @if (in_array('cliente', $obrigatorios, true))<span class="text-perigo-500">*</span>@endif</label>
+                        <label class="campo-label" for="projeto-cliente">Cliente</label>
                         <select id="projeto-cliente" wire:model="formulario.cliente_id" class="campo-select">
                             <option value="">Sem cliente</option>
                             @foreach ($clientes as $c)
@@ -264,7 +264,7 @@
                             @error('formulario.taxa') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="campo-label" for="projeto-estimativa">Estimativa @if (in_array('estimativa', $obrigatorios, true))<span class="text-perigo-500">*</span>@endif</label>
+                            <label class="campo-label" for="projeto-estimativa">Estimativa</label>
                             <div class="relative">
                                 <input id="projeto-estimativa" type="text" inputmode="decimal" wire:model="formulario.estimativa" class="campo-input pr-8 tabular-nums" placeholder="—">
                                 <span class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-texto-fraco">h</span>

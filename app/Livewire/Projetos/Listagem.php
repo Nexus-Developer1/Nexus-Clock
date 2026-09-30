@@ -5,7 +5,6 @@ namespace App\Livewire\Projetos;
 use App\Models\ClienteTempo;
 use App\Models\MembroEquipa;
 use App\Models\ProjetoTempo;
-use App\Services\Tempos\CamposObrigatorios;
 use App\Services\Tempos\GestorProjetos;
 use App\Services\Tempos\HorasProjetos;
 use App\Support\Csv;
@@ -196,7 +195,6 @@ class Listagem extends Component
         return view('livewire.projetos.listagem', [
             'projetos' => $this->projetos(),
             'podeGerir' => Gate::allows('tempos-gerir-projetos'),
-            'obrigatorios' => app(CamposObrigatorios::class)->ativos('projetos'), // Equipa › Regras (notas §59)
             'clientes' => ClienteTempo::orderByRaw('lower(nome)')->get(['id', 'nome', 'arquivado_em']),
             'membros' => $this->editarId !== null ? MembroEquipa::with('utilizador')->get()->sortBy(fn ($m) => mb_strtolower($m->nomeVisivel()))->values() : collect(),
             'cores' => ProjetoTempo::CORES,
