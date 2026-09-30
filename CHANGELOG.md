@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-09-30
+
+- 🧰 **Campos obrigatórios nos registos** — a pedido, como no Clockify: em Equipa › Regras, quem gere a equipa escolhe se o projeto, a descrição e as etiquetas são obrigatórios. Vale para todos; o cronómetro começa sem eles mas só para com eles; os formulários marcam-nos com *. Por omissão nada é obrigatório. Notas §58. 331 testes.
+
 ## 2026-09-28
 
 - 🔒 **Lote C, a parte que se vê** — filtrar por cliente nas Despesas e nas Atribuições já não revela a um técnico que o cliente tem projetos privados; nas despesas ordenadas por projeto, os privados vão para o fim; «31 de fevereiro» e dias a mais de um ano de hoje são recusados; descrições, etiquetas, moradas e notas passam a ter tamanho máximo. Notas §57. 325 testes.

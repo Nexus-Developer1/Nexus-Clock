@@ -10,6 +10,7 @@ use App\Livewire\Equipa\Lembretes as EquipaLembretes;
 use App\Livewire\Equipa\Limitados as EquipaLimitados;
 use App\Livewire\Equipa\Detalhe as EquipaDetalhe;
 use App\Livewire\Equipa\Membros as EquipaMembros;
+use App\Livewire\Equipa\Regras as EquipaRegras;
 use App\Livewire\Painel\Pagina as PainelPagina;
 use App\Livewire\Projetos\Detalhe as ProjetosDetalhe;
 use App\Livewire\Projetos\Listagem as ProjetosListagem;
@@ -58,6 +59,7 @@ Route::middleware(['auth', 'acesso'])->group(function () {
     Route::get('/equipa/limitados', EquipaLimitados::class)->name('equipa.limitados');
     Route::get('/equipa/grupos', EquipaGrupos::class)->name('equipa.grupos');
     Route::get('/equipa/lembretes', EquipaLembretes::class)->name('equipa.lembretes');
+    Route::get('/equipa/regras', EquipaRegras::class)->name('equipa.regras');
     Route::get('/clientes', ClientesListagem::class)->name('clientes');
     Route::get('/clientes/novo', ClientesNovo::class)->name('clientes.novo');
     Route::get('/clientes/{cliente}', ClientesDetalhe::class)->whereNumber('cliente')->name('clientes.ver');

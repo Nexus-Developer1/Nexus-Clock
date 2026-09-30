@@ -16,11 +16,11 @@
             {{-- Barra: o que se está a fazer --}}
             <section class="cartao p-3 sm:p-4">
                 <div class="flex flex-wrap items-center gap-3">
-                    <input type="text" wire:model.blur="descricao" class="campo-input campo-barra w-full min-w-[14rem] text-base lg:flex-1" placeholder="Em que está a trabalhar?" aria-label="Descrição">
+                    <input type="text" wire:model.blur="descricao" class="campo-input campo-barra w-full min-w-[14rem] text-base lg:flex-1" placeholder="Em que está a trabalhar?{{ in_array('descricao', $obrigatorios, true) ? ' *' : '' }}" aria-label="Descrição">
 
                     <div class="flex w-full flex-wrap items-center gap-3 lg:w-auto">
                         <select wire:model.live="barraProjeto" class="campo-select campo-barra w-full sm:w-56" aria-label="Projeto do registo">
-                            <option value="">Escolher projeto…</option>
+                            <option value="">Escolher projeto…{{ in_array('projeto', $obrigatorios, true) ? ' *' : '' }}</option>
                             @foreach ($projetos as $p)
                                 <option value="{{ $p->id }}">{{ $p->nome }}{{ $p->cliente ? ' · '.$p->cliente->nome : '' }}</option>
                             @endforeach
@@ -29,7 +29,7 @@
                         <div class="relative flex items-center gap-1" x-data="{ aberto: false }" @click.outside="aberto = false" @keydown.escape="aberto = false">
                             <button type="button" @click="aberto = ! aberto" class="botao-quadrado {{ $barraEtiquetas !== '' ? '!border-verde-300 !bg-verde-50 !text-verde-700' : '' }}" title="Etiquetas" aria-label="Etiquetas"><x-icone nome="etiqueta" /></button>
                             <div x-show="aberto" x-cloak class="absolute right-0 top-11 z-30 w-72 rounded-xl border border-borda bg-white p-4 shadow-lg">
-                                <label class="campo-label" for="barra-etiquetas">Etiquetas</label>
+                                <label class="campo-label" for="barra-etiquetas">Etiquetas @if (in_array('etiquetas', $obrigatorios ?? [], true))<span class="text-perigo-500">*</span>@endif</label>
                                 <input id="barra-etiquetas" type="text" wire:model.blur="barraEtiquetas" class="campo-input" placeholder="Separadas por vírgulas">
                             </div>
 

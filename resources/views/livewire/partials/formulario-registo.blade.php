@@ -25,12 +25,12 @@
                 @endif
 
                 <div>
-                    <label class="campo-label" for="registo-descricao">Descrição</label>
+                    <label class="campo-label" for="registo-descricao">Descrição @if (in_array('descricao', $obrigatorios ?? [], true))<span class="text-perigo-500">*</span>@endif</label>
                     <input id="registo-descricao" type="text" wire:model="formulario.descricao" class="campo-input" placeholder="Em que trabalhou?">
                 </div>
 
                 <div>
-                    <label class="campo-label" for="registo-projeto">Projeto</label>
+                    <label class="campo-label" for="registo-projeto">Projeto @if (in_array('projeto', $obrigatorios ?? [], true))<span class="text-perigo-500">*</span>@endif</label>
                     <select id="registo-projeto" wire:model="formulario.projeto_id" class="campo-select">
                         <option value="">Sem projeto</option>
                         @foreach ($projetosDoFormulario as $p)
@@ -64,7 +64,7 @@
 
                 <div class="grid grid-cols-1 items-end gap-4 sm:grid-cols-[1fr_auto]">
                     <div>
-                        <label class="campo-label" for="registo-etiquetas">Etiquetas</label>
+                        <label class="campo-label" for="registo-etiquetas">Etiquetas @if (in_array('etiquetas', $obrigatorios ?? [], true))<span class="text-perigo-500">*</span>@endif</label>
                         <input id="registo-etiquetas" type="text" wire:model="formulario.etiquetas" class="campo-input" placeholder="Separadas por vírgulas">
                     </div>
                     <label class="inline-flex h-11 items-center gap-2 text-sm font-medium text-texto-forte">
