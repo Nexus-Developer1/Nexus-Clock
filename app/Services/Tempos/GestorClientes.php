@@ -5,6 +5,7 @@ namespace App\Services\Tempos;
 use App\Models\ClienteTempo;
 use App\Models\User;
 use App\Services\Auditor;
+use App\Support\Nif;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -110,6 +111,14 @@ class GestorClientes
             $cliente->email = $email ?: null;
         }
 
+        if (array_key_exists('nif', $dados)) {
+            $nif = Nif::normalizar((string) $dados['nif']);
+            if ($nif !== '' && ! Nif::valido($nif)) {
+                $erros['nif'] = 'NIF inválido.';
+            }
+            $cliente->nif = $nif ?: null;
+        }
+
         if (array_key_exists('emails_cc', $dados)) {
             $cc = is_array($dados['emails_cc']) ? $dados['emails_cc'] : preg_split('/[\s,;]+/', (string) $dados['emails_cc']);
             $cc = array_values(array_unique(array_filter(array_map('trim', $cc))));
@@ -135,6 +144,14 @@ class GestorClientes
                 $erros['moeda'] = 'Escolha uma moeda da lista.';
             }
             $cliente->moeda = (string) $dados['moeda'];
+        }
+
+        // Campos obrigatórios (Equipa › Regras, notas §59).
+        $regras = app(CamposObrigatorios::class);
+        foreach (['email' => 'O email é obrigatório.', 'morada' => 'A morada é obrigatória.', 'nif' => 'O NIF é obrigatório.'] as $campo => $mensagem) {
+            if (! isset($erros[$campo]) && $regras->exige('clientes', $campo) && (string) $cliente->{$campo} === '') {
+                $erros[$campo] = $mensagem;
+            }
         }
 
         if ($erros !== []) {

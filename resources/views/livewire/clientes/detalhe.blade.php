@@ -45,6 +45,10 @@
                             <dd class="mt-0.5 text-texto-forte">@if ($cliente->email)<a href="mailto:{{ $cliente->email }}" class="hover:underline">{{ $cliente->email }}</a>@else — @endif</dd>
                         </div>
                         <div>
+                            <dt class="text-xs font-medium text-texto-medio">NIF</dt>
+                            <dd class="mt-0.5 tabular-nums text-texto-forte">{{ $cliente->nif ?: '—' }}</dd>
+                        </div>
+                        <div>
                             <dt class="text-xs font-medium text-texto-medio">Emails em cópia</dt>
                             <dd class="mt-0.5 text-texto-forte">
                                 @forelse ($cliente->emails_cc as $cc)

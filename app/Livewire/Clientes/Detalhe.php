@@ -28,7 +28,7 @@ class Detalhe extends Component
     public bool $editar = false;
 
     /** @var array{nome: string, email: string, emails_cc: string, morada: string, nota: string, moeda: string} */
-    public array $formulario = ['nome' => '', 'email' => '', 'emails_cc' => '', 'morada' => '', 'nota' => '', 'moeda' => 'EUR'];
+    public array $formulario = ['nome' => '', 'email' => '', 'nif' => '', 'emails_cc' => '', 'morada' => '', 'nota' => '', 'moeda' => 'EUR'];
 
     public function mount(ClienteTempo $cliente): void
     {
@@ -42,6 +42,7 @@ class Detalhe extends Component
         $this->formulario = [
             'nome' => $this->cliente->nome,
             'email' => (string) $this->cliente->email,
+            'nif' => (string) $this->cliente->nif,
             'emails_cc' => implode(', ', $this->cliente->emails_cc),
             'morada' => (string) $this->cliente->morada,
             'nota' => (string) $this->cliente->nota,

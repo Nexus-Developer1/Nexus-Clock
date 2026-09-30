@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-09-30
 
+- 🧰 **Campos obrigatórios nas despesas, nos clientes e nos projetos; NIF dos clientes** — a pedido: em Equipa › Regras escolhe-se se o recibo e o projeto são obrigatórios nas despesas, o email, a morada e o NIF nos clientes, e o cliente e a estimativa nos projetos. Os clientes ganham o campo NIF, validado (português com dígito de controlo, ou estrangeiro com o código do país). Notas §59. 335 testes.
 - 🧰 **Campos obrigatórios nos registos** — a pedido, como no Clockify: em Equipa › Regras, quem gere a equipa escolhe se o projeto, a descrição e as etiquetas são obrigatórios. Vale para todos; o cronómetro começa sem eles mas só para com eles; os formulários marcam-nos com *. Por omissão nada é obrigatório. Notas §58. 331 testes.
 
 ## 2026-09-28

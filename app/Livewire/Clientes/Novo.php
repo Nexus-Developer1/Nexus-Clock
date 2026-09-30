@@ -21,7 +21,7 @@ use Livewire\Component;
 class Novo extends Component
 {
     /** @var array{nome: string, email: string, emails_cc: string, morada: string, nota: string, moeda: string} */
-    public array $formulario = ['nome' => '', 'email' => '', 'emails_cc' => '', 'morada' => '', 'nota' => '', 'moeda' => 'EUR'];
+    public array $formulario = ['nome' => '', 'email' => '', 'nif' => '', 'emails_cc' => '', 'morada' => '', 'nota' => '', 'moeda' => 'EUR'];
 
     public function mount(): void
     {

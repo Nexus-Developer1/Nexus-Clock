@@ -33,7 +33,7 @@ class Listagem extends Component
     public ?int $editarId = null;
 
     /** @var array{nome: string, email: string, emails_cc: string, morada: string, nota: string, moeda: string} */
-    public array $formulario = ['nome' => '', 'email' => '', 'emails_cc' => '', 'morada' => '', 'nota' => '', 'moeda' => 'EUR'];
+    public array $formulario = ['nome' => '', 'email' => '', 'nif' => '', 'emails_cc' => '', 'morada' => '', 'nota' => '', 'moeda' => 'EUR'];
 
     public ?string $erro = null;
 
@@ -58,6 +58,7 @@ class Listagem extends Component
         $this->formulario = [
             'nome' => $cliente->nome,
             'email' => (string) $cliente->email,
+            'nif' => (string) $cliente->nif,
             'emails_cc' => implode(', ', $cliente->emails_cc),
             'morada' => (string) $cliente->morada,
             'nota' => (string) $cliente->nota,

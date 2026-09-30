@@ -22,7 +22,7 @@ class ClienteTempo extends Model
     public const MAXIMO_CC = 3;
 
     /** @var list<string> */
-    protected $fillable = ['nome', 'email', 'emails_cc', 'morada', 'nota', 'moeda'];
+    protected $fillable = ['nome', 'email', 'nif', 'emails_cc', 'morada', 'nota', 'moeda'];
 
     /** @var array<string, mixed> */
     protected $attributes = [

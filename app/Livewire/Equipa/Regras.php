@@ -8,18 +8,21 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Equipa › Regras: os campos obrigatórios nos registos (notas §58). Todos veem as regras (como os
- * Lembretes); mudar é só de quem gere a equipa.
+ * Equipa › Regras: os campos obrigatórios nos registos de horas, nas despesas, nos clientes e nos projetos
+ * (notas §58, §59). Todos veem as regras (como os Lembretes); mudar é só de quem gere a equipa.
  */
 #[Layout('components.layouts.app', ['ativo' => 'equipa', 'titulo' => 'Equipa'])]
 class Regras extends Component
 {
-    /** @var list<string> */
+    /** @var array<string, list<string>> campos obrigatórios por sítio */
     public array $campos = [];
 
     public function mount(): void
     {
-        $this->campos = app(CamposObrigatorios::class)->ativos();
+        $servico = app(CamposObrigatorios::class);
+        foreach (array_keys(CamposObrigatorios::AREAS) as $area) {
+            $this->campos[$area] = $servico->ativos($area);
+        }
     }
 
     public function guardar(): void
@@ -27,8 +30,10 @@ class Regras extends Component
         abort_unless(Gate::allows('tempos-gerir-equipa'), 403);
 
         $servico = app(CamposObrigatorios::class);
-        $servico->definir(auth()->user(), array_map('strval', $this->campos));
-        $this->campos = $servico->ativos();
+        foreach (array_keys(CamposObrigatorios::AREAS) as $area) {
+            $servico->definir(auth()->user(), $area, array_map('strval', (array) ($this->campos[$area] ?? [])));
+            $this->campos[$area] = $servico->ativos($area);
+        }
         session()->flash('sucesso', 'Regras guardadas.');
     }
 
@@ -36,7 +41,7 @@ class Regras extends Component
     {
         return view('livewire.equipa.regras', [
             'podeGerir' => Gate::allows('tempos-gerir-equipa'),
-            'disponiveis' => CamposObrigatorios::CAMPOS,
+            'areas' => CamposObrigatorios::AREAS,
         ]);
     }
 }

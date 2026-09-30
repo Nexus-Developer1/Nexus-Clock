@@ -919,3 +919,15 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - **Registos antigos incompletos:** ao alterar um registo terminado, os campos obrigatórios têm de estar preenchidos, mesmo que se esteja a mudar outra coisa. Na edição em massa (tudo ou nada), um registo antigo sem projeto trava o lote com a mensagem desse registo. É a forma de ir limpando o que ficou para trás; se incomodar, restringe-se a regra aos registos novos.
 - Os formulários marcam os obrigatórios com `*` (rótulos do formulário de registo; na barra do cronómetro, no texto de exemplo da descrição e do projeto).
 - Tabela nova `definicoes_tempos` (chave → valor em JSON, com `alterado_por`), para definições que se mudam na aplicação; esta é a primeira. Não mexe em tabelas da Nexus Infra.
+
+## 59. Campos obrigatórios também nas despesas, nos clientes e nos projetos; NIF dos clientes (2026-09-30, a pedido)
+
+- Depois da §58, o utilizador explicou que queria sobretudo **obrigar a preencher coisas noutros sítios**. Escolheu: nas **despesas**, o recibo e o projeto; nos **clientes**, o email, a morada e o NIF (campo novo); nos **projetos**, o cliente e a estimativa de horas. Os dos registos (§58) ficam.
+- Tudo em **Equipa › Regras**, agora com uma secção por sítio (Registos de horas, Despesas, Clientes, Projetos), cada uma a dizer o que já é sempre obrigatório. `CamposObrigatorios` passa a ter áreas (`AREAS`), guardadas em `definicoes_tempos` como `campos_obrigatorios.<área>`; a auditoria diz a área. (Em produção não havia nenhuma regra gravada com a chave da §58, por isso a mudança de chave não perdeu nada.)
+- **Onde se exige** — em cada serviço de gravação, por isso vale para toda a gente (admins incluídos) e para qualquer página:
+  - `GestorDespesas`: projeto e recibo, ao lançar e ao alterar; retirar o recibo com ele obrigatório não passa. Verifica-se **antes** de guardar o ficheiro do recibo, para não ficar um ficheiro esquecido no disco quando falta outro campo.
+  - `GestorClientes`: email, morada e NIF.
+  - `GestorProjetos`: cliente e estimativa (> 0).
+  - Como na §58, ao alterar algo que já existia incompleto também é preciso preencher.
+- **NIF** (`App\Support\Nif`, coluna `clientes_tempos.nif`): opcional salvo regra, mas se vier tem de ser válido. Português: 9 algarismos com o dígito de controlo certo (com ou sem «PT»; guarda-se sem). Estrangeiro: código do país mais 2 a 15 letras ou algarismos, como os números de IVA europeus («GB123456789»). Espaços, pontos e traços não contam. Aparece no formulário do cliente (novo e alterar) e na página do cliente.
+- Os formulários marcam os obrigatórios com `*` (despesa: projeto e recibo; cliente: email, NIF, morada; projeto: cliente e estimativa).
