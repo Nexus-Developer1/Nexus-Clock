@@ -939,3 +939,10 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - **Fica o NIF dos clientes** (§59): campo opcional, validado se vier (português com o dígito de controlo; estrangeiro com o código do país). O utilizador pode pedir para o tirar.
 - **Asteriscos** nos campos que a aplicação já exige e ainda não o mostravam: formulário de registo (membro, dia, início, fim ou duração — «ou Duração *» diz que é uma coisa ou a outra), despesa (membro), lembretes (horas mínimas, dias, hora, a quem) e atribuições (de, até, horas por dia). Já tinham: nome do cliente, do projeto, do grupo, do membro limitado e do relatório partilhado; data, categoria e valor da despesa; membro e projeto da atribuição; motivo da rejeição e da anulação.
 - Lição: quando uma ideia pode querer dizer duas coisas, confirmar com um exemplo concreto antes de construir.
+
+## 61. Aviso de cronómetro esquecido (2026-09-30, a pedido)
+
+- Da lista de ideias vindas do Clockify. Desenho confirmado com o utilizador antes de construir (lição da §60): **10 horas**, e o aviso vai **só à própria pessoa**.
+- Job `AvisarCronometrosEsquecidos`, de hora a hora (`tempos-cronometros-esquecidos`, na fila `tempos`, com `uniqueFor` como os outros): cada cronómetro a correr há mais de `tempos.aviso_cronometro_horas` (10; `TEMPOS_AVISO_CRONOMETRO_HORAS`) manda à pessoa o email `CronometroEsquecido`: «O seu cronómetro está a correr desde hoje/ontem/dia dd/mm às HH:MM — há N horas («descrição»)», com o botão «Abrir o Cronómetro». Só contas ativas com acesso ao Suporte.
+- **Uma vez por cronómetro:** marca-se na cache (`tempos-cronometro-avisado:<id do registo>`, uma semana; `Cache::add`, atómico). Se a pessoa o parar e se esquecer de outro, é outro registo e outro aviso. Se a cache se perder (base Redis 2), pode sair um segundo aviso do mesmo cronómetro — aceitável.
+- No dia do deploy, o único cronómetro nessa situação em produção era o dos dados de demonstração, na conta Admin Nexus (a correr desde 23/09): o primeiro aviso real foi esse.

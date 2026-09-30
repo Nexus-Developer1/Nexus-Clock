@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\AtualizarConsumoContratos;
+use App\Jobs\AvisarCronometrosEsquecidos;
 use App\Jobs\EnviarLembretesEquipa;
 use App\Jobs\EnviarRelatoriosPartilhados;
 use App\Services\Tempos\RelatorioDespesas;
@@ -35,4 +36,12 @@ Schedule::job(new EnviarRelatoriosPartilhados)
 Schedule::call(fn () => RelatorioDespesas::limparZips())
     ->name('tempos-limpar-zips')
     ->everyFiveMinutes()
+    ->onOneServer();
+
+// Cronómetros esquecidos: de hora a hora, quem o tem a correr há mais de 10 horas recebe um email
+// (uma vez por cronómetro, notas §61).
+Schedule::job(new AvisarCronometrosEsquecidos)
+    ->name('tempos-cronometros-esquecidos')
+    ->timezone('Europe/Lisbon')
+    ->hourly()
     ->onOneServer();

@@ -29,6 +29,9 @@ return [
     // Capacidade diária de quem não a tem definida na página Equipa (relatório Presenças), em horas.
     'capacidade_diaria_horas' => (float) env('TEMPOS_CAPACIDADE_DIARIA_HORAS', 8),
 
+    // Um cronómetro a correr há mais destas horas manda um email à própria pessoa, uma vez (notas §61).
+    'aviso_cronometro_horas' => (int) env('TEMPOS_AVISO_CRONOMETRO_HORAS', 10),
+
     // Teto do ZIP dos recibos (página Despesas), em MB: acima disto pede-se um período mais curto.
     'zip_recibos_max_mb' => (int) env('TEMPOS_ZIP_RECIBOS_MAX_MB', 500),
 
