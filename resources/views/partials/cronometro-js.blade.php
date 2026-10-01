@@ -33,6 +33,23 @@
             janela.addEventListener('pagehide', () => window.dispatchEvent(new CustomEvent('janela-cronometro', { detail: false })));
         };
 
+        // A janela pertence a este separador: o browser fecha-a quando ele sai do Suporte. Enquanto
+        // está aberta, os links para fora (o portal, outras aplicações) abrem num separador novo, e
+        // este fica onde está, com a janela viva (notas §70).
+        const base = @js(rtrim(url('/'), '/'));
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a[href]');
+            if (! window.documentPictureInPicture?.window || ! link || e.defaultPrevented) return;
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+            if (link.target && link.target !== '_self') return;
+            if (link.hasAttribute('download')) return;
+            const destino = link.href;
+            if (destino === base || destino.startsWith(base + '/') || destino.startsWith(base + '?') || destino.startsWith(base + '#')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            window.open(destino, '_blank', 'noopener');
+        }, true);
+
         document.addEventListener('alpine:init', () => {
             Alpine.data('miniCronometro', () => ({
                 agora: Math.floor(Date.now() / 1000),

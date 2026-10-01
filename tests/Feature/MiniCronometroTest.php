@@ -101,6 +101,9 @@ class MiniCronometroTest extends TestCase
         $this->get(route('painel'))->assertOk()->assertSee('Abrir o cronómetro');
         $this->get(route('projetos'))->assertOk()->assertSee('Abrir o cronómetro');
         $this->get(route('cronometro'))->assertOk()->assertDontSee('Abrir o cronómetro')->assertSee('Janela por cima');
+
+        // Com a janela aberta, os links para fora do Suporte abrem num separador novo (notas §70).
+        $this->get(route('painel'))->assertSee("window.open(destino, '_blank', 'noopener')", false);
     }
 
     public function test_a_pagina_da_janela_tem_so_o_cronometro(): void

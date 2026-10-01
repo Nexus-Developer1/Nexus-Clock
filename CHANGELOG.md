@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-01
 
+- 🐛 **A janela do cronómetro já não fecha ao ir para o portal** — o browser fecha-a quando o separador do Suporte sai para outro sítio; agora, com a janela aberta, os links para fora do Suporte (o portal, as outras aplicações) abrem num separador novo e o do Suporte fica aberto atrás. Notas §70. 344 testes.
 - 🧰 **Cronómetro no canto e numa janela por cima de tudo** — a pedido: em todas as páginas há um cartão no canto inferior direito para começar e parar o cronómetro sem ir à página do Cronómetro (minimiza-se para um botão com o tempo). Um botão abre-o numa janela pequena que fica por cima dos outros programas, mesmo com o browser minimizado (Chrome e Edge). Notas §69. 344 testes.
 - 🧹 **Sai a pausa do cronómetro** — a pedido: o botão «Pausar» e tudo o que o fazia funcionar saem; o cronómetro volta a ter só «Parar». Notas §68. 337 testes.
 - 🧰 **A pausa continua de onde estava** — a pedido: «Pausar» para o relógio e «Retomar» continua a contar a partir do tempo que tinha, no mesmo registo. Ao parar fica um só registo, com a pausa descontada (ex.: 09:00–17:00 com 1 h de pausa = 7 h). Substitui a pausa da manhã, que começava outro registo. Notas §67. 342 testes.

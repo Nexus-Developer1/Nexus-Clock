@@ -1007,3 +1007,10 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - **Sem desfasamentos**: quem começa ou para (cartão, janela ou página do Cronómetro) avisa os outros por um `BroadcastChannel` do browser, também entre separadores; a página do Cronómetro relê a barra (`recarregarCronometro`).
 - A escrita passa pelo serviço do cronómetro e pelo `GravadorRegistos`, como na página; o componente está sob as mesmas regras de acesso (o gancho de hidratação e o middleware persistente).
 - Experimentado num Chrome local: começar e parar no cartão, navegar entre páginas com o tempo a correr, minimizar, abrir a janela, começar nela e ver a página do Cronómetro acompanhar, e descartar na página com a janela a atualizar.
+
+## 70. A janela do cronómetro sobrevive à ida ao portal (2026-10-01, a pedido)
+
+- «Quando saio para ir para o portal, desaparece.» A janela por cima de tudo (§69) pertence ao separador que a abriu: o browser fecha-a quando esse separador carrega outra página fora do Suporte (o portal é outra aplicação). Não há forma de a manter viva com o separador a sair.
+- Por isso, **com a janela aberta**, os links para fora do Suporte (o «Voltar aos módulos», qualquer link para o portal ou outra aplicação) abrem num **separador novo** e o do Suporte fica atrás, com a janela viva. Sem janela aberta, tudo funciona como antes. Links com Ctrl/Shift, `target` próprio ou `download` não se tocam.
+- Continua a fechar se o separador do Suporte for fechado ou recarregado (F5), ou se se escrever outro endereço nele.
+- Experimentado num Chrome local: com a janela aberta, «Voltar aos módulos» abre o portal num separador novo e a janela fica; sem ela, vai no mesmo separador.
