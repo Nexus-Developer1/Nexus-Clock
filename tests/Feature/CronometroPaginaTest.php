@@ -49,7 +49,8 @@ class CronometroPaginaTest extends TestCase
             ->set('barraProjeto', (string) $this->obra->id)
             ->set('barraEtiquetas', 'remoto, urgente')
             ->call('comecar')
-            ->assertSet('erro', null);
+            ->assertSet('erro', null)
+            ->assertDontSee('Pausar'); // a pausa saiu (notas §68)
 
         $registo = RegistoTempo::sole();
         $this->assertSame(

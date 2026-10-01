@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-01
 
+- 🧹 **Sai a pausa do cronómetro** — a pedido: o botão «Pausar» e tudo o que o fazia funcionar saem; o cronómetro volta a ter só «Parar». Notas §68. 337 testes.
 - 🧰 **A pausa continua de onde estava** — a pedido: «Pausar» para o relógio e «Retomar» continua a contar a partir do tempo que tinha, no mesmo registo. Ao parar fica um só registo, com a pausa descontada (ex.: 09:00–17:00 com 1 h de pausa = 7 h). Substitui a pausa da manhã, que começava outro registo. Notas §67. 342 testes.
 - 🐛 **Presenças a partir de hoje** — a pedido: o Suporte passa a ter data de início (01/10/2026). Os dias antes dela deixam de aparecer nas Presenças e de gerar lembretes; e os dias que ainda não chegaram deixam de aparecer com as horas todas «em falta» (era um erro). Notas §66. 341 testes.
 - 🧰 **Pausar o cronómetro** — a pedido: com o cronómetro a correr há «Pausar»; o tempo até ali fica gravado e «Retomar» continua a mesma tarefa (descrição, projeto, etiquetas) num registo novo. A pausa aparece entre os dois registos, também nas Presenças. Notas §65. 339 testes.

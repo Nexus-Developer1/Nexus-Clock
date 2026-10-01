@@ -993,3 +993,8 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - O cronómetro em pausa continua a ser «o que está a correr» (fim nulo): começar outra tarefa para-o; o aviso de cronómetro esquecido (§61) também o apanha; descartar apaga-o.
 - Horas escritas à mão (início e fim no formulário, ou só a duração) tiram a pausa: a duração passa a ser a das horas escritas.
 - Saiu tudo o que era da §65 (a pausa guardada na cache, «Terminar»). Tudo continua a passar pelo `GravadorRegistos`; os campos da pausa só o serviço do cronómetro os manda.
+
+## 68. Sai a pausa do cronómetro (2026-10-01, a pedido)
+
+- «Esquece isso da pausa afinal, tira o botão de pausa.» Saiu tudo o que era da §67 (e da §65): o botão e o estado «em pausa» na barra, os métodos do serviço e da página, os campos no `GravadorRegistos`, o ícone, os testes, e as colunas `pausado_em` e `pausa_seg` (migração `2026_10_01_000002`; a anterior fica, pela ordem, como histórico).
+- Em produção, no momento de tirar, ninguém estava em pausa; havia só um cronómetro a correr (do Davide) com 1 segundo de pausa acumulada — ao pará-lo, conta esse segundo.

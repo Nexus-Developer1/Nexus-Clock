@@ -80,17 +80,6 @@ class Cronometro extends Component
         });
     }
 
-    /** Pausa (notas §67): o relógio para; «Retomar» continua de onde estava, no mesmo registo. */
-    public function pausar(): void
-    {
-        $this->executar(fn () => app(ServicoCronometro::class)->pausar(auth()->user()));
-    }
-
-    public function retomar(): void
-    {
-        $this->executar(fn () => app(ServicoCronometro::class)->retomar(auth()->user()));
-    }
-
     public function descartar(): void
     {
         $this->executar(function () {
@@ -161,10 +150,7 @@ class Cronometro extends Component
 
         return view('livewire.tempos.cronometro', [
             'aCorrer' => $aCorrer,
-            // O relógio conta a partir de um início «efetivo» (início + pausas), para mostrar só o trabalhado;
-            // em pausa fica parado no trabalhado até à pausa (notas §67).
-            'inicioACorrer' => $aCorrer ? $aCorrer->inicio->getTimestamp() + (int) $aCorrer->pausa_seg : null,
-            'trabalhadoACorrer' => $aCorrer ? ServicoCronometro::trabalhado($aCorrer) : 0,
+            'inicioACorrer' => $aCorrer?->inicio->getTimestamp(),
             'dias' => $registos,
             'totalSemana' => $registos->sum(fn (array $dia) => $dia['total']),
             'inicio' => $inicio,

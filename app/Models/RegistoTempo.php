@@ -52,8 +52,6 @@ class RegistoTempo extends Model
         return [
             'inicio' => 'immutable_datetime',
             'fim' => 'immutable_datetime',
-            'pausado_em' => 'immutable_datetime',
-            'pausa_seg' => 'integer',
             'duracao_seg' => 'integer',
             'faturavel' => 'boolean',
             'etiquetas' => ListaTextoPostgres::class,

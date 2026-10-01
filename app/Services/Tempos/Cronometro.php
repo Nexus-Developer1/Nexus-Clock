@@ -62,47 +62,6 @@ class Cronometro
         return $registo;
     }
 
-    // --- Pausa (notas §67) ---
-    // Um só registo, com a pausa descontada: pausar marca `pausado_em` (o relógio para); retomar soma esse
-    // tempo a `pausa_seg` e o relógio continua de onde estava; parar grava (fim − início) − pausas. O
-    // cronómetro em pausa continua a ser «o que está a correr» (fim nulo): começar outra coisa para-o.
-
-    /** O cronómetro de quem está a ver, se estiver em pausa. */
-    public function emPausa(User $tecnico): ?RegistoTempo
-    {
-        $registo = $this->aCorrer($tecnico);
-
-        return $registo?->pausado_em ? $registo : null;
-    }
-
-    public function pausar(User $autor): RegistoTempo
-    {
-        $registo = $this->aCorrer($autor)
-            ?? throw ValidationException::withMessages(['cronometro' => 'Não há nenhum cronómetro a correr.']);
-        if ($registo->pausado_em) {
-            throw ValidationException::withMessages(['cronometro' => 'O cronómetro já está em pausa.']);
-        }
-
-        return $this->gravador->atualizar($autor, $registo, ['pausado_em' => CarbonImmutable::now()]);
-    }
-
-    public function retomar(User $autor): RegistoTempo
-    {
-        $registo = $this->emPausa($autor)
-            ?? throw ValidationException::withMessages(['cronometro' => 'Não há nada em pausa.']);
-        $pausa = (int) $registo->pausado_em->diffInSeconds(CarbonImmutable::now(), true);
-
-        return $this->gravador->atualizar($autor, $registo, ['pausado_em' => null, 'pausa_seg' => (int) $registo->pausa_seg + $pausa]);
-    }
-
-    /** Tempo trabalhado de um cronómetro a correr (ou em pausa), sem as pausas. */
-    public static function trabalhado(RegistoTempo $registo): int
-    {
-        $ate = $registo->pausado_em ?? CarbonImmutable::now();
-
-        return max(0, (int) $registo->inicio->diffInSeconds($ate, true) - (int) $registo->pausa_seg);
-    }
-
     /** Recomeça o trabalho de um registo anterior (mesmo cliente, contrato, projeto, intervenção e atributos). */
     public function continuar(User $autor, RegistoTempo $modelo): RegistoTempo
     {
@@ -131,9 +90,8 @@ class Cronometro
         $registo = $this->aCorrer($autor)
             ?? throw ValidationException::withMessages(['cronometro' => 'Não há nenhum cronómetro a correr.']);
 
-        // Em pausa, acaba na hora da pausa; a duração desconta as pausas (notas §67).
-        $fim = $registo->pausado_em ?? CarbonImmutable::now();
-        $segundos = self::trabalhado($registo);
+        $agora = CarbonImmutable::now();
+        $segundos = (int) $registo->inicio->diffInSeconds($agora, true);
 
         if ($segundos < self::MINIMO_SEG) {
             $this->gravador->apagar($autor, $registo);
@@ -145,7 +103,7 @@ class Cronometro
             throw ValidationException::withMessages(['cronometro' => 'O cronómetro está a correr há mais de 24 horas. Indique nos Registos a hora a que terminou, ou descarte-o.']);
         }
 
-        return $this->gravador->atualizar($autor, $registo, ['pausado_em' => null, 'fim' => $fim]);
+        return $this->gravador->atualizar($autor, $registo, ['fim' => $agora]);
     }
 
     /** Apaga o cronómetro a correr sem gravar horas. */
