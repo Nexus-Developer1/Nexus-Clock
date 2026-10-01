@@ -94,7 +94,6 @@
                                 <thead>
                                     <tr>
                                         <th>Projeto</th>
-                                        <th class="w-28">Acesso</th>
                                         <th class="w-32 text-right">Horas</th>
                                         <th class="w-32 text-right">Faturáveis</th>
                                     </tr>
@@ -115,7 +114,6 @@
                                                     @endunless
                                                 </div>
                                             </td>
-                                            <td class="text-texto-medio">{{ $p->publico ? 'Público' : 'Privado' }}</td>
                                             <td class="text-right tabular-nums text-texto-forte">{{ PainelTempos::hms((int) ($h->total_seg ?? 0)) }}</td>
                                             <td class="text-right tabular-nums text-texto-medio">{{ PainelTempos::hms((int) ($h->faturavel_seg ?? 0)) }}</td>
                                         </tr>

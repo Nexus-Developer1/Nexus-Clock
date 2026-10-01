@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Livewire\Projetos\Detalhe;
 use App\Livewire\Projetos\Listagem;
-use App\Models\MembroEquipa;
 use App\Models\ProjetoTempo;
 use App\Models\User;
 use App\Services\Tempos\GestorEquipa;
@@ -15,8 +14,8 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-// Notas §63: os técnicos também criam, alteram, arquivam e apagam projetos — mas só os que veem (os públicos
-// e os privados de que são membros), e sem a taxa nem os valores em euros, que continuam de quem é admin.
+// Notas §63 e §64: os técnicos também criam, alteram, arquivam e apagam projetos — mas só os seus (os que
+// criaram e aqueles de que são membros), e sem a taxa nem os valores em euros, que continuam de quem é admin.
 class ProjetosTecnicosTest extends TestCase
 {
     use RefreshDatabase;
@@ -66,22 +65,25 @@ class ProjetosTecnicosTest extends TestCase
         Livewire::actingAs($this->admin)->test(Listagem::class)->call('novo')->assertSeeHtml('wire:model="formulario.taxa"');
     }
 
-    public function test_privado_criado_por_um_tecnico_fica_com_ele_como_membro(): void
+    public function test_quem_cria_ve_sempre_o_seu_projeto_e_os_outros_tecnicos_nao(): void
     {
-        $p = $this->gestor->criar($this->ana, ['nome' => 'Interno', 'publico' => false, 'membros' => []]);
+        // Notas §64: o projeto é de quem o criou, mesmo sem se pôr como membro; outro técnico não o vê.
+        $p = $this->gestor->criar($this->ana, ['nome' => 'Interno', 'membros' => []]);
+        $rui = $this->tecnico();
 
-        $this->assertSame([MembroEquipa::where('utilizador_id', $this->ana->id)->value('id')], $p->membros()->pluck('membros_equipa.id')->all());
         $this->assertTrue(ProjetoTempo::visiveisPara($this->ana)->whereKey($p->id)->exists());
+        $this->assertFalse(ProjetoTempo::visiveisPara($rui)->whereKey($p->id)->exists());
 
-        // E não se tira a si próprio ao alterar.
-        $this->gestor->atualizar($this->ana, $p->fresh(), ['membros' => []]);
-        $this->assertTrue(ProjetoTempo::visiveisPara($this->ana)->whereKey($p->id)->exists());
+        // Juntando o Rui como membro, passa a vê-lo.
+        $this->juntarAoProjeto($p, $rui);
+        $this->assertTrue(ProjetoTempo::visiveisPara($rui)->whereKey($p->id)->exists());
     }
 
     public function test_tecnico_so_mexe_nos_projetos_que_ve(): void
     {
         $publico = $this->gestor->criar($this->admin, ['nome' => 'Público', 'taxa' => '40']);
-        $secreto = $this->gestor->criar($this->admin, ['nome' => 'Secreto', 'publico' => false]);
+        $this->juntarAoProjeto($publico, $this->ana);
+        $secreto = $this->gestor->criar($this->admin, ['nome' => 'Secreto']);
 
         // No público, altera, mas a taxa fica como o admin a deixou.
         $this->gestor->atualizar($this->ana, $publico, ['nome' => 'Público renomeado', 'taxa' => '']);
@@ -100,6 +102,7 @@ class ProjetosTecnicosTest extends TestCase
     public function test_valores_continuam_de_quem_e_admin(): void
     {
         $p = $this->gestor->criar($this->admin, ['nome' => 'Obra', 'taxa' => '40']);
+        $this->juntarAoProjeto($p, $this->ana);
 
         $csv = base64_decode(Livewire::actingAs($this->ana)->test(Listagem::class)->call('exportar')->effects['download']['content']);
         $this->assertStringNotContainsString('Valor', $csv);

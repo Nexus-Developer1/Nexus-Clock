@@ -6,7 +6,7 @@
     $todosSelecionados = $ids !== [] && array_diff($ids, $selecionados) === [];
     $selecao = $projetos->whereIn('id', array_map('intval', $selecionados));
     $seta = fn (string $campo) => ltrim($ordem, '-') === $campo ? (str_starts_with($ordem, '-') ? '↓' : '↑') : '';
-    $filtrado = trim($pesquisa) !== '' || $filtroCliente !== '' || $filtroAcesso !== '' || $filtroFaturacao !== '';
+    $filtrado = trim($pesquisa) !== '' || $filtroCliente !== '' || $filtroFaturacao !== '';
     $pct = fn (float $p) => str_replace('.', ',', (string) $p).'%';
 @endphp
 
@@ -47,11 +47,6 @@
                         @foreach ($clientes as $c)
                             <option value="{{ $c->id }}">{{ $c->nome }}</option>
                         @endforeach
-                    </select>
-                    <select wire:model.live="filtroAcesso" class="campo-select campo-barra w-full sm:w-36" aria-label="Acesso">
-                        <option value="">Acesso</option>
-                        <option value="publico">Público</option>
-                        <option value="privado">Privado</option>
                     </select>
                     <select wire:model.live="filtroFaturacao" class="campo-select campo-barra w-full sm:w-40" aria-label="Faturação">
                         <option value="">Faturação</option>
@@ -113,7 +108,7 @@
                                         <th class="w-32"><button type="button" wire:click="ordenarPor('valor')" class="block w-full text-right hover:text-texto-forte">Valor {{ $seta('valor') }}</button></th>
                                     @endif
                                     <th class="w-44"><button type="button" wire:click="ordenarPor('progresso')" class="hover:text-texto-forte">Progresso {{ $seta('progresso') }}</button></th>
-                                    <th class="w-24">Acesso</th>
+                                    <th class="w-28">Membros</th>
                                     <th class="w-24"><span class="sr-only">Ações</span></th>
                                 </tr>
                             </thead>
@@ -150,12 +145,7 @@
                                                 </div>
                                             @endif
                                         </td>
-                                        <td class="text-texto-medio">
-                                            <span class="inline-flex items-center gap-1.5">
-                                                @unless ($p->publico)<x-icone nome="cadeado" class="h-3.5 w-3.5 text-texto-fraco" />@endunless
-                                                {{ $p->publico ? 'Público' : 'Privado' }}
-                                            </span>
-                                        </td>
+                                        <td class="tabular-nums {{ $p->membros_count ? 'text-texto-medio' : 'text-texto-fraco' }}">{{ $p->membros_count ?: '—' }}</td>
                                         <td @click.stop>
                                             <div class="flex items-center justify-end gap-1.5">
                                                 <button type="button" wire:click="alternarFavorito({{ $p->id }})"
@@ -232,13 +222,10 @@
                     </div>
 
                     <div>
-                        <span class="campo-label">Acesso</span>
-                        <div class="segmentos" role="group" aria-label="Acesso">
-                            <button type="button" wire:click="$set('formulario.publico', true)" class="segmento {{ ($formulario['publico'] ?? true) ? 'segmento-ativo' : '' }}">Público</button>
-                            <button type="button" wire:click="$set('formulario.publico', false)" class="segmento {{ ($formulario['publico'] ?? true) ? '' : 'segmento-ativo' }}">Privado</button>
-                        </div>
-                        @unless ($formulario['publico'] ?? true)
-                            <div class="mt-3 max-h-48 space-y-1 overflow-y-auto rounded-xl border border-borda p-2">
+                        {{-- Quem vê o projeto: quem o cria, estes membros e os admins (notas §64). --}}
+                        <span class="campo-label">Membros</span>
+                        <p class="mb-2 text-xs text-texto-fraco">Só quem criou o projeto, os membros escolhidos e os admins o veem e registam horas nele.</p>
+                            <div class="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-borda p-2">
                                 @foreach ($membros as $m)
                                     <label wire:key="projeto-membro-{{ $m->id }}" class="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-fundo">
                                         <input type="checkbox" wire:model="formulario.membros" value="{{ $m->id }}" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500">
@@ -248,7 +235,6 @@
                                 @endforeach
                             </div>
                             @error('formulario.membros') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
-                        @endunless
                     </div>
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

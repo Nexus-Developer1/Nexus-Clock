@@ -136,6 +136,8 @@ class ClientesTest extends TestCase
         $publico = ProjetoTempo::create(['nome' => 'Rede Wi-Fi', 'cliente_id' => $cliente->id]);
         $privado = ProjetoTempo::create(['nome' => 'Auditoria', 'cliente_id' => $cliente->id, 'publico' => false]);
         $arquivado = ProjetoTempo::create(['nome' => 'Migração antiga', 'cliente_id' => $cliente->id, 'arquivado_em' => now()]);
+        $this->juntarAoProjeto($publico, $tecnico);
+        $this->juntarAoProjeto($arquivado, $tecnico);
         $infra = $this->cliente('Infra');
         $this->registo($tecnico, $infra, '2026-09-14', 3600, ['projeto_id' => $publico->id, 'faturavel' => true]);
         $this->registo($tecnico, $infra, '2026-09-14', 1800, ['projeto_id' => $publico->id, 'faturavel' => false]);

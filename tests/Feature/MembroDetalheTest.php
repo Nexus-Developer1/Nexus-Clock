@@ -45,6 +45,7 @@ class MembroDetalheTest extends TestCase
     {
         $projetos = app(GestorProjetos::class);
         $obra = $projetos->criar($this->admin, ['nome' => 'Obra Pública']);
+        $this->juntarAoProjeto($obra, $this->ana, $this->rui); // a Ana é membro: vê-o na página do Rui
         $segredo = $projetos->criar($this->admin, ['nome' => 'Projeto Secreto', 'publico' => false, 'membros' => [$this->membro($this->rui)->id]]);
         $infra = $this->cliente('Infra');
         $this->registo($this->rui, $infra, '2026-09-15', 3600, ['projeto_id' => $obra->id, 'faturavel' => true]);   // esta semana

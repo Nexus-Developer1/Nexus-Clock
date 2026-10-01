@@ -59,6 +59,7 @@ class RelatorioDespesasTest extends TestCase
         $this->rui->update(['nome' => 'Rui Costa']);
         $cliente = ClienteTempo::create(['nome' => 'Hospital']);
         $this->obra = ProjetoTempo::create(['nome' => 'Obra', 'cliente_id' => $cliente->id]);
+        $this->juntarAoProjeto($this->obra, $this->ana, $this->rui);
         $this->refeicoes = CategoriaDespesaTempo::where('nome', 'Refeições')->sole();
         $this->combustiveis = CategoriaDespesaTempo::where('nome', 'Combustíveis')->sole();
         $this->gestor = app(GestorDespesas::class);

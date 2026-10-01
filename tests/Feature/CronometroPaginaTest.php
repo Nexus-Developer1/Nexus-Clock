@@ -34,6 +34,7 @@ class CronometroPaginaTest extends TestCase
         $this->rui = $this->tecnico();
         $this->rui->update(['nome' => 'Rui Costa']);
         $this->obra = ProjetoTempo::create(['nome' => 'Obra']);
+        $this->juntarAoProjeto($this->obra, $this->ana);
     }
 
     private function pagina()
@@ -156,6 +157,7 @@ class CronometroPaginaTest extends TestCase
 
         // Filtro sem horas: diz porquê e deixa voltar a todos.
         $vazio = ProjetoTempo::create(['nome' => 'Vazio']);
+        $this->juntarAoProjeto($vazio, $this->ana);
         $this->pagina()->set('filtroProjeto', (string) $vazio->id)
             ->assertSee('Sem horas deste projeto nesta semana')
             ->assertSee('Ver todos os projetos');

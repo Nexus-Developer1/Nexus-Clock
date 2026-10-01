@@ -75,20 +75,24 @@ class ProjetoTempo extends Model
      */
     public static function mascarado(): self
     {
-        $p = (new self)->forceFill(['nome' => 'Projeto privado', 'cor' => '#cbd5e1', 'publico' => false]);
+        $p = (new self)->forceFill(['nome' => 'Projeto privado', 'cor' => '#cbd5e1']);
         $p->setRelation('cliente', null);
 
         return $p;
     }
 
-    /** Projetos que a pessoa pode ver: públicos e, se privados, só administradores e membros. */
+    /**
+     * Projetos que a pessoa pode ver: os admins, todos; os outros, só os seus — os que criou e aqueles de
+     * que é membro (notas §64; antes havia projetos públicos, que toda a gente via). É daqui que tudo
+     * pergunta: lista, página do projeto, cronómetro, calendário, relatórios, despesas, atribuições.
+     */
     public function scopeVisiveisPara(Builder $query, User $utilizador): void
     {
         if ($utilizador->ehAdminTempos()) {
             return;
         }
 
-        $query->where(fn ($q) => $q->where('publico', true)->orWhereExists(fn ($e) => $e->selectRaw('1')
+        $query->where(fn ($q) => $q->where('projetos_tempos.criado_por', $utilizador->id)->orWhereExists(fn ($e) => $e->selectRaw('1')
             ->from('projeto_membro')
             ->join('membros_equipa', 'membros_equipa.id', '=', 'projeto_membro.membro_id')
             ->whereColumn('projeto_membro.projeto_id', 'projetos_tempos.id')

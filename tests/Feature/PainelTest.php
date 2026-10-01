@@ -231,6 +231,7 @@ class PainelTest extends TestCase
     // Detalhado; o projeto e o cliente principais na página deles, se quem vê a puder abrir.
     public function test_cartoes_do_resumo_abrem_a_pagina_correspondente(): void
     {
+        $this->juntarAoProjeto($this->obraH, $this->ana);
         $this->registo($this->ana, $this->hospital, '2026-09-14', 3600, ['projeto_id' => $this->obraH->id, 'faturavel' => true]);
 
         Livewire::actingAs($this->ana)->test(Pagina::class)
@@ -239,8 +240,8 @@ class PainelTest extends TestCase
             ->assertSeeHtml('estado=faturavel')
             ->assertSeeHtml('periodo=semana&amp;de=2026-09-14"');
 
-        // Projeto privado de que já não é membro, com o cliente arquivado: sem ligação.
-        $this->obraH->update(['publico' => false]);
+        // Projeto de que já não é membro, com o cliente arquivado: sem ligação.
+        $this->obraH->membros()->detach();
         ClienteTempo::whereKey($this->obraH->cliente_id)->delete();
         Livewire::actingAs($this->ana)->test(Pagina::class)
             ->assertSee('Obra H')

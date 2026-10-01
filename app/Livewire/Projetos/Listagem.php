@@ -36,9 +36,6 @@ class Listagem extends Component
     #[Url(as: 'cliente')]
     public string $filtroCliente = ''; // '' | 'sem' | id
 
-    #[Url(as: 'acesso')]
-    public string $filtroAcesso = ''; // '' | publico | privado
-
     #[Url(as: 'faturacao')]
     public string $filtroFaturacao = ''; // '' | faturavel | nao
 
@@ -54,7 +51,7 @@ class Listagem extends Component
     // Formulário (modal): null = fechado, 0 = novo projeto.
     public ?int $editarId = null;
 
-    /** @var array{nome: string, cliente_id: string, cor: string, publico: bool, membros: list<string>, faturavel: bool, taxa: string, estimativa: string, nota: string} */
+    /** @var array{nome: string, cliente_id: string, cor: string, membros: list<string>, faturavel: bool, taxa: string, estimativa: string, nota: string} */
     public array $formulario = [];
 
     public ?string $erro = null;
@@ -103,7 +100,6 @@ class Listagem extends Component
             'nome' => $p->nome,
             'cliente_id' => (string) $p->cliente_id,
             'cor' => $p->cor,
-            'publico' => $p->publico,
             'membros' => $p->membros->pluck('id')->map(fn ($id) => (string) $id)->all(),
             'faturavel' => $p->faturavel,
             // Só para quem vê os valores: o estado do componente vai para o browser (notas §63).
@@ -127,11 +123,7 @@ class Listagem extends Component
 
         $this->resetErrorBag();
         $dados = $this->formulario;
-        if (! $dados['publico']) {
-            $dados['membros'] = array_map('intval', $dados['membros']);
-        } else {
-            unset($dados['membros']);
-        }
+        $dados['membros'] = array_map('intval', $dados['membros']);
 
         try {
             $gestor = app(GestorProjetos::class);
@@ -189,12 +181,12 @@ class Listagem extends Component
             [$p->nome, $p->cliente?->nome ?? '', Horas::decimal($p->segundos)],
             $comValor ? [Dinheiro::decimal($p->valor_cent)] : [],
             [$p->progresso === null ? '' : number_format($p->progresso, 1, ',', ''),
-                $p->publico ? 'Público' : 'Privado', $p->faturavel ? 'Sim' : 'Não', $p->estimativa_seg ? Horas::decimal($p->estimativa_seg) : '',
+                $p->membros_count, $p->faturavel ? 'Sim' : 'Não', $p->estimativa_seg ? Horas::decimal($p->estimativa_seg) : '',
                 $p->estaArquivado() ? 'Sim' : 'Não'],
         ));
 
         return Csv::resposta('projetos-'.now(config('tempos.fuso'))->format('Ymd').'.csv',
-            array_merge(['Projeto', 'Cliente', 'Registado (h)'], $comValor ? ['Valor (€)'] : [], ['Progresso (%)', 'Acesso', 'Faturável', 'Estimativa (h)', 'Arquivado']), $linhas->all());
+            array_merge(['Projeto', 'Cliente', 'Registado (h)'], $comValor ? ['Valor (€)'] : [], ['Progresso (%)', 'Membros', 'Faturável', 'Estimativa (h)', 'Arquivado']), $linhas->all());
     }
 
     public function render()
@@ -219,13 +211,12 @@ class Listagem extends Component
     {
         $termo = trim($this->pesquisa);
         $projetos = ProjetoTempo::query()
-            ->with('cliente')
+            ->with('cliente')->withCount('membros')
             ->visiveisPara(auth()->user())
             ->when($this->mostrar === 'ativos', fn ($q) => $q->ativos())
             ->when($this->mostrar === 'arquivados', fn ($q) => $q->arquivados())
             ->when($this->filtroCliente === 'sem', fn ($q) => $q->whereNull('cliente_id'))
             ->when(ctype_digit($this->filtroCliente), fn ($q) => $q->where('cliente_id', (int) $this->filtroCliente))
-            ->when($this->filtroAcesso !== '', fn ($q) => $q->where('publico', $this->filtroAcesso === 'publico'))
             ->when($this->filtroFaturacao !== '', fn ($q) => $q->where('faturavel', $this->filtroFaturacao === 'faturavel'))
             ->when($termo !== '', fn ($q) => $q->where('nome', 'ilike', '%'.addcslashes($termo, '%_\\').'%'))
             ->get();
@@ -283,7 +274,6 @@ class Listagem extends Component
     {
         foreach ([
             'mostrar' => [['ativos', 'arquivados', 'todos'], 'ativos'],
-            'filtroAcesso' => [['', 'publico', 'privado'], ''],
             'filtroFaturacao' => [['', 'faturavel', 'nao'], ''],
         ] as $prop => [$validos, $omissao]) {
             if (! in_array($this->{$prop}, $validos, true)) {
@@ -298,9 +288,9 @@ class Listagem extends Component
         }
     }
 
-    /** @return array{nome: string, cliente_id: string, cor: string, publico: bool, membros: list<string>, faturavel: bool, taxa: string, estimativa: string, nota: string} */
+    /** @return array{nome: string, cliente_id: string, cor: string, membros: list<string>, faturavel: bool, taxa: string, estimativa: string, nota: string} */
     private function formularioVazio(): array
     {
-        return ['nome' => '', 'cliente_id' => '', 'cor' => ProjetoTempo::CORES[0], 'publico' => true, 'membros' => [], 'faturavel' => true, 'taxa' => '', 'estimativa' => '', 'nota' => ''];
+        return ['nome' => '', 'cliente_id' => '', 'cor' => ProjetoTempo::CORES[0], 'membros' => [], 'faturavel' => true, 'taxa' => '', 'estimativa' => '', 'nota' => ''];
     }
 }

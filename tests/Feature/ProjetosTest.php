@@ -127,29 +127,34 @@ class ProjetosTest extends TestCase
         ], collect(app(HorasProjetos::class)->porProjeto([$comTaxa->id, $semTaxa->id, $interno->id]))->sortKeys()->all());
     }
 
-    public function test_privado_so_para_admin_e_membros_e_favoritos_so_nos_visiveis(): void
+    public function test_tecnico_ve_os_que_criou_e_aqueles_de_que_e_membro_e_favoritos_so_nesses(): void
     {
-        $privado = $this->gestor->criar($this->admin, ['nome' => 'Segredo', 'publico' => false]);
+        // Notas §64: o técnico vê só os seus (os que criou e aqueles de que é membro); o admin, todos.
+        $privado = $this->gestor->criar($this->admin, ['nome' => 'Segredo']);
         $publico = $this->gestor->criar($this->admin, ['nome' => 'Aberto']);
+        $daAna = $this->gestor->criar($this->ana, ['nome' => 'Da Ana']);
 
-        $this->assertSame(['Aberto'], ProjetoTempo::visiveisPara($this->ana)->pluck('nome')->all());
-        $this->assertSame(['Aberto', 'Segredo'], ProjetoTempo::visiveisPara($this->admin)->orderBy('nome')->pluck('nome')->all());
+        $this->assertSame(['Da Ana'], ProjetoTempo::visiveisPara($this->ana)->pluck('nome')->all());
+        $this->assertSame(['Aberto', 'Da Ana', 'Segredo'], ProjetoTempo::visiveisPara($this->admin)->orderBy('nome')->pluck('nome')->all());
         $this->assertSame(['projetos' => 'Projeto não encontrado.'], $this->erros(fn () => $this->gestor->alternarFavorito($this->ana, $privado)));
 
         $this->gestor->atualizar($this->admin, $privado, ['membros' => [$this->membroDe($this->ana)->id]]);
-        $this->assertSame(['nome' => 'Segredo', 'campos' => ['membros']], Auditoria::where('acao', 'tempo_projeto_alterado')->sole()->detalhe);
-        $this->assertSame(['Aberto', 'Segredo'], ProjetoTempo::visiveisPara($this->ana)->orderBy('nome')->pluck('nome')->all());
+        $this->assertSame(['nome' => 'Segredo', 'campos' => ['membros']], Auditoria::where('acao', 'tempo_projeto_alterado')->where('entidade_id', $privado->id)->sole()->detalhe);
+        $this->assertSame(['Da Ana', 'Segredo'], ProjetoTempo::visiveisPara($this->ana)->orderBy('nome')->pluck('nome')->all());
         $this->assertSame(['membros' => 'Escolha membros da equipa.'], $this->erros(fn () => $this->gestor->atualizar($this->admin, $privado, ['membros' => [999999]])));
 
         $this->assertTrue($this->gestor->alternarFavorito($this->ana, $privado));
         $this->assertFalse($this->gestor->alternarFavorito($this->ana, $privado));
-        $this->assertTrue($this->gestor->alternarFavorito($this->ana, $publico));
+        $this->assertSame(['projetos' => 'Projeto não encontrado.'], $this->erros(fn () => $this->gestor->alternarFavorito($this->ana, $publico)));
+        $this->assertTrue($this->gestor->alternarFavorito($this->ana, $daAna));
     }
 
     public function test_arquivar_restaurar_so_apaga_arquivados_e_registos_so_aceitam_projetos_ativos(): void
     {
         $a = $this->gestor->criar($this->admin, ['nome' => 'A']);
         $b = $this->gestor->criar($this->admin, ['nome' => 'B']);
+        $this->juntarAoProjeto($a, $this->ana);
+        $this->juntarAoProjeto($b, $this->ana);
         $cliente = $this->cliente();
         $registo = $this->registo($this->ana, $cliente, '2026-09-16', 3600, ['projeto_id' => $a->id]);
 
@@ -183,7 +188,6 @@ class ProjetosTest extends TestCase
             ->set('formulario.nome', 'Zebra')
             ->set('formulario.cliente_id', (string) $this->hospital->id)
             ->set('formulario.cor', '#2a78d6')
-            ->set('formulario.publico', false)
             ->set('formulario.membros', [(string) $this->membroDe($this->ana)->id])
             ->set('formulario.estimativa', '2')
             ->call('guardar')
@@ -191,7 +195,7 @@ class ProjetosTest extends TestCase
             ->assertSet('editarId', null);
 
         $zebra = ProjetoTempo::where('nome', 'Zebra')->sole();
-        $this->assertSame(['#2a78d6', false, 7200, [$this->membroDe($this->ana)->id]], [$zebra->cor, $zebra->publico, $zebra->estimativa_seg, $zebra->membros->pluck('id')->all()]);
+        $this->assertSame(['#2a78d6', 7200, [$this->membroDe($this->ana)->id]], [$zebra->cor, $zebra->estimativa_seg, $zebra->membros->pluck('id')->all()]);
 
         $alfa = $this->gestor->criar($this->admin, ['nome' => 'Alfa', 'taxa' => '10']);
         $this->registo($this->ana, $cliente, '2026-09-16', 10800, ['projeto_id' => $zebra->id]);
@@ -208,11 +212,8 @@ class ProjetosTest extends TestCase
             ->call('ordenarPor', 'registado')
             ->assertSet('ordem', '-registado')
             ->assertSeeInOrder(['Zebra', 'Alfa', 'Beta'])
-            ->set('filtroAcesso', 'publico')
-            ->assertSee('Alfa')->assertDontSee('Zebra')
             ->call('alternarFavorito', $beta->id)
-            ->assertSeeInOrder(['Beta', 'Alfa'])
-            ->set('filtroAcesso', '')
+            ->assertSeeInOrder(['Beta', 'Zebra', 'Alfa']) // favoritos primeiro
             ->set('filtroCliente', (string) $this->hospital->id)
             ->assertSee('Zebra')->assertDontSee('Alfa')
             ->set('filtroCliente', 'x')

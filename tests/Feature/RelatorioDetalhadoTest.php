@@ -45,6 +45,7 @@ class RelatorioDetalhadoTest extends TestCase
         $this->rui->update(['nome' => 'Rui Costa']);
         $this->hospital = $this->cliente('Hospital');
         $this->obra = ProjetoTempo::create(['nome' => 'Obra', 'taxa_cent' => 6000]);
+        $this->juntarAoProjeto($this->obra, $this->ana, $this->rui);
     }
 
     public function test_registos_por_ordem_com_valor_e_auditoria(): void

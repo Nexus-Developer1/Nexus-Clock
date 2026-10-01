@@ -223,14 +223,13 @@ class DadosDemo extends Command
                 $p->arquivado_em = $agora->subWeeks(3);
             }
             $p->save();
-            $privados = null;
-            if (! $publico) {
-                $p->membros()->sync($membros->take(3)->pluck('id')->all());
-                $privados = $membros->take(3)->pluck('utilizador_id')->all();
-            }
+            // Cada projeto é só dos seus membros (notas §64): os «de toda a gente» levam a equipa toda,
+            // os restritos só três pessoas.
+            $deles = $publico ? $membros : $membros->take(3);
+            $p->membros()->sync($deles->pluck('id')->all());
             $this->criados['projetos_tempos'][] = $p->id;
-            // membros: quem pode registar num projeto privado (null = público, toda a gente).
-            $lista[] = ['projeto' => $p, 'cliente' => $clienteIdx ?? 0, 'descricoes' => $descricoes, 'membros' => $privados];
+            // membros: quem pode registar no projeto.
+            $lista[] = ['projeto' => $p, 'cliente' => $clienteIdx ?? 0, 'descricoes' => $descricoes, 'membros' => $deles->pluck('utilizador_id')->map(fn ($id) => (int) $id)->all()];
         }
 
         return $lista;

@@ -500,6 +500,7 @@ class SegurancaRevisaoTest extends TestCase
         $categoria = CategoriaDespesaTempo::firstOrFail()->id;
         foreach (['Alfa', 'Zulu'] as $nome) {
             $p = app(GestorProjetos::class)->criar($this->admin, ['nome' => $nome]);
+            $this->juntarAoProjeto($p, $this->rui);
             $gestor->criar($this->rui, ['data' => '2026-09-15', 'valor' => '1', 'projeto_id' => $p->id, 'categoria_id' => $categoria, 'nota' => 'Nota '.$nome]);
         }
         $gestor->criar($this->rui, ['data' => '2026-09-15', 'valor' => '1', 'projeto_id' => $this->privado->id, 'categoria_id' => $categoria, 'nota' => 'Nota privada']);

@@ -7,8 +7,11 @@ use App\Models\Contrato;
 use App\Models\Equipamento;
 use App\Models\Intervencao;
 use App\Models\Local;
+use App\Models\MembroEquipa;
+use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\User;
+use App\Services\Tempos\GestorEquipa;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
 
@@ -98,6 +101,17 @@ abstract class TestCase extends BaseTestCase
             'equipamento_id' => $equipamento->id, 'contrato_id' => $contrato?->id,
             'tipo' => 'corretiva', 'estado' => $estado,
         ]);
+    }
+
+    /**
+     * Junta pessoas como membros de um projeto: desde a §64 um técnico só vê (e só regista em) os projetos
+     * que criou ou de que é membro.
+     */
+    protected function juntarAoProjeto(ProjetoTempo $projeto, User ...$pessoas): void
+    {
+        app(GestorEquipa::class)->sincronizar();
+        $ids = MembroEquipa::whereIn('utilizador_id', array_map(fn (User $u) => $u->id, $pessoas))->pluck('id')->all();
+        $projeto->membros()->syncWithoutDetaching($ids);
     }
 
     /**

@@ -21,7 +21,6 @@
                         <span class="h-3.5 w-3.5 shrink-0 rounded-full" style="background: {{ $p->cor }}" aria-hidden="true"></span>
                         <h1 class="text-3xl font-semibold tracking-tight text-texto-forte">{{ $p->nome }}</h1>
                         @if ($p->estaArquivado())<span class="etiqueta bg-slate-100 text-texto-medio">Arquivado</span>@endif
-                        @unless ($p->publico)<span class="etiqueta bg-slate-100 text-texto-medio"><x-icone nome="cadeado" class="h-3 w-3" /> Privado</span>@endunless
                         @unless ($p->faturavel)<span class="etiqueta bg-slate-100 text-texto-medio">Não faturável</span>@endunless
                     </div>
                     <p class="mt-1 text-sm text-texto-medio">
@@ -58,21 +57,20 @@
                     <h2 class="border-b border-borda px-5 py-4 text-base font-semibold text-texto-forte">Dados</h2>
                     <dl class="space-y-4 px-5 py-5 text-sm">
                         <div>
-                            <dt class="text-xs font-medium text-texto-medio">Acesso</dt>
-                            <dd class="mt-0.5 text-texto-forte">{{ $p->publico ? 'Público — toda a equipa' : 'Privado — só os membros' }}</dd>
+                            <dt class="text-xs font-medium text-texto-medio">Criado por</dt>
+                            <dd class="mt-0.5 text-texto-forte">{{ $criadoPor ?? '—' }}</dd>
                         </div>
-                        @if (! $p->publico)
                             <div>
                                 <dt class="text-xs font-medium text-texto-medio">Membros</dt>
                                 <dd class="mt-1 flex flex-wrap gap-1.5">
                                     @forelse ($membros as $nome)
                                         <span class="etiqueta bg-fundo text-texto-forte">{{ $nome }}</span>
                                     @empty
-                                        <span class="text-texto-fraco">Ninguém (só quem gere)</span>
+                                        <span class="text-texto-fraco">Ninguém além de quem o criou</span>
                                     @endforelse
                                 </dd>
                             </div>
-                        @endif
+                        
                         <div>
                             <dt class="text-xs font-medium text-texto-medio">Faturável</dt>
                             <dd class="mt-0.5 text-texto-forte">{{ $p->faturavel ? 'Sim' : 'Não' }}</dd>

@@ -50,6 +50,7 @@ class ProjetoDetalheTest extends TestCase
     public function test_pagina_do_projeto_para_um_tecnico(): void
     {
         $obra = $this->projeto(['nome' => 'Manutenção UPS', 'estimativa' => '2', 'taxa' => '55', 'nota' => "Contrato anual\npiso -1"]);
+        $this->juntarAoProjeto($obra, $this->ana, $this->rui);
         $infra = $this->cliente('Infra');
         $this->registo($this->ana, $infra, '2026-09-14', 3600, ['projeto_id' => $obra->id, 'faturavel' => true]);
         $this->registo($this->rui, $infra, '2026-09-15', 7200, ['projeto_id' => $obra->id, 'faturavel' => false]);
@@ -87,7 +88,7 @@ class ProjetoDetalheTest extends TestCase
 
         // Quem não é membro não sabe que existe.
         $this->actingAs($this->ana)->get(route('projetos.ver', $segredo))->assertNotFound();
-        $this->actingAs($this->rui)->get(route('projetos.ver', $segredo))->assertOk()->assertSee('Privado')->assertSee('Rui Costa');
+        $this->actingAs($this->rui)->get(route('projetos.ver', $segredo))->assertOk()->assertSee('Rui Costa'); // nos membros
         $this->actingAs($this->admin)->get(route('projetos.ver', $segredo))->assertOk();
 
         // Na página do cliente, os projetos também abrem a sua página.

@@ -6,6 +6,7 @@ use App\Models\AtribuicaoTempo;
 use App\Models\DespesaTempo;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
+use App\Models\User;
 use App\Services\Tempos\HorasProjetos;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
@@ -74,7 +75,8 @@ class Detalhe extends Component
             'despesasPendentes' => (int) $despesas->pendentes,
             'atribuicoes' => AtribuicaoTempo::with('utilizador:id,nome')->where('projeto_id', $p->id)
                 ->where('ate', '>=', $hoje->toDateString())->orderBy('de')->orderBy('id')->get(),
-            'membros' => $p->publico ? collect() : $p->membros->map(fn ($m) => $m->nomeVisivel())->sort()->values(),
+            'membros' => $p->membros->map(fn ($m) => $m->nomeVisivel())->sort()->values(),
+            'criadoPor' => $p->criado_por ? User::whereKey($p->criado_por)->value('nome') : null,
             'podeGerir' => $podeGerir,
             // Dinheiro só para quem gere (na lista também só eles veem o valor).
             'valorCent' => $podeGerir ? (app(HorasProjetos::class)->porProjeto([$p->id])[$p->id]['valor_cent'] ?? 0) : null,

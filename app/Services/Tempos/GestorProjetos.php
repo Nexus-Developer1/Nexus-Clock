@@ -26,7 +26,7 @@ class GestorProjetos
         Gate::forUser($autor)->authorize('tempos-gerir-projetos');
 
         $projeto = new ProjetoTempo;
-        $membros = $this->comAutor($autor, $projeto, $this->preencher($projeto, $this->semTaxaSeNaoPode($autor, $dados) + ['nome' => '']));
+        $membros = $this->preencher($projeto, $this->semTaxaSeNaoPode($autor, $dados) + ['nome' => '']);
         $projeto->criado_por = $autor->id;
         $projeto->alterado_por = $autor->id;
 
@@ -43,14 +43,14 @@ class GestorProjetos
     }
 
     /**
-     * @param  array{nome?: string, cliente_id?: int|string|null, cor?: string, publico?: bool, membros?: list<int|string>, faturavel?: bool, taxa?: string|null, estimativa?: string|null, nota?: string|null}  $dados
+     * @param  array{nome?: string, cliente_id?: int|string|null, cor?: string, membros?: list<int|string>, faturavel?: bool, taxa?: string|null, estimativa?: string|null, nota?: string|null}  $dados
      */
     public function atualizar(User $autor, ProjetoTempo $projeto, array $dados): ProjetoTempo
     {
         Gate::forUser($autor)->authorize('tempos-gerir-projetos');
         $this->exigirVisiveis($autor, [$projeto->id]);
 
-        $membros = $this->comAutor($autor, $projeto, $this->preencher($projeto, $this->semTaxaSeNaoPode($autor, $dados)));
+        $membros = $this->preencher($projeto, $this->semTaxaSeNaoPode($autor, $dados));
         $alteracoes = array_keys($projeto->getDirty());
         $projeto->alterado_por = $autor->id;
 
@@ -177,7 +177,8 @@ class GestorProjetos
             $projeto->cor = (string) $dados['cor'];
         }
 
-        foreach (['publico', 'faturavel'] as $campo) {
+        // (O «público» saiu na §64: a coluna fica, sem efeito.)
+        foreach (['faturavel'] as $campo) {
             if (array_key_exists($campo, $dados)) {
                 $projeto->{$campo} = (bool) $dados[$campo];
             }
@@ -254,30 +255,6 @@ class GestorProjetos
         }
 
         return $dados;
-    }
-
-    /**
-     * Um técnico que cria ou alterna para privado um projeto fica membro dele — senão deixava de o ver,
-     * a ele e às horas que lá registasse (notas §63).
-     *
-     * @param  list<int>|null  $membros
-     * @return list<int>|null
-     */
-    private function comAutor(User $autor, ProjetoTempo $projeto, ?array $membros): ?array
-    {
-        if ($projeto->publico || $autor->ehAdminTempos()) {
-            return $membros;
-        }
-        $proprio = MembroEquipa::where('utilizador_id', $autor->id)->value('id');
-        if (! $proprio) {
-            return $membros;
-        }
-        $base = $membros ?? ($projeto->exists ? $projeto->membros()->pluck('membros_equipa.id')->map(fn ($id) => (int) $id)->all() : []);
-        if (in_array((int) $proprio, $base, true)) {
-            return $membros;
-        }
-
-        return [...$base, (int) $proprio];
     }
 
     private function emMassa(User $autor, array $ids, string $acao, callable $aplicar): int
