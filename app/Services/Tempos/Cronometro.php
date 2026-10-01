@@ -8,7 +8,6 @@ use App\Models\RegistoTempo;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -60,64 +59,48 @@ class Cronometro
             ]);
         });
 
-        // Começar outra coisa (ou retomar) acaba a pausa que houvesse.
-        Cache::forget($this->chavePausa($autor));
-
         return $registo;
     }
 
-    // --- Pausa (notas §65) ---
-    // Pausar grava o tempo até ali (é um «parar») e guarda o que se estava a fazer; «Retomar» começa
-    // outro registo com os mesmos dados. No dia ficam dois registos, com a pausa entre eles — que o
-    // relatório Presenças já mostra. A pausa vive na cache (base Redis do Suporte), por pessoa, e
-    // serve entre separadores e dispositivos; esquecida, sai sozinha ao fim de 16 horas.
+    // --- Pausa (notas §67) ---
+    // Um só registo, com a pausa descontada: pausar marca `pausado_em` (o relógio para); retomar soma esse
+    // tempo a `pausa_seg` e o relógio continua de onde estava; parar grava (fim − início) − pausas. O
+    // cronómetro em pausa continua a ser «o que está a correr» (fim nulo): começar outra coisa para-o.
 
-    /** @return array{desde: CarbonImmutable, dados: array<string, mixed>}|null */
-    public function emPausa(User $tecnico): ?array
+    /** O cronómetro de quem está a ver, se estiver em pausa. */
+    public function emPausa(User $tecnico): ?RegistoTempo
     {
-        $pausa = Cache::get($this->chavePausa($tecnico));
+        $registo = $this->aCorrer($tecnico);
 
-        return is_array($pausa) ? ['desde' => CarbonImmutable::parse($pausa['desde']), 'dados' => $pausa['dados']] : null;
+        return $registo?->pausado_em ? $registo : null;
     }
 
-    /** @return RegistoTempo|null o registo gravado até à pausa (null se durou menos de um minuto) */
-    public function pausar(User $autor): ?RegistoTempo
+    public function pausar(User $autor): RegistoTempo
     {
         $registo = $this->aCorrer($autor)
             ?? throw ValidationException::withMessages(['cronometro' => 'Não há nenhum cronómetro a correr.']);
-        $dados = [
-            'cliente_id' => $registo->cliente_id,
-            'contrato_id' => $registo->contrato_id,
-            'projeto_id' => $registo->projeto_id,
-            'intervencao_id' => $registo->intervencao_id,
-            'descricao' => $registo->descricao,
-            'faturavel' => $registo->faturavel,
-            'etiquetas' => $registo->etiquetas,
-        ];
+        if ($registo->pausado_em) {
+            throw ValidationException::withMessages(['cronometro' => 'O cronómetro já está em pausa.']);
+        }
 
-        $gravado = $this->parar($autor); // se não puder parar (ex.: campo em falta), não fica em pausa
-        Cache::put($this->chavePausa($autor), ['desde' => now()->toIso8601String(), 'dados' => $dados], now()->addHours(16));
-
-        return $gravado;
+        return $this->gravador->atualizar($autor, $registo, ['pausado_em' => CarbonImmutable::now()]);
     }
 
     public function retomar(User $autor): RegistoTempo
     {
-        $pausa = $this->emPausa($autor)
+        $registo = $this->emPausa($autor)
             ?? throw ValidationException::withMessages(['cronometro' => 'Não há nada em pausa.']);
+        $pausa = (int) $registo->pausado_em->diffInSeconds(CarbonImmutable::now(), true);
 
-        return $this->iniciar($autor, $pausa['dados']);
+        return $this->gravador->atualizar($autor, $registo, ['pausado_em' => null, 'pausa_seg' => (int) $registo->pausa_seg + $pausa]);
     }
 
-    /** Acaba a pausa sem retomar: fica só o que já estava gravado. */
-    public function terminarPausa(User $autor): void
+    /** Tempo trabalhado de um cronómetro a correr (ou em pausa), sem as pausas. */
+    public static function trabalhado(RegistoTempo $registo): int
     {
-        Cache::forget($this->chavePausa($autor));
-    }
+        $ate = $registo->pausado_em ?? CarbonImmutable::now();
 
-    private function chavePausa(User $tecnico): string
-    {
-        return 'tempos-pausa:'.$tecnico->id;
+        return max(0, (int) $registo->inicio->diffInSeconds($ate, true) - (int) $registo->pausa_seg);
     }
 
     /** Recomeça o trabalho de um registo anterior (mesmo cliente, contrato, projeto, intervenção e atributos). */
@@ -148,8 +131,9 @@ class Cronometro
         $registo = $this->aCorrer($autor)
             ?? throw ValidationException::withMessages(['cronometro' => 'Não há nenhum cronómetro a correr.']);
 
-        $agora = CarbonImmutable::now();
-        $segundos = (int) $registo->inicio->diffInSeconds($agora, true);
+        // Em pausa, acaba na hora da pausa; a duração desconta as pausas (notas §67).
+        $fim = $registo->pausado_em ?? CarbonImmutable::now();
+        $segundos = self::trabalhado($registo);
 
         if ($segundos < self::MINIMO_SEG) {
             $this->gravador->apagar($autor, $registo);
@@ -161,7 +145,7 @@ class Cronometro
             throw ValidationException::withMessages(['cronometro' => 'O cronómetro está a correr há mais de 24 horas. Indique nos Registos a hora a que terminou, ou descarte-o.']);
         }
 
-        return $this->gravador->atualizar($autor, $registo, ['fim' => $agora]);
+        return $this->gravador->atualizar($autor, $registo, ['pausado_em' => null, 'fim' => $fim]);
     }
 
     /** Apaga o cronómetro a correr sem gravar horas. */

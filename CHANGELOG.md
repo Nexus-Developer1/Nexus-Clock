@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-01
 
+- 🧰 **A pausa continua de onde estava** — a pedido: «Pausar» para o relógio e «Retomar» continua a contar a partir do tempo que tinha, no mesmo registo. Ao parar fica um só registo, com a pausa descontada (ex.: 09:00–17:00 com 1 h de pausa = 7 h). Substitui a pausa da manhã, que começava outro registo. Notas §67. 342 testes.
 - 🐛 **Presenças a partir de hoje** — a pedido: o Suporte passa a ter data de início (01/10/2026). Os dias antes dela deixam de aparecer nas Presenças e de gerar lembretes; e os dias que ainda não chegaram deixam de aparecer com as horas todas «em falta» (era um erro). Notas §66. 341 testes.
 - 🧰 **Pausar o cronómetro** — a pedido: com o cronómetro a correr há «Pausar»; o tempo até ali fica gravado e «Retomar» continua a mesma tarefa (descrição, projeto, etiquetas) num registo novo. A pausa aparece entre os dois registos, também nas Presenças. Notas §65. 339 testes.
 - 🔒 **Cada técnico vê só os seus projetos** — a pedido: um técnico vê apenas os projetos que criou e aqueles de que é membro; os admins veem todos. Acabam os projetos públicos: a opção Público/Privado sai, e cada projeto tem membros (coluna «Membros» na lista; «Criado por» e «Membros» na página do projeto). Vale para tudo: lista, cronómetro, calendário, relatórios e despesas. Notas §64. 335 testes.

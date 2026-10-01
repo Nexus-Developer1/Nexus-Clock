@@ -173,6 +173,8 @@ class GravadorRegistos
             $registo->inicio = $inicio;
             $registo->duracao_seg = (int) $duracao;
             $registo->fim = $inicio->addSeconds((int) $duracao);
+            $registo->pausa_seg = 0; // só duração: não há pausas (notas §67)
+            $registo->pausado_em = null;
             $registo->origem ??= OrigemRegistoTempo::Timesheet;
 
             return;
@@ -180,11 +182,22 @@ class GravadorRegistos
 
         if (array_key_exists('inicio', $dados)) {
             $registo->inicio = CarbonImmutable::parse($dados['inicio'])->utc();
+            // Horas escritas à mão: a duração passa a ser fim − início, sem pausas (notas §67).
+            $registo->pausa_seg = 0;
+            $registo->pausado_em = null;
+        }
+
+        // Pausa do cronómetro (notas §67): só o serviço do cronómetro manda estes campos.
+        if (array_key_exists('pausado_em', $dados)) {
+            $registo->pausado_em = $dados['pausado_em'] === null ? null : CarbonImmutable::parse($dados['pausado_em'])->utc();
+        }
+        if (array_key_exists('pausa_seg', $dados)) {
+            $registo->pausa_seg = max(0, (int) $dados['pausa_seg']);
         }
 
         if (array_key_exists('fim', $dados)) {
             $registo->fim = $dados['fim'] === null ? null : CarbonImmutable::parse($dados['fim'])->utc();
-            $registo->duracao_seg = $registo->fim === null ? null : (int) $registo->inicio->diffInSeconds($registo->fim, false);
+            $registo->duracao_seg = $registo->fim === null ? null : (int) $registo->inicio->diffInSeconds($registo->fim, false) - (int) $registo->pausa_seg;
         } elseif (array_key_exists('duracao_seg', $dados) && $registo->inicio !== null) {
             $registo->duracao_seg = (int) $dados['duracao_seg'];
             $registo->fim = $registo->inicio->addSeconds((int) $dados['duracao_seg']);

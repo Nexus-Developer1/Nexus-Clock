@@ -80,30 +80,15 @@ class Cronometro extends Component
         });
     }
 
-    /** Pausa (notas §65): grava o tempo até agora e fica à espera de «Retomar». */
+    /** Pausa (notas §67): o relógio para; «Retomar» continua de onde estava, no mesmo registo. */
     public function pausar(): void
     {
-        $this->executar(function () {
-            $registo = app(ServicoCronometro::class)->pausar(auth()->user());
-            session()->flash('sucesso', $registo
-                ? 'Em pausa. Registo de '.PainelTempos::hms((int) $registo->duracao_seg).' gravado.'
-                : 'Em pausa.');
-        });
+        $this->executar(fn () => app(ServicoCronometro::class)->pausar(auth()->user()));
     }
 
     public function retomar(): void
     {
-        $this->executar(function () {
-            app(ServicoCronometro::class)->retomar(auth()->user());
-            $this->lerCronometro();
-            $this->semana = $this->segunda()->toDateString();
-        });
-    }
-
-    public function terminarPausa(): void
-    {
-        app(ServicoCronometro::class)->terminarPausa(auth()->user());
-        $this->limparBarra();
+        $this->executar(fn () => app(ServicoCronometro::class)->retomar(auth()->user()));
     }
 
     public function descartar(): void
@@ -176,8 +161,10 @@ class Cronometro extends Component
 
         return view('livewire.tempos.cronometro', [
             'aCorrer' => $aCorrer,
-            'inicioACorrer' => $aCorrer?->inicio->getTimestamp(),
-            'pausa' => $aCorrer ? null : app(ServicoCronometro::class)->emPausa(auth()->user()),
+            // O relógio conta a partir de um início «efetivo» (início + pausas), para mostrar só o trabalhado;
+            // em pausa fica parado no trabalhado até à pausa (notas §67).
+            'inicioACorrer' => $aCorrer ? $aCorrer->inicio->getTimestamp() + (int) $aCorrer->pausa_seg : null,
+            'trabalhadoACorrer' => $aCorrer ? ServicoCronometro::trabalhado($aCorrer) : 0,
             'dias' => $registos,
             'totalSemana' => $registos->sum(fn (array $dia) => $dia['total']),
             'inicio' => $inicio,
@@ -250,15 +237,6 @@ class Cronometro extends Component
     {
         $registo = app(ServicoCronometro::class)->aCorrer(auth()->user());
         if (! $registo) {
-            // Em pausa (notas §65): a barra mostra o que se estava a fazer, que é o que «Retomar» continua.
-            $pausa = app(ServicoCronometro::class)->emPausa(auth()->user());
-            if ($pausa) {
-                $this->descricao = (string) ($pausa['dados']['descricao'] ?? '');
-                $this->barraProjeto = (string) ($pausa['dados']['projeto_id'] ?? '');
-                $this->barraEtiquetas = implode(', ', (array) ($pausa['dados']['etiquetas'] ?? []));
-                $this->barraFaturavel = (bool) ($pausa['dados']['faturavel'] ?? true);
-            }
-
             return;
         }
 

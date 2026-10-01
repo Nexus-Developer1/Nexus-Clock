@@ -985,3 +985,11 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - **Data de início** (`tempos.inicio`, `TEMPOS_INICIO`; em produção **2026-10-01**, vazio por omissão): as Presenças não mostram dias antes dela, e os lembretes não avisam por períodos que comecem antes dela (a primeira semana fica de fora do lembrete semanal; o diário avisa a partir do dia seguinte ao início).
 - **Dias futuros:** as Presenças só vão até hoje — um dia que ainda não chegou não tem horas «em falta». (Horas lançadas para datas futuras continuam nos outros relatórios.)
 - Os testes das Presenças passaram a correr num domingo à noite, para a semana testada já ter passado toda; muda só a contagem do mês (setembro até dia 20).
+
+## 67. A pausa continua o mesmo registo (2026-10-01, a pedido) — substitui a §65
+
+- A §65 fez «pausar = parar e retomar = começar outro registo», escolhido pelo utilizador entre duas opções. Ao usar, viu que o relógio recomeçava do zero: «o objetivo do pausar é que ao retomar continue o tempo que estava — senão deixava só o botão de parar». Era a outra opção: **um só registo, com a pausa descontada**.
+- Duas colunas novas em `registos_tempo` (migração `2026_10_01_000001`, só tabela do Suporte): `pausado_em` (desde quando está em pausa; só num cronómetro a correr, garantido por um CHECK) e `pausa_seg` (pausas acumuladas). **Pausar** marca `pausado_em` e o relógio fica parado no tempo trabalhado; **Retomar** soma a pausa a `pausa_seg` e o relógio continua de onde estava (conta a partir de «início + pausas»); **Parar** grava (fim − início) − pausas — em pausa, acaba na hora da pausa. As Presenças mostram a pausa sem mudanças (a diferença entre a entrada/saída e o trabalhado).
+- O cronómetro em pausa continua a ser «o que está a correr» (fim nulo): começar outra tarefa para-o; o aviso de cronómetro esquecido (§61) também o apanha; descartar apaga-o.
+- Horas escritas à mão (início e fim no formulário, ou só a duração) tiram a pausa: a duração passa a ser a das horas escritas.
+- Saiu tudo o que era da §65 (a pausa guardada na cache, «Terminar»). Tudo continua a passar pelo `GravadorRegistos`; os campos da pausa só o serviço do cronómetro os manda.
