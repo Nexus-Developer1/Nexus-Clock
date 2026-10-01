@@ -33,6 +33,8 @@ Route::middleware(['auth', 'acesso'])->group(function () {
     // Acompanhar: cronómetro e calendário (as horas de quem está a ver).
     Route::get('/', TemposCronometro::class)->name('cronometro');
     Route::get('/calendario', TemposCalendario::class)->name('calendario');
+    // Só o cronómetro, para a janela por cima de tudo (notas §69).
+    Route::view('/cronometro/janela', 'janela-cronometro')->name('cronometro.janela');
 
     Route::get('/painel', PainelPagina::class)->name('painel');
 

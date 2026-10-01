@@ -38,6 +38,11 @@
         </div>
     </div>
 
+    {{-- Cronómetro no canto, em todas as páginas menos na do Cronómetro, que tem a barra (notas §69). --}}
+    @if ($ativo !== 'cronometro' && auth()->user()?->temAcesso())
+        <livewire:tempos.mini-cronometro />
+    @endif
+
     <div class="barra-carga" aria-hidden="true"></div>
 
     <script>
@@ -113,6 +118,7 @@
             }));
         });
     </script>
+    @include('partials.cronometro-js')
     @livewireScripts
 </body>
 </html>

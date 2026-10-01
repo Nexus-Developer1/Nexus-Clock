@@ -66,6 +66,7 @@ class Cronometro extends Component
             app(ServicoCronometro::class)->iniciar(auth()->user(), $this->dadosDaBarra());
             $this->modo = 'cronometro';
             $this->semana = $this->segunda()->toDateString();
+            $this->dispatch('cronometro-mudou');
         });
     }
 
@@ -77,6 +78,7 @@ class Cronometro extends Component
             session()->flash('sucesso', $registo
                 ? 'Registo de '.PainelTempos::hms((int) $registo->duracao_seg).' gravado.'
                 : 'Cronómetro descartado: durou menos de um minuto.');
+            $this->dispatch('cronometro-mudou');
         });
     }
 
@@ -86,6 +88,7 @@ class Cronometro extends Component
             app(ServicoCronometro::class)->descartar(auth()->user());
             $this->limparBarra();
             session()->flash('sucesso', 'Cronómetro descartado.');
+            $this->dispatch('cronometro-mudou');
         });
     }
 
@@ -95,7 +98,16 @@ class Cronometro extends Component
             app(ServicoCronometro::class)->continuar(auth()->user(), RegistoTempo::findOrFail($id));
             $this->lerCronometro();
             $this->semana = $this->segunda()->toDateString();
+            $this->dispatch('cronometro-mudou');
         });
+    }
+
+    /** O cronómetro começou ou parou noutro sítio (o cartão do canto, a janela por cima de tudo — notas §69). */
+    public function recarregarCronometro(): void
+    {
+        $this->limparBarra();
+        $this->lerCronometro();
+        $this->semana = $this->segunda()->toDateString();
     }
 
     /** Modo manual: grava as horas indicadas, sem cronómetro. */

@@ -1,8 +1,13 @@
 @use('App\Services\Tempos\PainelTempos')
 @use('App\Livewire\Concerns\FormularioRegisto')
 
-<div>
-    <x-topbar :breadcrumb="['Suporte', 'Cronómetro']" />
+<div x-data @cronometro-mudou-fora.window="$wire.recarregarCronometro()">
+    <x-topbar :breadcrumb="['Suporte', 'Cronómetro']">
+        {{-- Janela pequena que fica por cima dos outros programas (notas §69); só no Chrome e no Edge. --}}
+        <button type="button" x-data x-show="'documentPictureInPicture' in window" x-cloak
+                @click="abrirJanelaCronometro('{{ route('cronometro.janela') }}')" class="botao-secundario"
+                title="O cronómetro numa janela pequena, por cima do Outlook, do Excel…"><x-icone nome="janela" /> Janela por cima</button>
+    </x-topbar>
 
     <main class="flex-1 px-4 py-6 sm:px-10 sm:py-9">
         <div class="mx-auto max-w-7xl">
