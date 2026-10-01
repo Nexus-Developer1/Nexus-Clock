@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-10-01
+
+- 🛠️ **Limpeza dos dados de teste em produção** — a pedido: saem os dados de demonstração (registos, despesas, atribuições, taxas, lembretes, grupos, projetos e clientes) e os poucos testes feitos à mão; ficam os membros da equipa e as categorias de despesa de base. Cópia de segurança no servidor antes de apagar. Notas §62.
+
 ## 2026-09-30
 
 - 🧰 **Aviso de cronómetro esquecido** — a pedido: quem tiver o cronómetro a correr há mais de 10 horas recebe um email a lembrar de o parar ou corrigir a hora, uma vez por cronómetro. Verifica-se de hora a hora. Notas §61. 331 testes.

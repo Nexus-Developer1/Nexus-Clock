@@ -946,3 +946,11 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - Job `AvisarCronometrosEsquecidos`, de hora a hora (`tempos-cronometros-esquecidos`, na fila `tempos`, com `uniqueFor` como os outros): cada cronómetro a correr há mais de `tempos.aviso_cronometro_horas` (10; `TEMPOS_AVISO_CRONOMETRO_HORAS`) manda à pessoa o email `CronometroEsquecido`: «O seu cronómetro está a correr desde hoje/ontem/dia dd/mm às HH:MM — há N horas («descrição»)», com o botão «Abrir o Cronómetro». Só contas ativas com acesso ao Suporte.
 - **Uma vez por cronómetro:** marca-se na cache (`tempos-cronometro-avisado:<id do registo>`, uma semana; `Cache::add`, atómico). Se a pessoa o parar e se esquecer de outro, é outro registo e outro aviso. Se a cache se perder (base Redis 2), pode sair um segundo aviso do mesmo cronómetro — aceitável.
 - No dia do deploy, o único cronómetro nessa situação em produção era o dos dados de demonstração, na conta Admin Nexus (a correr desde 23/09): o primeiro aviso real foi esse.
+
+## 62. Limpeza dos dados de teste em produção (2026-10-01, a pedido)
+
+- Pedido: «apaga todos os testes que fizeste, clientes falsos, equipas que criaste, etc.; deixa ficar só os membros».
+- Antes de apagar, cópia de tudo o que ia sair (registos, despesas, atribuições, taxas, lembretes, grupos e membros dos grupos, projetos e membros dos projetos, clientes, relatórios partilhados — 1,1 MB em JSON) em `/var/lib/nexus-apps/app-tempos/backup-antes-limpeza-20261001.json` (pasta 700, ficheiro 600, só do `app-tempos`).
+- Os dados de demonstração saíram com o próprio comando (`tempos:demo --apagar --em-producao`, que apaga exatamente as linhas que criou): 2179 registos, 10 despesas, 5 atribuições, 20 taxas, 3 lembretes, 2 grupos, 13 projetos e 9 clientes. Fora deles, apagados à mão depois de os ver um a um: uma cópia de um registo de demonstração (o utilizador, a testar o Detalhado a 25/09), dois cronómetros descartados de 22/09, as duas despesas de teste do email de aprovação (SUP-21 e SUP-22, sem recibo) e o relatório partilhado de teste «ndn<».
+- **Ficaram:** os 10 membros da equipa e as 7 categorias de despesa de base (as da migração). A auditoria (tabela da Nexus Infra) não se mexeu.
+- Com isto o cronómetro de demonstração da conta Admin Nexus também saiu (§61).
