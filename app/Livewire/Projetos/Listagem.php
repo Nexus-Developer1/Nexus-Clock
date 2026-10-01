@@ -75,7 +75,7 @@ class Listagem extends Component
     public function ordenarPor(string $campo): void
     {
         // O valor é de quem gere os projetos: ordenar por ele, escondido, dava o ranking das taxas (notas §52).
-        if (in_array($campo, self::ORDENS, true) && ($campo !== 'valor' || Gate::allows('tempos-gerir-projetos'))) {
+        if (in_array($campo, self::ORDENS, true) && ($campo !== 'valor' || Gate::allows('tempos-valores-projetos'))) {
             $this->ordem = $this->ordem === $campo ? '-'.$campo : $campo;
         }
     }
@@ -93,7 +93,10 @@ class Listagem extends Component
         // Só quem gere os projetos abre o formulário — sem isto, um id de um projeto privado punha nome,
         // cliente, membros, taxa e nota no estado do componente, que vai para o browser (notas §42).
         abort_unless(Gate::allows('tempos-gerir-projetos'), 403);
-        $p = ProjetoTempo::with('membros')->findOrFail($id);
+        // Só os projetos que quem abre vê (desde a §63 os técnicos também gerem): um privado de que não é
+        // membro dá 404, sem pôr nada dele no estado do componente.
+        $p = ProjetoTempo::visiveisPara(auth()->user())->with('membros')->find($id);
+        abort_unless($p, 404);
         $this->resetErrorBag();
         $this->editarId = $p->id;
         $this->formulario = [
@@ -103,7 +106,8 @@ class Listagem extends Component
             'publico' => $p->publico,
             'membros' => $p->membros->pluck('id')->map(fn ($id) => (string) $id)->all(),
             'faturavel' => $p->faturavel,
-            'taxa' => Dinheiro::decimal($p->taxa_cent),
+            // Só para quem vê os valores: o estado do componente vai para o browser (notas §63).
+            'taxa' => Gate::allows('tempos-valores-projetos') ? Dinheiro::decimal($p->taxa_cent) : '',
             'estimativa' => $p->estimativa_seg ? rtrim(rtrim(number_format($p->estimativa_seg / 3600, 2, ',', ''), '0'), ',') : '',
             'nota' => (string) $p->nota,
         ];
@@ -179,15 +183,18 @@ class Listagem extends Component
     {
         abort_unless(Gate::allows('tempos-gerir-projetos'), 403);
 
-        $linhas = $this->projetos()->map(fn (ProjetoTempo $p) => [
-            $p->nome, $p->cliente?->nome ?? '', Horas::decimal($p->segundos), Dinheiro::decimal($p->valor_cent),
-            $p->progresso === null ? '' : number_format($p->progresso, 1, ',', ''),
-            $p->publico ? 'Público' : 'Privado', $p->faturavel ? 'Sim' : 'Não', $p->estimativa_seg ? Horas::decimal($p->estimativa_seg) : '',
-            $p->estaArquivado() ? 'Sim' : 'Não',
-        ]);
+        // O valor em euros só para quem vê os valores (notas §63).
+        $comValor = Gate::allows('tempos-valores-projetos');
+        $linhas = $this->projetos()->map(fn (ProjetoTempo $p) => array_merge(
+            [$p->nome, $p->cliente?->nome ?? '', Horas::decimal($p->segundos)],
+            $comValor ? [Dinheiro::decimal($p->valor_cent)] : [],
+            [$p->progresso === null ? '' : number_format($p->progresso, 1, ',', ''),
+                $p->publico ? 'Público' : 'Privado', $p->faturavel ? 'Sim' : 'Não', $p->estimativa_seg ? Horas::decimal($p->estimativa_seg) : '',
+                $p->estaArquivado() ? 'Sim' : 'Não'],
+        ));
 
         return Csv::resposta('projetos-'.now(config('tempos.fuso'))->format('Ymd').'.csv',
-            ['Projeto', 'Cliente', 'Registado (h)', 'Valor (€)', 'Progresso (%)', 'Acesso', 'Faturável', 'Estimativa (h)', 'Arquivado'], $linhas->all());
+            array_merge(['Projeto', 'Cliente', 'Registado (h)'], $comValor ? ['Valor (€)'] : [], ['Progresso (%)', 'Acesso', 'Faturável', 'Estimativa (h)', 'Arquivado']), $linhas->all());
     }
 
     public function render()
@@ -195,6 +202,7 @@ class Listagem extends Component
         return view('livewire.projetos.listagem', [
             'projetos' => $this->projetos(),
             'podeGerir' => Gate::allows('tempos-gerir-projetos'),
+            'veValores' => Gate::allows('tempos-valores-projetos'), // taxa e valor em euros (notas §63)
             'clientes' => ClienteTempo::orderByRaw('lower(nome)')->get(['id', 'nome', 'arquivado_em']),
             'membros' => $this->editarId !== null ? MembroEquipa::with('utilizador')->get()->sortBy(fn ($m) => mb_strtolower($m->nomeVisivel()))->values() : collect(),
             'cores' => ProjetoTempo::CORES,
@@ -285,7 +293,7 @@ class Listagem extends Component
         if ($this->filtroCliente !== 'sem' && ! ctype_digit($this->filtroCliente)) {
             $this->filtroCliente = '';
         }
-        if (! in_array(ltrim($this->ordem, '-'), self::ORDENS, true) || (ltrim($this->ordem, '-') === 'valor' && ! Gate::allows('tempos-gerir-projetos'))) {
+        if (! in_array(ltrim($this->ordem, '-'), self::ORDENS, true) || (ltrim($this->ordem, '-') === 'valor' && ! Gate::allows('tempos-valores-projetos'))) {
             $this->ordem = 'nome';
         }
     }

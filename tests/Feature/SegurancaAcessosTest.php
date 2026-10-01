@@ -85,8 +85,8 @@ class SegurancaAcessosTest extends TestCase
 
     public function test_tecnico_nao_le_projetos_nem_atribuicoes_pelo_formulario(): void
     {
-        Livewire::actingAs($this->ana)->test(ProjetosListagem::class)->call('editar', $this->privado->id)->assertForbidden();
-        Livewire::actingAs($this->ana)->test(ProjetosListagem::class)->call('novo')->assertForbidden();
+        // Desde a §63 os técnicos gerem projetos, mas só os que veem: um privado de que não é membro não abre.
+        Livewire::actingAs($this->ana)->test(ProjetosListagem::class)->call('editar', $this->privado->id)->assertNotFound();
 
         $atribuicao = AtribuicaoTempo::forceCreate([
             'utilizador_id' => $this->rui->id, 'projeto_id' => $this->privado->id, 'de' => '2026-09-14', 'ate' => '2026-09-18',

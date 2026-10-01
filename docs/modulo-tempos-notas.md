@@ -954,3 +954,12 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - Os dados de demonstração saíram com o próprio comando (`tempos:demo --apagar --em-producao`, que apaga exatamente as linhas que criou): 2179 registos, 10 despesas, 5 atribuições, 20 taxas, 3 lembretes, 2 grupos, 13 projetos e 9 clientes. Fora deles, apagados à mão depois de os ver um a um: uma cópia de um registo de demonstração (o utilizador, a testar o Detalhado a 25/09), dois cronómetros descartados de 22/09, as duas despesas de teste do email de aprovação (SUP-21 e SUP-22, sem recibo) e o relatório partilhado de teste «ndn<».
 - **Ficaram:** os 10 membros da equipa e as 7 categorias de despesa de base (as da migração). A auditoria (tabela da Nexus Infra) não se mexeu.
 - Com isto o cronómetro de demonstração da conta Admin Nexus também saiu (§61).
+
+## 63. Os técnicos também gerem projetos (2026-10-01, a pedido)
+
+- Pedido: «adiciona um botão de criar projeto na página dos projetos». O botão já existia, mas só para admins (`tempos-gerir-projetos`); o utilizador entra com uma conta de técnico. Perguntado até onde abrir, escolheu **«todos fazem tudo»**, como nos clientes (§33): criar, alterar, arquivar, restaurar e apagar.
+- `tempos-gerir-projetos` passa a `temAcesso()` (volta a fechar numa linha). Ficou protegido:
+  - **Só os projetos que se veem.** Quem não é admin só mexe nos públicos e nos privados de que é membro: o `GestorProjetos` verifica-o em alterar e nas ações em massa (`exigirVisiveis`), com a mesma mensagem de um projeto que não existe; o `editar()` da lista dá 404 num privado alheio, sem pôr nada dele no estado do componente.
+  - **Taxa e valores em euros**, numa permissão nova, `tempos-valores-projetos` (só admins), separada de gerir: coluna Valor e ordenar por ela, campo da taxa no formulário (nem vai para o estado do componente), coluna «Valor (€)» do CSV, taxa e valor na página do projeto. A taxa que um técnico mande é ignorada — fica a que estava.
+  - **Quem cria um privado fica membro dele** (ou o passa a privado): sem isto, um técnico que criasse um privado sem se escolher deixava de o ver.
+- Testes: `ProjetosTecnicosTest`; o `ProjetosTest` e o `SegurancaAcessosTest` (§42) atualizados para a regra nova.

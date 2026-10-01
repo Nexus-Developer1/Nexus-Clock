@@ -62,9 +62,12 @@ class AppServiceProvider extends ServiceProvider
         // Equipa: papéis, taxas (incluindo custo), membros limitados, grupos e lembretes. Os técnicos
         // veem a equipa sem taxas e sem ações.
         Gate::define('tempos-gerir-equipa', fn (User $utilizador) => $utilizador->ehAdminTempos());
-        // Projetos: criar, alterar, arquivar e apagar. Os técnicos veem os públicos e os privados de
-        // que são membros, e marcam favoritos.
-        Gate::define('tempos-gerir-projetos', fn (User $utilizador) => $utilizador->ehAdminTempos());
+        // Projetos: criar, alterar, arquivar e apagar. Aberto a toda a gente a pedido (2026-10-01, notas
+        // §63), como os clientes: cada um só nos projetos que vê (os públicos e os privados de que é
+        // membro). Para voltar a fechar aos admins basta repor $utilizador->ehAdminTempos() aqui.
+        Gate::define('tempos-gerir-projetos', fn (User $utilizador) => $utilizador->temAcesso());
+        // A taxa €/h dos projetos e os valores em euros: só admins (separado de gerir na §63).
+        Gate::define('tempos-valores-projetos', fn (User $utilizador) => $utilizador->ehAdminTempos());
         // Despesas: cada um lança as suas; quem gere lança para outros, aprova, rejeita e gere categorias.
         Gate::define('tempos-gerir-despesas', fn (User $utilizador) => $utilizador->ehAdminTempos());
         // Aprovar, rejeitar e voltar a pendente: só quem está em config('tempos.aprovam_despesas') — a

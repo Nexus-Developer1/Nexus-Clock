@@ -26,7 +26,7 @@ class GestorProjetos
         Gate::forUser($autor)->authorize('tempos-gerir-projetos');
 
         $projeto = new ProjetoTempo;
-        $membros = $this->preencher($projeto, $dados + ['nome' => '']);
+        $membros = $this->comAutor($autor, $projeto, $this->preencher($projeto, $this->semTaxaSeNaoPode($autor, $dados) + ['nome' => '']));
         $projeto->criado_por = $autor->id;
         $projeto->alterado_por = $autor->id;
 
@@ -48,8 +48,9 @@ class GestorProjetos
     public function atualizar(User $autor, ProjetoTempo $projeto, array $dados): ProjetoTempo
     {
         Gate::forUser($autor)->authorize('tempos-gerir-projetos');
+        $this->exigirVisiveis($autor, [$projeto->id]);
 
-        $membros = $this->preencher($projeto, $dados);
+        $membros = $this->comAutor($autor, $projeto, $this->preencher($projeto, $this->semTaxaSeNaoPode($autor, $dados)));
         $alteracoes = array_keys($projeto->getDirty());
         $projeto->alterado_por = $autor->id;
 
@@ -228,9 +229,61 @@ class GestorProjetos
      *
      * @param  list<int>  $ids
      */
+    /**
+     * Quem não é admin só mexe nos projetos que vê: um id de um privado de que não é membro, posto à mão,
+     * dá a mesma mensagem de um que não existe — não revela o nome (notas §63, como na §42).
+     *
+     * @param  list<int>  $ids
+     */
+    private function exigirVisiveis(User $autor, array $ids): void
+    {
+        if ($autor->ehAdminTempos()) {
+            return;
+        }
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        if (ProjetoTempo::withTrashed()->visiveisPara($autor)->whereKey($ids)->count() !== count($ids)) {
+            throw ValidationException::withMessages(['projetos' => count($ids) === 1 ? 'O projeto não existe.' : 'Algum dos projetos escolhidos não existe. Nada foi alterado.']);
+        }
+    }
+
+    /** A taxa €/h é só de quem vê os valores (admins): a dos outros é ignorada, fica a que estava (notas §63). */
+    private function semTaxaSeNaoPode(User $autor, array $dados): array
+    {
+        if (! Gate::forUser($autor)->allows('tempos-valores-projetos')) {
+            unset($dados['taxa']);
+        }
+
+        return $dados;
+    }
+
+    /**
+     * Um técnico que cria ou alterna para privado um projeto fica membro dele — senão deixava de o ver,
+     * a ele e às horas que lá registasse (notas §63).
+     *
+     * @param  list<int>|null  $membros
+     * @return list<int>|null
+     */
+    private function comAutor(User $autor, ProjetoTempo $projeto, ?array $membros): ?array
+    {
+        if ($projeto->publico || $autor->ehAdminTempos()) {
+            return $membros;
+        }
+        $proprio = MembroEquipa::where('utilizador_id', $autor->id)->value('id');
+        if (! $proprio) {
+            return $membros;
+        }
+        $base = $membros ?? ($projeto->exists ? $projeto->membros()->pluck('membros_equipa.id')->map(fn ($id) => (int) $id)->all() : []);
+        if (in_array((int) $proprio, $base, true)) {
+            return $membros;
+        }
+
+        return [...$base, (int) $proprio];
+    }
+
     private function emMassa(User $autor, array $ids, string $acao, callable $aplicar): int
     {
         Gate::forUser($autor)->authorize('tempos-gerir-projetos');
+        $this->exigirVisiveis($autor, $ids);
 
         $projetos = ProjetoTempo::whereKey(array_map('intval', $ids))->orderBy('nome')->get();
         if ($projetos->isEmpty()) {

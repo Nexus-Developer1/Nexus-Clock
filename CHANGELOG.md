@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-01
 
+- 🧰 **Os técnicos também gerem projetos** — a pedido: o botão «Novo projeto» passa a aparecer a todos, e qualquer pessoa cria, altera, arquiva e apaga os projetos que vê. A taxa €/h e os valores em euros continuam só para admins; quem cria um projeto privado fica membro dele. Notas §63. 335 testes.
 - 🛠️ **Limpeza dos dados de teste em produção** — a pedido: saem os dados de demonstração (registos, despesas, atribuições, taxas, lembretes, grupos, projetos e clientes) e os poucos testes feitos à mão; ficam os membros da equipa e as categorias de despesa de base. Cópia de segurança no servidor antes de apagar. Notas §62.
 
 ## 2026-09-30

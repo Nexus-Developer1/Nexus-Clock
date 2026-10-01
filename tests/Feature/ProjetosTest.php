@@ -14,7 +14,6 @@ use App\Services\Tempos\GestorEquipa;
 use App\Services\Tempos\GestorProjetos;
 use App\Services\Tempos\GravadorRegistos;
 use App\Services\Tempos\HorasProjetos;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -95,8 +94,9 @@ class ProjetosTest extends TestCase
         $this->assertSame(27000, GestorProjetos::lerHoras('7,5'));
         $this->assertNull(GestorProjetos::lerHoras(' '));
 
-        $this->expectException(AuthorizationException::class);
-        $this->gestor->criar($this->ana, ['nome' => 'Da Ana']);
+        // Desde a §63 os técnicos também criam projetos; a taxa é só de quem vê os valores e é ignorada.
+        $daAna = $this->gestor->criar($this->ana, ['nome' => 'Da Ana', 'taxa' => '50']);
+        $this->assertNull($daAna->taxa_cent);
     }
 
     public function test_horas_e_valor_a_taxa_do_projeto_ou_do_membro_no_dia(): void
@@ -231,14 +231,14 @@ class ProjetosTest extends TestCase
         $this->assertTrue($zebra->fresh()->publico);
         $admin->call('exportar')->assertFileDownloaded('projetos-20260917.csv');
 
-        // Técnico: sem valores nem ações; favoritos primeiro.
+        // Técnico: gere os projetos (§63), mas sem valores; favoritos primeiro.
         Livewire::actingAs($this->ana)->test(Listagem::class)
             ->assertSee('Zebra')
-            ->assertDontSee('Novo projeto')->assertDontSee('Exportar CSV')->assertDontSee('Valor')->assertDontSee('10,00 €')
+            ->assertSee('Novo projeto')->assertSee('Exportar CSV')->assertDontSee('Valor')->assertDontSee('10,00 €')
             ->call('alternarFavorito', $zebra->id)
             ->assertSeeHtml('aria-pressed="true"')
             ->call('exportar')
-            ->assertForbidden();
+            ->assertFileDownloaded('projetos-20260917.csv');
 
         $this->actingAs($this->ana)->get('/projetos')->assertOk()->assertSee('Projetos — Nexus Suporte', false);
     }

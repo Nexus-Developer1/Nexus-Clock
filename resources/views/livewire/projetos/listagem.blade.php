@@ -109,7 +109,7 @@
                                     </th>
                                     <th class="w-44"><button type="button" wire:click="ordenarPor('cliente')" class="hover:text-texto-forte">Cliente {{ $seta('cliente') }}</button></th>
                                     <th class="w-28"><button type="button" wire:click="ordenarPor('registado')" class="block w-full text-right hover:text-texto-forte">Registado {{ $seta('registado') }}</button></th>
-                                    @if ($podeGerir)
+                                    @if ($veValores)
                                         <th class="w-32"><button type="button" wire:click="ordenarPor('valor')" class="block w-full text-right hover:text-texto-forte">Valor {{ $seta('valor') }}</button></th>
                                     @endif
                                     <th class="w-44"><button type="button" wire:click="ordenarPor('progresso')" class="hover:text-texto-forte">Progresso {{ $seta('progresso') }}</button></th>
@@ -135,7 +135,7 @@
                                         </td>
                                         <td class="max-w-[11rem] truncate {{ $p->cliente ? 'text-texto-medio' : 'text-texto-fraco' }}">{{ $p->cliente?->nome ?? '—' }}</td>
                                         <td class="text-right tabular-nums text-texto-forte">{{ Horas::hm($p->segundos) }}</td>
-                                        @if ($podeGerir)
+                                        @if ($veValores)
                                             <td class="text-right tabular-nums {{ $p->faturavel ? 'text-texto-forte' : 'text-texto-fraco' }}">{{ $p->faturavel ? Dinheiro::formatar($p->valor_cent) : '—' }}</td>
                                         @endif
                                         <td>
@@ -256,12 +256,15 @@
                             <label class="campo-label flex cursor-pointer items-center gap-2">
                                 <input type="checkbox" wire:model.live="formulario.faturavel" class="h-3.5 w-3.5 rounded border-borda text-verde-600 focus:ring-verde-500"> Faturável
                             </label>
-                            <div class="relative">
-                                <input type="text" inputmode="decimal" wire:model="formulario.taxa" @disabled(! ($formulario['faturavel'] ?? true))
-                                    class="campo-input pr-12 tabular-nums disabled:bg-fundo disabled:text-texto-fraco" placeholder="Taxa do membro" aria-label="Taxa do projeto">
-                                <span class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-texto-fraco">€/h</span>
-                            </div>
-                            @error('formulario.taxa') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            {{-- A taxa €/h é só de quem vê os valores (notas §63). --}}
+                            @if ($veValores)
+                                <div class="relative">
+                                    <input type="text" inputmode="decimal" wire:model="formulario.taxa" @disabled(! ($formulario['faturavel'] ?? true))
+                                        class="campo-input pr-12 tabular-nums disabled:bg-fundo disabled:text-texto-fraco" placeholder="Taxa do membro" aria-label="Taxa do projeto">
+                                    <span class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-texto-fraco">€/h</span>
+                                </div>
+                                @error('formulario.taxa') <p class="mt-1.5 text-xs text-perigo-500">{{ $message }}</p> @enderror
+                            @endif
                         </div>
                         <div>
                             <label class="campo-label" for="projeto-estimativa">Estimativa</label>

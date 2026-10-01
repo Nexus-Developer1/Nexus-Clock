@@ -36,7 +36,7 @@ class Detalhe extends Component
         abort_unless(ProjetoTempo::visiveisPara(auth()->user())->whereKey($this->projeto->id)->exists(), 404);
 
         $p = $this->projeto->loadMissing(['cliente:id,nome,deleted_at', 'membros.utilizador:id,nome']);
-        $podeGerir = Gate::allows('tempos-gerir-projetos');
+        $podeGerir = Gate::allows('tempos-valores-projetos'); // taxa e valor em euros: só admins (notas §63)
         $hoje = CarbonImmutable::now(config('tempos.fuso'))->startOfDay();
 
         // Horas por pessoa (só registos terminados). Faturável só conta se o projeto o for.
