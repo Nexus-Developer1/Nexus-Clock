@@ -3,15 +3,18 @@
 namespace Tests\Feature;
 
 use App\Enums\OrigemRegistoTempo;
+use App\Jobs\EnviarLembretesEquipa;
 use App\Livewire\Relatorios\Presencas;
 use App\Models\Cliente;
 use App\Models\MembroEquipa;
 use App\Models\User;
+use App\Notifications\LembreteHoras;
 use App\Services\Tempos\GestorEquipa;
 use App\Services\Tempos\Presencas as ServicoPresencas;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -32,7 +35,8 @@ class RelatorioPresencasTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Carbon::setTestNow('2026-09-17 10:00:00'); // quinta; semana 14/09–20/09
+        // Domingo à noite: a semana 14/09–20/09 já passou toda (os dias que ainda não chegaram não contam, §66).
+        Carbon::setTestNow('2026-09-20 21:00:00');
 
         $this->admin = $this->admin();
         $this->admin->update(['nome' => 'Suporte Nexus']);
@@ -138,13 +142,46 @@ class RelatorioPresencasTest extends TestCase
             ->assertSeeInOrder(['Ana Martins', '7 linhas', 'Rui Costa', '7 linhas', 'Suporte Nexus', '7 linhas'])
             ->call('escolherPeriodo', 'mes')
             ->assertSee('Este mês')
-            ->assertSee('90 linhas')
+            ->assertSee('60 linhas') // setembro só até hoje, dia 20 (§66)
             ->assertSee('Página 1 de 2')
             ->call('irPara', 2)
-            ->assertSee('51–90 de 90')
+            ->assertSee('51–60 de 60')
             ->call('anterior')
             ->assertSet('pagina', 1)
             ->call('exportar')
             ->assertFileDownloaded('presencas-20260801-20260831.csv');
+    }
+
+    // Notas §66: os dias antes do início do Suporte e os que ainda não chegaram não aparecem nem contam
+    // como em falta — e os lembretes não avisam por períodos antes do início.
+    public function test_comeca_na_data_de_inicio_e_sem_dias_futuros(): void
+    {
+        Carbon::setTestNow('2026-09-17 10:00:00'); // quinta
+        $semana = fn () => app(ServicoPresencas::class)->linhas([$this->ana->id], CarbonImmutable::parse('2026-09-14'), CarbonImmutable::parse('2026-09-20'));
+
+        $this->assertSame(['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17'], collect($semana())->map(fn ($l) => $l['dia']->toDateString())->sort()->values()->all());
+
+        config(['tempos.inicio' => '2026-09-16']);
+        $this->assertSame(['2026-09-16', '2026-09-17'], collect($semana())->map(fn ($l) => $l['dia']->toDateString())->sort()->values()->all());
+        $this->assertSame(16 * 3600, ServicoPresencas::somar($semana())['capacidade']);
+
+        // Um período todo antes do início: nada.
+        $this->assertSame([], app(ServicoPresencas::class)->linhas([$this->ana->id], CarbonImmutable::parse('2026-09-01'), CarbonImmutable::parse('2026-09-07')));
+    }
+
+    public function test_lembretes_nao_avisam_por_dias_antes_do_inicio(): void
+    {
+        Notification::fake();
+        Carbon::setTestNow('2026-09-21 08:05:00'); // segunda, 09:05 em Lisboa
+        config(['tempos.inicio' => '2026-09-18']);
+        $gestor = app(GestorEquipa::class);
+        $gestor->guardarLembrete($this->admin, null, ['destinatarios' => 'todos', 'periodo' => 'semana', 'horas_minimas' => '40', 'dias' => [1], 'hora' => 9]);
+        $gestor->guardarLembrete($this->admin, null, ['destinatarios' => 'todos', 'periodo' => 'dia', 'horas_minimas' => '8', 'dias' => [1], 'hora' => 9]);
+
+        (new EnviarLembretesEquipa)->handle();
+
+        // A semana 14–20 começa antes do início: não se avisa. O dia anterior (domingo, 20) já é depois: avisa.
+        Notification::assertSentTo($this->ana, LembreteHoras::class, fn ($n) => str_starts_with($n->periodo, 'dia'));
+        Notification::assertNotSentTo($this->ana, LembreteHoras::class, fn ($n) => str_starts_with($n->periodo, 'semana'));
     }
 }

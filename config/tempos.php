@@ -29,6 +29,10 @@ return [
     // Capacidade diária de quem não a tem definida na página Equipa (relatório Presenças), em horas.
     'capacidade_diaria_horas' => (float) env('TEMPOS_CAPACIDADE_DIARIA_HORAS', 8),
 
+    // Dia em que a equipa começou a usar o Suporte (AAAA-MM-DD). Antes dele não há horas a contar: as
+    // Presenças não mostram esses dias e os lembretes não avisam por eles (notas §66). Vazio = sem início.
+    'inicio' => env('TEMPOS_INICIO') ?: null,
+
     // Um cronómetro a correr há mais destas horas manda um email à própria pessoa, uma vez (notas §61).
     'aviso_cronometro_horas' => (int) env('TEMPOS_AVISO_CRONOMETRO_HORAS', 10),
 

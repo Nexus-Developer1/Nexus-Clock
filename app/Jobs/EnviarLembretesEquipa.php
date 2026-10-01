@@ -39,10 +39,18 @@ class EnviarLembretesEquipa implements ShouldBeUnique, ShouldQueue
             ->where(fn ($q) => $q->whereNull('enviado_em')->orWhere('enviado_em', '<', $hoje))
             ->get();
 
+        // Antes do início do Suporte não há horas a contar (notas §66).
+        $inicio = config('tempos.inicio') ? CarbonImmutable::parse(config('tempos.inicio'), config('tempos.fuso'))->startOfDay() : null;
+
         foreach ($devidos as $lembrete) {
             [$de, $ate, $rotulo] = $lembrete->periodo === 'semana'
                 ? [$agora->startOfWeek()->subWeek(), $agora->startOfWeek()->subWeek()->addDays(6), 'semana de '.$agora->startOfWeek()->subWeek()->format('d/m').' a '.$agora->startOfWeek()->subDay()->format('d/m')]
                 : [$agora->subDay(), $agora->subDay(), 'dia '.$agora->subDay()->format('d/m')];
+
+            // Um período que começa antes do início não se avisa (a primeira semana fica de fora).
+            if ($inicio && $de->startOfDay()->lt($inicio)) {
+                continue;
+            }
 
             $membros = MembroEquipa::query()->comAcesso()->with('utilizador')
                 ->when($lembrete->destinatarios === 'grupos', fn ($q) => $q->whereHas('grupos', fn ($g) => $g->whereIn('grupos_equipa.id', $lembrete->grupos)))

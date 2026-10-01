@@ -32,6 +32,18 @@ class Presencas
      */
     public function linhas(?array $membros, CarbonImmutable $de, CarbonImmutable $ate, string $situacao = ''): array
     {
+        // Os dias antes do início do Suporte e os que ainda não chegaram não aparecem nem contam como em
+        // falta (notas §66): sem isto, a semana em que se começou e os dias de amanhã apareciam com as
+        // horas todas «em falta».
+        $fusoDias = config('tempos.fuso');
+        if ($inicio = config('tempos.inicio')) {
+            $de = $de->max(CarbonImmutable::parse($inicio, $de->getTimezone())->startOfDay());
+        }
+        $ate = $ate->min(CarbonImmutable::parse(CarbonImmutable::now($fusoDias)->toDateString(), $ate->getTimezone()));
+        if ($de->gt($ate)) {
+            return [];
+        }
+
         $pessoas = User::comAcessoAosTempos()
             ->when($membros !== null, fn ($q) => $q->whereIn('id', $membros))
             ->orderBy('nome')->get(['id', 'nome']);
