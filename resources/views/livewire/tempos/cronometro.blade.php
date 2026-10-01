@@ -42,8 +42,17 @@
                                      x-data="{ inicio: {{ $inicioACorrer }}, agora: Math.floor(Date.now() / 1000) }"
                                      x-init="setInterval(() => agora = Math.floor(Date.now() / 1000), 1000)"
                                      x-text="(() => { const s = Math.max(0, agora - inicio); return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map((v, i) => i ? String(v).padStart(2, '0') : v).join(':') })()">0:00:00</div>
+                                <button type="button" wire:click="pausar" class="botao-secundario h-10 px-4" title="Grava o tempo até agora; «Retomar» continua a mesma tarefa"><x-icone nome="pausa" /> Pausar</button>
                                 <button type="button" wire:click="parar" class="botao-perigo h-10 px-5"><x-icone nome="parar" /> Parar</button>
                                 <button type="button" wire:click="descartar" wire:confirm="Descartar este cronómetro sem gravar horas?" class="botao-icone h-10 w-10" title="Descartar" aria-label="Descartar cronómetro"><x-icone nome="lixo" /></button>
+                            @elseif ($pausa)
+                                {{-- Em pausa (notas §65): o tempo até à pausa já está gravado. --}}
+                                <span class="inline-flex items-center gap-2 text-sm font-medium text-aviso-500">
+                                    <span class="h-2 w-2 rounded-full bg-aviso-500" aria-hidden="true"></span>
+                                    Em pausa desde {{ $pausa['desde']->setTimezone(config('tempos.fuso'))->format('H:i') }}
+                                </span>
+                                <button type="button" wire:click="retomar" class="botao-primario h-10 px-5"><x-icone nome="play" /> Retomar</button>
+                                <button type="button" wire:click="terminarPausa" class="botao-secundario h-10 px-4" title="Acabar sem retomar">Terminar</button>
                             @elseif ($modo === 'manual')
                                 <input type="time" wire:model="manualInicio" class="campo-input campo-barra w-[7.5rem] tabular-nums" aria-label="Hora de início">
                                 <span class="text-texto-fraco">–</span>

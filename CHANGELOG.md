@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-01
 
+- 🧰 **Pausar o cronómetro** — a pedido: com o cronómetro a correr há «Pausar»; o tempo até ali fica gravado e «Retomar» continua a mesma tarefa (descrição, projeto, etiquetas) num registo novo. A pausa aparece entre os dois registos, também nas Presenças. Notas §65. 339 testes.
 - 🔒 **Cada técnico vê só os seus projetos** — a pedido: um técnico vê apenas os projetos que criou e aqueles de que é membro; os admins veem todos. Acabam os projetos públicos: a opção Público/Privado sai, e cada projeto tem membros (coluna «Membros» na lista; «Criado por» e «Membros» na página do projeto). Vale para tudo: lista, cronómetro, calendário, relatórios e despesas. Notas §64. 335 testes.
 - 🧰 **Os técnicos também gerem projetos** — a pedido: o botão «Novo projeto» passa a aparecer a todos, e qualquer pessoa cria, altera, arquiva e apaga os projetos que vê. A taxa €/h e os valores em euros continuam só para admins; quem cria um projeto privado fica membro dele. Notas §63. 335 testes.
 - 🛠️ **Limpeza dos dados de teste em produção** — a pedido: saem os dados de demonstração (registos, despesas, atribuições, taxas, lembretes, grupos, projetos e clientes) e os poucos testes feitos à mão; ficam os membros da equipa e as categorias de despesa de base. Cópia de segurança no servidor antes de apagar. Notas §62.

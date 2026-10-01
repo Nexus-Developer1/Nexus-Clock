@@ -972,3 +972,9 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - Quem cria vê sempre o que criou (pelo `criado_por`), por isso deixou de ser preciso pôr-se automaticamente como membro (§63). Para outra pessoa ver o projeto e registar horas nele, junta-se como membro.
 - Em produção havia um só projeto, «Area4k», criado pelo Davide Fonseca nessa manhã (depois da limpeza da §62), sem membros: passou a ser visto só por ele e pelos admins. Nada a converter. Os dados de demonstração (`tempos:demo`) passam a pôr membros em todos os projetos.
 - Testes: auxiliar `juntarAoProjeto()` no `TestCase`; os testes que partiam de projetos públicos passam a juntar os técnicos como membros.
+
+## 65. Pausar o cronómetro (2026-10-01, a pedido)
+
+- Pedido: «no cronómetro mete o botão de pausar». Desenho confirmado antes de construir: **pausar e retomar em dois registos** (a alternativa — um só registo com a pausa descontada — obrigava a guardar pausas dentro dos registos e mudava a forma de contar as horas em todo o lado).
+- Com o cronómetro a correr aparece **«Pausar»** ao lado de «Parar». Pausar grava o tempo até ali (é um «parar», com as mesmas regras: menos de um minuto não se grava) e guarda o que se estava a fazer; a barra mostra **«Em pausa desde HH:MM»** com **«Retomar»** e **«Terminar»**. Retomar começa outro registo com a mesma descrição, projeto, etiquetas e faturável. No dia ficam dois registos, com a pausa entre eles — que o relatório Presenças já mostra como pausa.
+- A pausa vive na cache (base Redis do Suporte, `tempos-pausa:<id>`), por pessoa: serve entre separadores e dispositivos (abrir o Cronómetro noutro sítio mostra a pausa e a barra preenchida), e sai sozinha ao fim de 16 horas. Começar outra tarefa, ou «Terminar», acaba a pausa. Uma pausa não é um cronómetro a correr: não conta para o aviso de cronómetro esquecido (§61).

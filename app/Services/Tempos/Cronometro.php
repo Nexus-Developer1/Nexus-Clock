@@ -8,6 +8,7 @@ use App\Models\RegistoTempo;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -39,7 +40,7 @@ class Cronometro
      */
     public function iniciar(User $autor, array $dados): RegistoTempo
     {
-        return DB::transaction(function () use ($autor, $dados) {
+        $registo = DB::transaction(function () use ($autor, $dados) {
             if ($this->aCorrer($autor)) {
                 $this->parar($autor);
             }
@@ -58,6 +59,65 @@ class Cronometro
                 'origem' => OrigemRegistoTempo::Cronometro,
             ]);
         });
+
+        // Começar outra coisa (ou retomar) acaba a pausa que houvesse.
+        Cache::forget($this->chavePausa($autor));
+
+        return $registo;
+    }
+
+    // --- Pausa (notas §65) ---
+    // Pausar grava o tempo até ali (é um «parar») e guarda o que se estava a fazer; «Retomar» começa
+    // outro registo com os mesmos dados. No dia ficam dois registos, com a pausa entre eles — que o
+    // relatório Presenças já mostra. A pausa vive na cache (base Redis do Suporte), por pessoa, e
+    // serve entre separadores e dispositivos; esquecida, sai sozinha ao fim de 16 horas.
+
+    /** @return array{desde: CarbonImmutable, dados: array<string, mixed>}|null */
+    public function emPausa(User $tecnico): ?array
+    {
+        $pausa = Cache::get($this->chavePausa($tecnico));
+
+        return is_array($pausa) ? ['desde' => CarbonImmutable::parse($pausa['desde']), 'dados' => $pausa['dados']] : null;
+    }
+
+    /** @return RegistoTempo|null o registo gravado até à pausa (null se durou menos de um minuto) */
+    public function pausar(User $autor): ?RegistoTempo
+    {
+        $registo = $this->aCorrer($autor)
+            ?? throw ValidationException::withMessages(['cronometro' => 'Não há nenhum cronómetro a correr.']);
+        $dados = [
+            'cliente_id' => $registo->cliente_id,
+            'contrato_id' => $registo->contrato_id,
+            'projeto_id' => $registo->projeto_id,
+            'intervencao_id' => $registo->intervencao_id,
+            'descricao' => $registo->descricao,
+            'faturavel' => $registo->faturavel,
+            'etiquetas' => $registo->etiquetas,
+        ];
+
+        $gravado = $this->parar($autor); // se não puder parar (ex.: campo em falta), não fica em pausa
+        Cache::put($this->chavePausa($autor), ['desde' => now()->toIso8601String(), 'dados' => $dados], now()->addHours(16));
+
+        return $gravado;
+    }
+
+    public function retomar(User $autor): RegistoTempo
+    {
+        $pausa = $this->emPausa($autor)
+            ?? throw ValidationException::withMessages(['cronometro' => 'Não há nada em pausa.']);
+
+        return $this->iniciar($autor, $pausa['dados']);
+    }
+
+    /** Acaba a pausa sem retomar: fica só o que já estava gravado. */
+    public function terminarPausa(User $autor): void
+    {
+        Cache::forget($this->chavePausa($autor));
+    }
+
+    private function chavePausa(User $tecnico): string
+    {
+        return 'tempos-pausa:'.$tecnico->id;
     }
 
     /** Recomeça o trabalho de um registo anterior (mesmo cliente, contrato, projeto, intervenção e atributos). */
