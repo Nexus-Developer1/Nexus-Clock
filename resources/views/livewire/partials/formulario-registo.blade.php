@@ -74,6 +74,9 @@
             </div>
 
             <footer class="flex items-center justify-end gap-3 rounded-b-2xl border-t border-borda bg-fundo/50 px-6 py-4">
+                @if ($editarId > 0)
+                    <button type="button" wire:click="apagarDoFormulario" wire:confirm="Apagar este registo?" class="botao-secundario mr-auto !text-perigo-600 hover:!border-perigo-200 hover:!bg-perigo-100"><x-icone nome="lixo" /> Apagar</button>
+                @endif
                 <button type="button" wire:click="fecharFormulario" class="botao-secundario">Cancelar</button>
                 <button type="submit" class="botao-primario"><x-icone nome="visto" traco="2" /> {{ $editarId === 0 ? 'Acrescentar' : 'Guardar' }}</button>
             </footer>

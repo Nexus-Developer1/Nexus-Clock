@@ -141,6 +141,25 @@ trait FormularioRegisto
         });
     }
 
+    /** Apagar a partir da janela de alterar: usa o `apagar` da página e fecha a janela se correu bem. */
+    public function apagarDoFormulario(): void
+    {
+        if (! $this->editarId) {
+            return;
+        }
+
+        $this->apagar($this->editarId);
+
+        if ($this->erro !== null) {
+            $this->addError('formulario.geral', $this->erro);
+            $this->erro = null;
+
+            return;
+        }
+
+        $this->fecharFormulario();
+    }
+
     /** Registo com horas reais (cronómetro ou início/fim indicados), em vez de só uma duração no dia. */
     public static function temHorasReais(RegistoTempo $registo): bool
     {

@@ -8,6 +8,8 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-02
 
+- 🧰 **Apagar na janela «Alterar registo»** — a pedido: botão Apagar (com confirmação) na janela de alterar um registo, igual no Cronómetro, no Calendário e no Detalhado; apaga e fecha a janela, ou diz na janela porque não pode (outra pessoa, mês fechado, faturado). Sem migrações. 350 testes.
+
 - 🧰 **O admin vê o calendário de qualquer membro** — a pedido: no Calendário, o admin escolhe a pessoa ao lado da semana e vê de que horas a que horas ela trabalhou e em que projeto; pode também acrescentar ou corrigir tempo dela. Os técnicos continuam a ver só o seu. Notas §71. 347 testes.
 
 ## 2026-10-01
