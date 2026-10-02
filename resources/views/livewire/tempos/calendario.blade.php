@@ -22,6 +22,15 @@
                     @unless ($estaSemana)
                         <button type="button" wire:click="estaSemana" class="botao-secundario">Hoje</button>
                     @endunless
+                    {{-- Quem vê a equipa escolhe de quem é o calendário (notas §71). --}}
+                    @if ($pessoas->isNotEmpty())
+                        <select wire:model.live="pessoa" class="campo-select campo-barra w-full sm:w-56 {{ $pessoa !== '' ? '!border-verde-300 !bg-verde-50 text-verde-800' : '' }}" aria-label="De quem é o calendário">
+                            <option value="">{{ auth()->user()->nome }} (eu)</option>
+                            @foreach ($pessoas as $id => $nome)
+                                <option value="{{ $id }}">{{ $nome }}</option>
+                            @endforeach
+                        </select>
+                    @endif
                 </div>
                 <div class="flex items-center gap-3">
                     <span class="text-sm text-texto-medio">Total da semana <span class="ml-1 text-lg font-semibold tabular-nums text-texto-forte">{{ PainelTempos::hms($totalSemana) }}</span></span>

@@ -4,8 +4,10 @@ namespace App\Livewire\Tempos;
 
 use App\Livewire\Concerns\FormularioRegisto;
 use App\Models\RegistoTempo;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -13,12 +15,15 @@ use Livewire\Component;
 /**
  * Calendário da semana (como o "Calendar" do Clockify): os registos de quem está a ver desenhados nas
  * horas de cada dia, arrastar numa coluna para acrescentar tempo e carregar num bloco para o alterar.
- * Os registos sem horas (só duração) ficam numa faixa por cima do dia.
+ * Os registos sem horas (só duração) ficam numa faixa por cima do dia. Quem vê a equipa
+ * (tempos-ver-todos) escolhe de quem é o calendário (notas §71).
  */
 #[Layout('components.layouts.app', ['ativo' => 'calendario', 'titulo' => 'Calendário'])]
 class Calendario extends Component
 {
-    use FormularioRegisto;
+    use FormularioRegisto {
+        novo as private novoDoFormulario;
+    }
 
     /** Altura de uma hora, em pixels (o mesmo valor está na vista). */
     public const ALTURA_HORA = 48;
@@ -26,9 +31,29 @@ class Calendario extends Component
     #[Url(as: 'de')]
     public string $semana = '';
 
+    // De quem é o calendário: '' = de quem está a ver; o id de outro membro só para quem vê a equipa.
+    #[Url(as: 'pessoa')]
+    public string $pessoa = '';
+
     public function mount(): void
     {
         $this->semana = $this->segunda($this->semana)->toDateString();
+        $this->updatedPessoa();
+    }
+
+    public function updatedPessoa(): void
+    {
+        if ($this->pessoa !== '' && $this->quem()->id === auth()->id()) {
+            $this->pessoa = '';
+        }
+    }
+
+    /** No calendário de outra pessoa, o tempo acrescentado é dela (para quem pode mexer nas horas de todos). */
+    public function novo(array $valores = []): void
+    {
+        $quem = $this->quem();
+        $outro = $quem->id !== auth()->id() && Gate::allows('tempos-editar-todos');
+        $this->novoDoFormulario($valores + ($outro ? ['tecnico_id' => (string) $quem->id] : []));
     }
 
     public function semanaAnterior(): void
@@ -49,9 +74,12 @@ class Calendario extends Component
     public function render()
     {
         $inicio = $this->segunda();
-        $dias = $this->dias($inicio);
+        $dias = $this->dias($inicio, $this->quem());
 
         return view('livewire.tempos.calendario', [
+            'pessoas' => Gate::allows('tempos-ver-todos')
+                ? User::comAcessoAosTempos()->whereKeyNot(auth()->id())->orderBy('nome')->pluck('nome', 'id')
+                : collect(),
             'dias' => $dias,
             'totalSemana' => $dias->sum('total'),
             'rotuloSemana' => $this->rotuloSemana($inicio, $inicio->addDays(6)),
@@ -65,12 +93,12 @@ class Calendario extends Component
      *
      * @return Collection<int, array{data: CarbonImmutable, total: int, blocos: list<array<string, mixed>>, semHoras: Collection<int, RegistoTempo>}>
      */
-    private function dias(CarbonImmutable $inicio): Collection
+    private function dias(CarbonImmutable $inicio, User $quem): Collection
     {
         $fim = $inicio->addDays(7);
 
         $registos = RegistoTempo::query()
-            ->doTecnico(auth()->user())
+            ->doTecnico($quem)
             ->whereNotNull('fim')
             ->whereBetween('inicio', [$inicio->utc(), $fim->utc()])
             ->with(['projeto:id,nome,cor,cliente_id', 'projeto.cliente:id,nome'])
@@ -160,6 +188,16 @@ class Calendario extends Component
         foreach ($grupo as $i) {
             $blocos[$i]['colunas'] = $total;
         }
+    }
+
+    /** De quem é o calendário mostrado: outra pessoa só para quem vê a equipa; senão, quem está a ver. */
+    private function quem(): User
+    {
+        if (! ctype_digit($this->pessoa) || (int) $this->pessoa === auth()->id() || ! Gate::allows('tempos-ver-todos')) {
+            return auth()->user();
+        }
+
+        return User::comAcessoAosTempos()->find((int) $this->pessoa) ?? auth()->user();
     }
 
     /** A segunda-feira da semana de hoje. */

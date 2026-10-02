@@ -121,4 +121,62 @@ class CalendarioTest extends TestCase
             ->assertSee('Esta semana')
             ->assertDontSee('Semana passada');
     }
+
+    // Notas §71: o admin vê o calendário de qualquer membro (de que horas a que horas, em que projeto).
+    public function test_admin_ve_o_calendario_de_outra_pessoa(): void
+    {
+        $admin = $this->admin();
+        $projeto = ProjetoTempo::create(['nome' => 'Obra do hospital']);
+        $this->comHoras($this->ana, '2026-09-15', '09:00', '12:30', 'Montagem', ['projeto_id' => $projeto->id]);
+        $this->comHoras($admin, '2026-09-15', '14:00', '15:00', 'Reunião do admin');
+
+        Livewire::actingAs($admin)->test(Calendario::class)
+            ->assertSee('(eu)')
+            ->assertSee('Ana Martins')
+            ->assertSee('Reunião do admin')
+            ->assertDontSee('Montagem')
+            ->set('pessoa', (string) $this->ana->id)
+            ->assertSee('Montagem')
+            ->assertSee('Obra do hospital')
+            ->assertSee('09:00')
+            ->assertSee('3:30:00')
+            ->assertDontSee('Reunião do admin');
+
+        // Pelo endereço (?pessoa=) também.
+        Livewire::actingAs($admin)->withQueryParams(['pessoa' => $this->ana->id])->test(Calendario::class)
+            ->assertSet('pessoa', (string) $this->ana->id)
+            ->assertSee('Montagem');
+    }
+
+    public function test_admin_acrescenta_tempo_no_calendario_de_outra_pessoa(): void
+    {
+        $admin = $this->admin();
+
+        Livewire::actingAs($admin)->test(Calendario::class)
+            ->set('pessoa', (string) $this->ana->id)
+            ->call('novo', ['dia' => '2026-09-16', 'hora_inicio' => '10:00', 'hora_fim' => '11:00'])
+            ->assertSet('formulario.tecnico_id', (string) $this->ana->id)
+            ->set('formulario.descricao', 'Acrescentado pelo admin')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $this->assertSame($this->ana->id, RegistoTempo::sole()->tecnico_id);
+    }
+
+    public function test_tecnico_so_ve_o_seu_calendario(): void
+    {
+        $this->comHoras($this->rui, '2026-09-15', '09:00', '10:00', 'Do Rui');
+
+        Livewire::actingAs($this->ana)->test(Calendario::class)
+            ->assertDontSee('(eu)') // sem o seletor de pessoas
+            ->set('pessoa', (string) $this->rui->id)
+            ->assertSet('pessoa', '')
+            ->assertDontSee('Do Rui')
+            ->call('novo')
+            ->assertSet('formulario.tecnico_id', (string) $this->ana->id);
+
+        Livewire::actingAs($this->ana)->withQueryParams(['pessoa' => $this->rui->id])->test(Calendario::class)
+            ->assertSet('pessoa', '')
+            ->assertDontSee('Do Rui');
+    }
 }

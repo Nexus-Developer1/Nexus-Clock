@@ -1014,3 +1014,9 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - Por isso, **com a janela aberta**, os links para fora do Suporte (o «Voltar aos módulos», qualquer link para o portal ou outra aplicação) abrem num **separador novo** e o do Suporte fica atrás, com a janela viva. Sem janela aberta, tudo funciona como antes. Links com Ctrl/Shift, `target` próprio ou `download` não se tocam.
 - Continua a fechar se o separador do Suporte for fechado ou recarregado (F5), ou se se escrever outro endereço nele.
 - Experimentado num Chrome local: com a janela aberta, «Voltar aos módulos» abre o portal num separador novo e a janela fica; sem ela, vai no mesmo separador.
+
+## 71. O admin vê o calendário de qualquer membro (2026-10-02, a pedido)
+
+- «O admin não consegue ver no calendário de que horas a que horas eu trabalhei naquele projeto.» O Calendário mostrava só as horas de quem estava a ver, também ao admin.
+- Agora quem vê a equipa (`tempos-ver-todos`, o admin) tem no Calendário um seletor de pessoa ao lado da semana: «Nome (eu)» por omissão e os outros membros com acesso ao Suporte. Fica no endereço (`?pessoa=`), para se poder partilhar ou voltar a ele. Os técnicos não têm o seletor e um `?pessoa=` de outra pessoa é ignorado (vêem sempre as suas).
+- No calendário de outra pessoa, o admin carrega num bloco para o ver ou alterar, e arrastar ou «Acrescentar tempo» já abre o formulário com essa pessoa escolhida. As regras de mexer são as de sempre (`RegistoTempoPolicy`: semanas aprovadas, meses fechados, faturados), e tudo passa pelo `GravadorRegistos`, com a auditoria das alterações a horas de outra pessoa.

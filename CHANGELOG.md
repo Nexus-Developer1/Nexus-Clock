@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-10-02
+
+- 🧰 **O admin vê o calendário de qualquer membro** — a pedido: no Calendário, o admin escolhe a pessoa ao lado da semana e vê de que horas a que horas ela trabalhou e em que projeto; pode também acrescentar ou corrigir tempo dela. Os técnicos continuam a ver só o seu. Notas §71. 347 testes.
+
 ## 2026-10-01
 
 - 🐛 **A janela do cronómetro já não fecha ao ir para o portal** — o browser fecha-a quando o separador do Suporte sai para outro sítio; agora, com a janela aberta, os links para fora do Suporte (o portal, as outras aplicações) abrem num separador novo e o do Suporte fica aberto atrás. Notas §70. 344 testes.
