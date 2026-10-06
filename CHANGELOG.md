@@ -8,6 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-06
 
+- 🧹 **Aviso do PHP nas vistas do Cronómetro e do Calendário** — chamavam um método diretamente do trait do formulário, o que o PHP dá como obsoleto; passam a chamá-lo pela própria página. A aplicação não muda.
 - 🧰 **Calendário com Dia, Semana e Mês** — a pedido, como na agenda da Nexus Infra: botão para ver o calendário de um dia, da semana ou do mês inteiro. No mês, cada dia mostra o total, o feriado e os primeiros registos; carregar no número do dia abre esse dia. Notas §73. 362 testes.
 - 🧰 **Feriados no Calendário e sem registos nesses dias** — a pedido, como na agenda da Nexus Infra: os feriados nacionais (e o São João) aparecem no Calendário com o nome e o dia pintado, e não se registam horas neles — nem no cronómetro, nem no Calendário, nem noutro sítio. O Carnaval aparece como tolerância e não bloqueia. Os feriados não contam como horas em falta nas Presenças nem nos lembretes. Notas §72. 358 testes.
 

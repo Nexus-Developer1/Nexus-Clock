@@ -1,5 +1,5 @@
 @use('App\Services\Tempos\PainelTempos')
-@use('App\Livewire\Concerns\FormularioRegisto')
+@use('App\Livewire\Tempos\Calendario')
 
 <div>
     <x-topbar :breadcrumb="['Suporte', 'Calendário']" />
@@ -77,7 +77,7 @@
                                                     class="block w-full truncate rounded border-l-[3px] bg-fundo px-1.5 py-0.5 text-left text-[11px] text-texto-forte hover:bg-verde-50"
                                                     style="border-color: {{ $r->projeto?->cor ?? '#16a34a' }}"
                                                     title="{{ $r->descricao ?: ($r->projeto?->nome ?? 'Sem descrição') }}">
-                                                <span class="tabular-nums text-texto-medio">{{ FormularioRegisto::temHorasReais($r) ? $r->inicio->setTimezone(config('tempos.fuso'))->format('H:i') : PainelTempos::hms((int) $r->duracao_seg) }}</span>
+                                                <span class="tabular-nums text-texto-medio">{{ Calendario::temHorasReais($r) ? $r->inicio->setTimezone(config('tempos.fuso'))->format('H:i') : PainelTempos::hms((int) $r->duracao_seg) }}</span>
                                                 {{ $r->descricao ?: ($r->projeto?->nome ?? 'Sem descrição') }}
                                             </button>
                                         @endforeach

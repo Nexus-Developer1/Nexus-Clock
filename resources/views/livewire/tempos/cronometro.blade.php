@@ -1,5 +1,5 @@
 @use('App\Services\Tempos\PainelTempos')
-@use('App\Livewire\Concerns\FormularioRegisto')
+@use('App\Livewire\Tempos\Cronometro', 'PaginaCronometro')
 
 <div x-data @cronometro-mudou-fora.window="$wire.recarregarCronometro()">
     <x-topbar :breadcrumb="['Suporte', 'Cronómetro']">
@@ -101,7 +101,7 @@
 
                         <ul class="divide-y divide-borda">
                             @foreach ($grupo['registos'] as $r)
-                                @php($horas = FormularioRegisto::temHorasReais($r))
+                                @php($horas = PaginaCronometro::temHorasReais($r))
                                 <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 hover:bg-fundo/50 sm:px-5" wire:key="r-{{ $r->id }}">
                                     <button type="button" wire:click="editar({{ $r->id }})" class="min-w-0 flex-1 text-left">
                                         <div class="truncate text-sm font-medium text-texto-forte">{{ $r->descricao ?: 'Sem descrição' }}</div>
