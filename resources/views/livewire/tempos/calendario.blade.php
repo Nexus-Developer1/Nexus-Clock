@@ -1,4 +1,5 @@
 @use('App\Services\Tempos\PainelTempos')
+@use('App\Livewire\Concerns\FormularioRegisto')
 
 <div>
     <x-topbar :breadcrumb="['Suporte', 'Calendário']" />
@@ -13,15 +14,15 @@
             @endif
 
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     <div class="flex items-center rounded-lg border border-borda bg-white">
-                        <button type="button" wire:click="semanaAnterior" class="h-[38px] rounded-l-lg px-2.5 text-texto-medio hover:bg-fundo" aria-label="Semana anterior"><x-icone nome="seta-esq" traco="2" /></button>
-                        <span class="inline-flex h-[38px] min-w-[11rem] items-center justify-center border-x border-borda px-3 text-sm text-texto-forte">{{ $rotuloSemana }}</span>
-                        <button type="button" wire:click="semanaSeguinte" class="h-[38px] rounded-r-lg px-2.5 text-texto-medio hover:bg-fundo" aria-label="Semana seguinte"><x-icone nome="seta-dir" traco="2" /></button>
+                        <button type="button" wire:click="anterior" class="h-[38px] rounded-l-lg px-2.5 text-texto-medio hover:bg-fundo" aria-label="Anterior"><x-icone nome="seta-esq" traco="2" /></button>
+                        <span class="inline-flex h-[38px] min-w-[11rem] items-center justify-center border-x border-borda px-3 text-sm text-texto-forte">{{ $rotulo }}</span>
+                        <button type="button" wire:click="seguinte" class="h-[38px] rounded-r-lg px-2.5 text-texto-medio hover:bg-fundo" aria-label="Seguinte"><x-icone nome="seta-dir" traco="2" /></button>
                     </div>
-                    @unless ($estaSemana)
-                        <button type="button" wire:click="estaSemana" class="botao-secundario">Hoje</button>
-                    @endunless
+                    @if ($mostraHoje)
+                        <button type="button" wire:click="hoje" class="botao-secundario">Hoje</button>
+                    @endif
                     {{-- Quem vê a equipa escolhe de quem é o calendário (notas §71). --}}
                     @if ($pessoas->isNotEmpty())
                         <select wire:model.live="pessoa" class="campo-select campo-barra w-full sm:w-56 {{ $pessoa !== '' ? '!border-verde-300 !bg-verde-50 text-verde-800' : '' }}" aria-label="De quem é o calendário">
@@ -32,13 +33,65 @@
                         </select>
                     @endif
                 </div>
-                <div class="flex items-center gap-3">
-                    <span class="text-sm text-texto-medio">Total da semana <span class="ml-1 text-lg font-semibold tabular-nums text-texto-forte">{{ PainelTempos::hms($totalSemana) }}</span></span>
+                <div class="flex flex-wrap items-center gap-3">
+                    {{-- Dia / Semana / Mês, como na agenda da Nexus Infra (notas §73). --}}
+                    <div class="inline-flex rounded-lg border border-borda bg-white p-0.5" role="group" aria-label="Vista do calendário">
+                        @foreach ($vistas as $chave => $nome)
+                            <button type="button" wire:click="mudarVista('{{ $chave }}')" aria-pressed="{{ $vista === $chave ? 'true' : 'false' }}"
+                                    class="h-[34px] rounded-md px-3 text-sm font-medium transition {{ $vista === $chave ? 'bg-verde-700 text-white shadow-sm' : 'text-texto-medio hover:bg-fundo hover:text-texto-forte' }}">{{ $nome }}</button>
+                        @endforeach
+                    </div>
+                    <span class="text-sm text-texto-medio">{{ $rotuloTotal }} <span class="ml-1 text-lg font-semibold tabular-nums text-texto-forte">{{ PainelTempos::hms($total) }}</span></span>
                     <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Acrescentar tempo</button>
                 </div>
             </div>
 
-            <section class="cartao mt-6 overflow-hidden p-0">
+            @if ($vista === 'mes')
+                {{-- Mês: um quadrado por dia com o total e os primeiros registos; o número leva à vista do dia. --}}
+                <section class="cartao mt-6 overflow-hidden p-0" wire:key="grelha-mes">
+                    <div class="grid grid-cols-7 border-b border-borda bg-fundo/60">
+                        @foreach (['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'] as $nomeDia)
+                            <div class="px-2 py-2 text-center text-xs uppercase tracking-wide text-texto-fraco {{ $loop->first ? '' : 'border-l border-borda' }}">{{ $nomeDia }}</div>
+                        @endforeach
+                    </div>
+                    @foreach ($semanas as $semanaDoMes)
+                        <div class="grid grid-cols-7 {{ $loop->last ? '' : 'border-b border-borda' }}">
+                            @foreach ($semanaDoMes as $dia)
+                                @php($chaveDia = $dia['data']->toDateString())
+                                @php($fora = $dia['data']->month !== $mes)
+                                <div wire:key="mes-{{ $chaveDia }}" x-on:click="$wire.novo({ dia: '{{ $chaveDia }}' })"
+                                     class="min-h-[7.5rem] min-w-0 p-1.5 {{ $loop->first ? '' : 'border-l border-borda' }} {{ $dia['bloqueado'] ? 'cursor-not-allowed bg-perigo-100/40' : ($fora ? 'cursor-pointer bg-fundo/60' : 'cursor-pointer bg-white hover:bg-verde-50/40') }}">
+                                    <div class="flex items-center justify-between gap-1">
+                                        <button type="button" wire:click.stop="irParaDia('{{ $chaveDia }}')" title="Ver o dia"
+                                                class="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold hover:ring-2 hover:ring-verde-300 {{ $dia['data']->isToday() ? 'bg-verde-700 text-white' : ($fora ? 'text-texto-fraco' : 'text-texto-forte') }}">{{ $dia['data']->format('j') }}</button>
+                                        @if ($dia['total'])
+                                            <span class="truncate text-[11px] font-medium tabular-nums text-texto-medio">{{ PainelTempos::hms($dia['total']) }}</span>
+                                        @endif
+                                    </div>
+                                    @if ($dia['feriado'])
+                                        <div class="mt-0.5 truncate text-[11px] font-medium {{ $dia['bloqueado'] ? 'text-perigo-600' : 'text-texto-fraco' }}" title="{{ $dia['feriado'] }}">{{ $dia['feriado'] }}</div>
+                                    @endif
+                                    <div class="mt-1 hidden space-y-0.5 sm:block">
+                                        @foreach ($dia['registos']->take(3) as $r)
+                                            <button type="button" wire:click.stop="editar({{ $r->id }})" wire:key="m-{{ $r->id }}"
+                                                    class="block w-full truncate rounded border-l-[3px] bg-fundo px-1.5 py-0.5 text-left text-[11px] text-texto-forte hover:bg-verde-50"
+                                                    style="border-color: {{ $r->projeto?->cor ?? '#16a34a' }}"
+                                                    title="{{ $r->descricao ?: ($r->projeto?->nome ?? 'Sem descrição') }}">
+                                                <span class="tabular-nums text-texto-medio">{{ FormularioRegisto::temHorasReais($r) ? $r->inicio->setTimezone(config('tempos.fuso'))->format('H:i') : PainelTempos::hms((int) $r->duracao_seg) }}</span>
+                                                {{ $r->descricao ?: ($r->projeto?->nome ?? 'Sem descrição') }}
+                                            </button>
+                                        @endforeach
+                                        @if ($dia['registos']->count() > 3)
+                                            <button type="button" wire:click.stop="irParaDia('{{ $chaveDia }}')" class="px-1 text-[11px] font-medium text-verde-700 hover:underline">+{{ $dia['registos']->count() - 3 }} mais</button>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endforeach
+                </section>
+            @else
+            <section class="cartao mt-6 overflow-hidden p-0" wire:key="grelha-{{ $vista }}">
                 {{-- Cabeçalho dos dias --}}
                 <div class="flex border-b border-borda bg-fundo/60 pr-[10px]">
                     <div class="w-14 shrink-0"></div>
@@ -46,7 +99,12 @@
                         <div class="min-w-0 flex-1 border-l border-borda px-2 py-2 text-center">
                             <div class="text-xs uppercase tracking-wide text-texto-fraco">{{ ucfirst($dia['data']->locale('pt_PT')->isoFormat('ddd')) }}</div>
                             <div class="mt-0.5 flex items-center justify-center gap-2">
-                                <span class="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold {{ $dia['data']->isToday() ? 'bg-verde-700 text-white' : 'text-texto-forte' }}">{{ $dia['data']->format('d') }}</span>
+                                @if ($vista === 'semana')
+                                    <button type="button" wire:click="irParaDia('{{ $dia['data']->toDateString() }}')" title="Ver o dia"
+                                            class="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold hover:ring-2 hover:ring-verde-300 {{ $dia['data']->isToday() ? 'bg-verde-700 text-white' : 'text-texto-forte' }}">{{ $dia['data']->format('d') }}</button>
+                                @else
+                                    <span class="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold {{ $dia['data']->isToday() ? 'bg-verde-700 text-white' : 'text-texto-forte' }}">{{ $dia['data']->format('d') }}</span>
+                                @endif
                                 @if ($dia['total'])
                                     <span class="text-xs font-medium tabular-nums text-texto-medio">{{ PainelTempos::hms($dia['total']) }}</span>
                                 @endif
@@ -147,6 +205,7 @@
                     </div>
                 </div>
             </section>
+            @endif
         </div>
     </main>
 

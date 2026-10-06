@@ -114,12 +114,82 @@ class CalendarioTest extends TestCase
 
         Livewire::actingAs($this->ana)->test(Calendario::class)
             ->assertDontSee('Semana passada')
-            ->call('semanaAnterior')
+            ->call('anterior')
             ->assertSee('Semana passada')
             ->assertSee('1:00:00')
-            ->call('estaSemana')
+            ->call('hoje')
             ->assertSee('Esta semana')
             ->assertDontSee('Semana passada');
+    }
+
+    // Notas §73: vistas de dia, semana e mês, como a agenda da Nexus Infra.
+    public function test_vista_de_dia_mostra_so_esse_dia(): void
+    {
+        $this->comHoras($this->ana, '2026-09-17', '09:00', '10:00', 'Hoje de manhã');
+        $this->comHoras($this->ana, '2026-09-16', '09:00', '10:00', 'Ontem de manhã');
+
+        Livewire::actingAs($this->ana)->test(Calendario::class)
+            ->call('mudarVista', 'dia')
+            ->assertSet('vista', 'dia')
+            ->assertSet('data', '2026-09-17') // hoje estava na semana vista
+            ->assertSee('Hoje')
+            ->assertSee('Total do dia')
+            ->assertSee('Hoje de manhã')
+            ->assertDontSee('Ontem de manhã')
+            ->call('anterior')
+            ->assertSet('data', '2026-09-16')
+            ->assertSee('Ontem')
+            ->assertSee('Ontem de manhã')
+            ->assertDontSee('Hoje de manhã')
+            // «Acrescentar tempo» na vista de dia é nesse dia.
+            ->call('novo')
+            ->assertSet('formulario.dia', '2026-09-16');
+    }
+
+    public function test_vista_de_mes_mostra_o_mes_e_leva_ao_dia(): void
+    {
+        $this->comHoras($this->ana, '2026-09-03', '14:00', '15:30', 'Início do mês');
+        $this->comHoras($this->ana, '2026-09-28', '09:00', '10:00', 'Fim do mês');
+        $this->comHoras($this->ana, '2026-10-02', '09:00', '10:00', 'Já é outubro'); // aparece na grelha, mas não conta
+        $this->comHoras($this->rui, '2026-09-10', '09:00', '10:00', 'Do Rui');
+
+        $mes = Livewire::actingAs($this->ana)->test(Calendario::class)
+            ->call('mudarVista', 'mes')
+            ->assertSet('data', '2026-09-01')
+            ->assertSee('Setembro de 2026')
+            ->assertSee('Total do mês')
+            ->assertSee('Início do mês')
+            ->assertSee('14:00')
+            ->assertSee('Fim do mês')
+            ->assertSee('Já é outubro')
+            ->assertSee('2:30:00') // 1:30 + 1:00; outubro fica de fora do total
+            ->assertDontSee('Do Rui');
+
+        $mes->call('seguinte')->assertSet('data', '2026-10-01')->assertSee('Outubro de 2026')
+            ->call('irParaDia', '2026-10-02')
+            ->assertSet('vista', 'dia')
+            ->assertSet('data', '2026-10-02')
+            ->assertSee('Já é outubro');
+    }
+
+    public function test_mais_de_tres_registos_no_mes_mostra_quantos_faltam(): void
+    {
+        foreach (['08:00', '09:00', '10:00', '11:00', '12:00'] as $h) {
+            $this->comHoras($this->ana, '2026-09-15', $h, substr($h, 0, 2).':30', 'Tarefa das '.$h);
+        }
+
+        Livewire::actingAs($this->ana)->withQueryParams(['vista' => 'mes', 'de' => '2026-09-15'])->test(Calendario::class)
+            ->assertSet('data', '2026-09-01')
+            ->assertSee('Tarefa das 10:00')
+            ->assertDontSee('Tarefa das 11:00')
+            ->assertSee('+2 mais');
+    }
+
+    public function test_vista_invalida_volta_a_semana(): void
+    {
+        Livewire::actingAs($this->ana)->withQueryParams(['vista' => 'ano', 'de' => '2026-09-17'])->test(Calendario::class)
+            ->assertSet('vista', 'semana')
+            ->assertSet('data', '2026-09-14');
     }
 
     // Notas §71: o admin vê o calendário de qualquer membro (de que horas a que horas, em que projeto).
