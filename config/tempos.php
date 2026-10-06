@@ -33,6 +33,10 @@ return [
     // Presenças não mostram esses dias e os lembretes não avisam por eles (notas §66). Vazio = sem início.
     'inicio' => env('TEMPOS_INICIO') ?: null,
 
+    // Feriados (notas §72): aparecem sempre no Calendário e não contam como horas em falta; com isto
+    // ligado, também não se registam horas num dia de feriado. Desligar volta a deixar registar.
+    'bloquear_feriados' => (bool) env('TEMPOS_BLOQUEAR_FERIADOS', true),
+
     // Um cronómetro a correr há mais destas horas manda um email à própria pessoa, uma vez (notas §61).
     'aviso_cronometro_horas' => (int) env('TEMPOS_AVISO_CRONOMETRO_HORAS', 10),
 

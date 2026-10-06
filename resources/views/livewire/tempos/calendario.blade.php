@@ -51,6 +51,10 @@
                                     <span class="text-xs font-medium tabular-nums text-texto-medio">{{ PainelTempos::hms($dia['total']) }}</span>
                                 @endif
                             </div>
+                            {{-- Feriado (notas §72): o nome por baixo do dia; o Carnaval, que é tolerância, a cinzento. --}}
+                            @if ($dia['feriado'])
+                                <div class="mt-0.5 line-clamp-2 text-[11px] font-medium leading-tight {{ $dia['bloqueado'] ? 'text-perigo-600' : 'text-texto-fraco' }}" title="{{ $dia['feriado'] }}">{{ $dia['feriado'] }}</div>
+                            @endif
                         </div>
                     @endforeach
                 </div>
@@ -85,11 +89,12 @@
                         </div>
 
                         @foreach ($dias as $dia)
-                            <div class="relative min-w-0 flex-1 select-none border-l border-borda {{ $dia['data']->isToday() ? 'bg-verde-50/40' : '' }}"
+                            <div class="relative min-w-0 flex-1 select-none border-l border-borda {{ $dia['bloqueado'] ? 'cursor-not-allowed bg-perigo-100/40' : ($dia['feriado'] ? 'bg-fundo' : ($dia['data']->isToday() ? 'bg-verde-50/40' : '')) }}"
                                  style="height: {{ 24 * $alturaHora }}px; background-image: repeating-linear-gradient(to bottom, var(--linha-hora) 0 1px, transparent 1px {{ $alturaHora }}px);"
                                  wire:key="col-{{ $dia['data']->toDateString() }}"
                                  x-data="{
                                      altura: {{ $alturaHora }},
+                                     bloqueado: @js($dia['bloqueado']),
                                      arrastar: false,
                                      de: 0,
                                      ate: 0,
@@ -99,7 +104,10 @@
                                          return Math.min(1440, Math.max(0, m));
                                      },
                                      hhmm(m) { return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); },
-                                     comecar(e) { this.de = this.minuto(e); this.ate = this.de + 15; this.arrastar = true; },
+                                     comecar(e) {
+                                         // Num feriado não se arrasta: o servidor só mostra o aviso.
+                                         if (this.bloqueado) { $wire.novo({ dia: '{{ $dia['data']->toDateString() }}' }); return; }
+                                         this.de = this.minuto(e); this.ate = this.de + 15; this.arrastar = true; },
                                      mover(e) { if (this.arrastar) this.ate = Math.max(this.de + 15, this.minuto(e)); },
                                      largar() {
                                          if (! this.arrastar) return;

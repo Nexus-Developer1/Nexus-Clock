@@ -166,6 +166,35 @@ class EquipaTest extends TestCase
         $this->assertStringContainsString('registou <strong style="color:#111827;">5:00</strong> horas', $html);
     }
 
+    // Notas §72: o lembrete do dia não avisa por um feriado; o da semana desconta um quinto por feriado.
+    public function test_lembretes_e_feriados(): void
+    {
+        Notification::fake();
+        $cliente = $this->cliente();
+        $this->gestor->guardarLembrete($this->admin, null, ['destinatarios' => 'todos', 'periodo' => 'dia', 'horas_minimas' => '8', 'dias' => [2], 'hora' => 11]);
+        $this->gestor->guardarLembrete($this->admin, null, ['destinatarios' => 'todos', 'periodo' => 'semana', 'horas_minimas' => '40', 'dias' => [2], 'hora' => 11]);
+
+        // Terça 06/10/2026: ontem foi a Implantação da República; a semana passada (28/09–04/10) não teve feriados.
+        Carbon::setTestNow('2026-10-06 10:00:00');
+        foreach (['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01'] as $dia) {
+            $this->registo($this->ana, $cliente, $dia, 8 * 3600); // 32 h: falta na semana
+        }
+        (new EnviarLembretesEquipa)->handle();
+        Notification::assertNotSentTo($this->ana, LembreteHoras::class, fn ($n) => str_starts_with($n->periodo, 'dia'));
+        Notification::assertSentTo($this->ana, LembreteHoras::class, fn ($n) => $n->periodo === 'semana de 28/09 a 04/10' && $n->minimoSeg === 40 * 3600);
+
+        // Terça 13/10: a semana passada teve o feriado de 05/10 → mínimo de 32 h, e 32 h chegam.
+        Notification::fake();
+        LembreteEquipa::query()->update(['enviado_em' => null]);
+        Carbon::setTestNow('2026-10-13 10:00:00');
+        foreach (['2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-12'] as $dia) {
+            $this->registo($this->ana, $cliente, $dia, 8 * 3600); // 32 h na semana de 05/10 (12/10 é da seguinte)
+        }
+        (new EnviarLembretesEquipa)->handle();
+        Notification::assertNotSentTo($this->ana, LembreteHoras::class);
+        Notification::assertSentTo($this->admin, LembreteHoras::class, fn ($n) => $n->periodo === 'semana de 05/10 a 11/10' && $n->minimoSeg === 32 * 3600);
+    }
+
     public function test_lembrete_de_grupo_fora_da_hora_ou_desligado_nao_sai(): void
     {
         Notification::fake();

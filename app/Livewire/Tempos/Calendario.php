@@ -5,6 +5,7 @@ namespace App\Livewire\Tempos;
 use App\Livewire\Concerns\FormularioRegisto;
 use App\Models\RegistoTempo;
 use App\Models\User;
+use App\Services\Tempos\Feriados;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -51,6 +52,14 @@ class Calendario extends Component
     /** No calendário de outra pessoa, o tempo acrescentado é dela (para quem pode mexer nas horas de todos). */
     public function novo(array $valores = []): void
     {
+        // Num feriado não se registam horas (notas §72): avisa logo, sem abrir o formulário.
+        $dia = (string) ($valores['dia'] ?? '');
+        if (config('tempos.bloquear_feriados') && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dia) && $feriado = app(Feriados::class)->nome($dia)) {
+            $this->erro = CarbonImmutable::parse($dia)->format('d/m/Y').' é feriado ('.$feriado.') — não é possível registar horas neste dia.';
+
+            return;
+        }
+
         $quem = $this->quem();
         $outro = $quem->id !== auth()->id() && Gate::allows('tempos-editar-todos');
         $this->novoDoFormulario($valores + ($outro ? ['tecnico_id' => (string) $quem->id] : []));
@@ -91,7 +100,7 @@ class Calendario extends Component
     /**
      * Os sete dias da semana, cada um com os blocos (com horas) e os registos só com duração.
      *
-     * @return Collection<int, array{data: CarbonImmutable, total: int, blocos: list<array<string, mixed>>, semHoras: Collection<int, RegistoTempo>}>
+     * @return Collection<int, array{data: CarbonImmutable, feriado: ?string, bloqueado: bool, total: int, blocos: list<array<string, mixed>>, semHoras: Collection<int, RegistoTempo>}>
      */
     private function dias(CarbonImmutable $inicio, User $quem): Collection
     {
@@ -107,12 +116,16 @@ class Calendario extends Component
             ->get()
             ->groupBy(fn (RegistoTempo $r) => $r->dia()->toDateString());
 
-        return collect(range(0, 6))->map(function (int $n) use ($inicio, $registos) {
+        $feriados = app(Feriados::class);
+
+        return collect(range(0, 6))->map(function (int $n) use ($inicio, $registos, $feriados) {
             $data = $inicio->addDays($n);
             $doDia = $registos->get($data->toDateString(), collect());
 
             return [
                 'data' => $data,
+                'feriado' => $feriados->nome($data, true),
+                'bloqueado' => config('tempos.bloquear_feriados') && $feriados->eFeriado($data),
                 'total' => (int) $doDia->sum('duracao_seg'),
                 'blocos' => $this->blocos($doDia->filter(fn (RegistoTempo $r) => self::temHorasReais($r)), $data),
                 'semHoras' => $doDia->reject(fn (RegistoTempo $r) => self::temHorasReais($r))->values(),

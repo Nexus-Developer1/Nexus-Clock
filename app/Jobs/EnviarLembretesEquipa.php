@@ -6,6 +6,7 @@ use App\Models\LembreteEquipa;
 use App\Models\MembroEquipa;
 use App\Models\RegistoTempo;
 use App\Notifications\LembreteHoras;
+use App\Services\Tempos\Feriados;
 use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -52,6 +53,15 @@ class EnviarLembretesEquipa implements ShouldBeUnique, ShouldQueue
                 continue;
             }
 
+            // Feriados (notas §72): o lembrete do dia não avisa por um feriado (nem se podia registar),
+            // e o da semana desconta um quinto do mínimo por cada feriado de segunda a sexta.
+            $feriadosUteis = app(Feriados::class)->emDiasUteis($de, $ate);
+            if ($lembrete->periodo !== 'semana' && app(Feriados::class)->eFeriado($de)) {
+                $lembrete->forceFill(['enviado_em' => $hoje])->save();
+
+                continue;
+            }
+
             $membros = MembroEquipa::query()->comAcesso()->with('utilizador')
                 ->when($lembrete->destinatarios === 'grupos', fn ($q) => $q->whereHas('grupos', fn ($g) => $g->whereIn('grupos_equipa.id', $lembrete->grupos)))
                 ->get();
@@ -64,6 +74,9 @@ class EnviarLembretesEquipa implements ShouldBeUnique, ShouldQueue
                 ->pluck('segundos', 'tecnico_id');
 
             $minimoSeg = (int) round($lembrete->horas_minimas * 3600);
+            if ($lembrete->periodo === 'semana' && $feriadosUteis > 0) {
+                $minimoSeg = (int) round($minimoSeg * max(0, 5 - $feriadosUteis) / 5);
+            }
             $avisados = 0;
             foreach ($membros as $m) {
                 $segundos = (int) ($horas[$m->utilizador_id] ?? 0);

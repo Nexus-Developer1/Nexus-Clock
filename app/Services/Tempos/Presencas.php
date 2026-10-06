@@ -14,7 +14,7 @@ use Carbon\CarbonImmutable;
  * extra, horas em falta, saldo e pausas.
  *
  * Capacidade = capacidade diária da pessoa (página Equipa, ou `tempos.capacidade_diaria_horas`) nos
- * seus dias de trabalho; 0 nos outros. Pausas = tempo entre a primeira entrada e a última saída que
+ * seus dias de trabalho; 0 nos outros e nos feriados. Pausas = tempo entre a primeira entrada e a última saída que
  * não está em registos com horas. Só registos terminados. Não há ausências nos Tempos.
  */
 class Presencas
@@ -74,6 +74,7 @@ class Presencas
             });
 
         $linhas = [];
+        $feriados = app(Feriados::class);
         foreach ($pessoas as $p) {
             $membro = $equipa[$p->id] ?? null;
             $capacidadeDia = $membro?->capacidade_diaria_seg ?? $padrao;
@@ -81,7 +82,8 @@ class Presencas
 
             for ($dia = $de; $dia->lte($ate); $dia = $dia->addDay()) {
                 $d = $dias[$p->id.'|'.$dia->toDateString()] ?? ['trabalho' => 0, 'inicio' => null, 'fim' => null, 'comHoras' => 0];
-                $capacidade = in_array($dia->dayOfWeekIso, $diasTrabalho, true) ? $capacidadeDia : 0;
+                // Num feriado não há horas esperadas (notas §72).
+                $capacidade = in_array($dia->dayOfWeekIso, $diasTrabalho, true) && ! $feriados->eFeriado($dia) ? $capacidadeDia : 0;
                 $saldo = $d['trabalho'] - $capacidade;
 
                 $linhas[] = [

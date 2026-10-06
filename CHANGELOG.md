@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-10-06
+
+- 🧰 **Feriados no Calendário e sem registos nesses dias** — a pedido, como na agenda da Nexus Infra: os feriados nacionais (e o São João) aparecem no Calendário com o nome e o dia pintado, e não se registam horas neles — nem no cronómetro, nem no Calendário, nem noutro sítio. O Carnaval aparece como tolerância e não bloqueia. Os feriados não contam como horas em falta nas Presenças nem nos lembretes. Notas §72. 358 testes.
+
 ## 2026-10-02
 
 - 🧰 **Apagar na janela «Alterar registo»** — a pedido: botão Apagar (com confirmação) na janela de alterar um registo, igual no Cronómetro, no Calendário e no Detalhado; apaga e fecha a janela, ou diz na janela porque não pode (outra pessoa, mês fechado, faturado). Sem migrações. 350 testes.

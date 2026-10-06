@@ -216,6 +216,10 @@ class GravadorRegistos
             $hoje = CarbonImmutable::now(config('tempos.fuso'))->startOfDay();
             if ($registo->dia()->lt($hoje->subYear()) || $registo->dia()->gt($hoje->addYear())) {
                 $erros['dia'] = 'O dia tem de estar a menos de um ano de hoje.';
+            } elseif (config('tempos.bloquear_feriados') && $feriado = app(Feriados::class)->nome($registo->dia())) {
+                // Em feriado não se registam horas, como na agenda da Nexus Infra (notas §72). Conta o dia
+                // de início: um cronómetro que vem da véspera e passa a meia-noite não é recusado.
+                $erros['dia'] = $registo->dia()->format('d/m/Y').' é feriado ('.$feriado.') — não é possível registar horas neste dia.';
             }
         }
 
