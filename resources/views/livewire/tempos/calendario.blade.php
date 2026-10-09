@@ -1,5 +1,6 @@
 @use('App\Services\Tempos\PainelTempos')
 @use('App\Livewire\Tempos\Calendario')
+@use('App\Support\PessoaNaAgenda')
 
 <div>
     <x-topbar :breadcrumb="['Suporte', 'Calendário']" />
@@ -27,6 +28,7 @@
                     @if ($pessoas->isNotEmpty())
                         <select wire:model.live="pessoa" class="campo-select campo-barra w-full sm:w-56 {{ $pessoa !== '' ? '!border-verde-300 !bg-verde-50 text-verde-800' : '' }}" aria-label="De quem é o calendário">
                             <option value="">{{ auth()->user()->nome }} (eu)</option>
+                            <option value="equipa">Toda a equipa</option>
                             @foreach ($pessoas as $id => $nome)
                                 <option value="{{ $id }}">{{ $nome }}</option>
                             @endforeach
@@ -78,6 +80,7 @@
                                                     class="block w-full truncate rounded border-l-[3px] bg-fundo px-1.5 py-0.5 text-left text-[11px] text-texto-forte hover:bg-verde-50"
                                                     style="border-color: {{ $r->projeto?->cor ?? '#16a34a' }}"
                                                     title="{{ $r->descricao ?: ($r->projeto?->nome ?? 'Sem descrição') }}">
+                                                @if ($equipa) @include('livewire.tempos._iniciais', ['p' => PessoaNaAgenda::de($r->tecnico)]) @endif
                                                 <span class="tabular-nums text-texto-medio">{{ Calendario::temHorasReais($r) ? $r->inicio->setTimezone(config('tempos.fuso'))->format('H:i') : PainelTempos::hms((int) $r->duracao_seg) }}</span>
                                                 {{ $r->descricao ?: ($r->projeto?->nome ?? 'Sem descrição') }}
                                             </button>
@@ -128,6 +131,7 @@
                                     <button type="button" wire:click="editar({{ $r->id }})" wire:key="sh-{{ $r->id }}"
                                             class="block w-full truncate rounded-md border-l-[3px] bg-fundo px-2 py-1 text-left text-[11px] text-texto-forte hover:bg-verde-50"
                                             style="border-color: {{ $r->projeto?->cor ?? '#16a34a' }}">
+                                        @include('livewire.tempos._iniciais', ['p' => PessoaNaAgenda::de($r->tecnico)])
                                         {{ PainelTempos::hms((int) $r->duracao_seg) }} · {{ $r->descricao ?: ($r->projeto?->nome ?? 'Sem descrição') }}
                                     </button>
                                 @endforeach
@@ -187,17 +191,27 @@
 
                                 @foreach ($dia['blocos'] as $b)
                                     @php($r = $b['registo'])
-                                    <button type="button" wire:click="editar({{ $r->id }})" wire:key="b-{{ $r->id }}" @mousedown.stop
-                                            class="absolute overflow-hidden rounded-md border-l-[3px] bg-white/95 px-1.5 py-1 text-left shadow-sm ring-1 ring-borda hover:ring-verde-400"
+                                    @php($varios = count($b['registos']) > 1)
+                                    {{-- Várias pessoas no mesmo projeto à mesma hora: um bloco em faixas, uma cor por pessoa,
+                                         como a agenda da IFE; carregar mostra os registos para escolher (notas §75). --}}
+                                    <button type="button" wire:key="b-{{ $r->id }}" @mousedown.stop
+                                            @if ($varios) wire:click="verGrupo(@js(collect($b['registos'])->pluck('id')->all()))" @else wire:click="editar({{ $r->id }})" @endif
+                                            class="absolute overflow-hidden rounded-md border-l-[3px] px-1.5 py-1 text-left shadow-sm ring-1 ring-borda hover:ring-verde-400 {{ count($b['pessoas']) > 1 ? '' : 'bg-white/95' }}"
                                             style="top: {{ $b['minuto'] / 60 * $alturaHora }}px;
                                                    height: {{ max(18, $b['minutos'] / 60 * $alturaHora - 2) }}px;
                                                    left: calc({{ $b['coluna'] / $b['colunas'] * 100 }}% + 2px);
                                                    width: calc({{ 100 / $b['colunas'] }}% - 4px);
-                                                   border-color: {{ $r->projeto?->cor ?? '#16a34a' }}">
-                                        <span class="block truncate text-[11px] font-medium text-texto-forte">{{ $r->descricao ?: 'Sem descrição' }}</span>
+                                                   border-color: {{ $r->projeto?->cor ?? '#16a34a' }};
+                                                   @if (count($b['pessoas']) > 1) background: {{ PessoaNaAgenda::faixas($b['pessoas']) }}, #fff; @endif">
+                                        <span class="flex items-center gap-1">
+                                            @foreach ($b['pessoas'] as $p)
+                                                @include('livewire.tempos._iniciais', ['p' => $p])
+                                            @endforeach
+                                            <span class="truncate text-[11px] font-medium text-texto-forte">{{ $varios ? ($r->projeto?->nome ?? 'Sem projeto') : ($r->descricao ?: 'Sem descrição') }}</span>
+                                        </span>
                                         @if ($b['minutos'] >= 45)
                                             <span class="block truncate text-[11px] text-texto-medio">{{ $b['inicio'] }} – {{ $b['fim'] }}</span>
-                                            <span class="block truncate text-[11px] text-texto-fraco">{{ $r->projeto?->nome }}{{ $r->projeto?->cliente ? ' · '.$r->projeto->cliente->nome : '' }}</span>
+                                            <span class="block truncate text-[11px] text-texto-fraco">{{ $varios ? count($b['registos']).' registos' : $r->projeto?->nome }}{{ $r->projeto?->cliente ? ' · '.$r->projeto->cliente->nome : '' }}</span>
                                         @endif
                                     </button>
                                 @endforeach
@@ -207,8 +221,45 @@
                 </div>
             </section>
             @endif
+
+            {{-- Legenda (Toda a equipa): a cor e as iniciais de cada pessoa, as mesmas da agenda da IFE. --}}
+            @if ($equipa && $legenda->isNotEmpty())
+                <div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-texto-medio">
+                    @foreach ($legenda as $p)
+                        <span class="inline-flex items-center gap-2">@include('livewire.tempos._iniciais', ['p' => $p]) {{ $p['nome'] }}</span>
+                    @endforeach
+                </div>
+            @endif
         </div>
     </main>
+
+    {{-- Bloco com várias pessoas: escolher qual dos registos abrir. --}}
+    @if ($doGrupo->isNotEmpty())
+        <div class="janela-fundo fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-10" wire:keydown.escape="$set('grupo', [])" role="dialog" aria-modal="true" aria-labelledby="titulo-grupo">
+            <div class="absolute inset-0" wire:click="$set('grupo', [])"></div>
+            <div class="janela relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <header class="flex items-center justify-between border-b border-borda px-6 py-4">
+                    <h2 id="titulo-grupo" class="text-lg font-semibold text-texto-forte">{{ $doGrupo->first()->projeto?->nome ?? 'Registos' }}</h2>
+                    <button type="button" wire:click="$set('grupo', [])" class="botao-icone" aria-label="Fechar"><x-icone nome="fechar" /></button>
+                </header>
+                <ul class="divide-y divide-borda">
+                    @foreach ($doGrupo as $r)
+                        @php($p = PessoaNaAgenda::de($r->tecnico))
+                        <li wire:key="g-{{ $r->id }}">
+                            <button type="button" wire:click="abrirDoGrupo({{ $r->id }})" class="flex w-full items-center gap-3 px-6 py-3 text-left hover:bg-fundo">
+                                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold" style="background: {{ $p['cor'] }}; color: {{ $p['texto'] }}">{{ $p['iniciais'] }}</span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate text-sm font-medium text-texto-forte">{{ $p['nome'] }}</span>
+                                    <span class="block truncate text-xs text-texto-medio">{{ $r->descricao ?: 'Sem descrição' }}</span>
+                                </span>
+                                <span class="shrink-0 text-xs tabular-nums text-texto-medio">{{ $r->inicio->setTimezone(config('tempos.fuso'))->format('H:i') }} – {{ $r->fim?->setTimezone(config('tempos.fuso'))->format('H:i') }}</span>
+                            </button>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    @endif
 
     @include('livewire.partials.formulario-registo')
 </div>

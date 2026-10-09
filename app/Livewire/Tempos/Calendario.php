@@ -8,6 +8,7 @@ use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\User;
 use App\Services\Tempos\Feriados;
+use App\Support\PessoaNaAgenda;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -20,7 +21,10 @@ use Livewire\Component;
  * cada dia, arrastar numa coluna para acrescentar tempo e carregar num bloco para o alterar. Os
  * registos sem horas (só duração) ficam numa faixa por cima do dia. Vista de dia, de semana ou de mês,
  * como a agenda da Nexus Infra (notas §73). Quem vê a equipa (tempos-ver-todos) escolhe de quem é o
- * calendário (notas §71). Filtro de projeto com «Incluir · Excluir» (FiltrosInversos); 0 = sem projeto.
+ * calendário (notas §71), ou «Toda a equipa»: cada bloco leva as iniciais de quem o fez e, quando duas
+ * ou mais pessoas estão no mesmo projeto à mesma hora, os registos juntam-se num bloco dividido em faixas,
+ * uma cor por pessoa, como a agenda da IFE (notas §75). Filtro de projeto com «Incluir · Excluir»
+ * (FiltrosInversos); 0 = sem projeto.
  */
 #[Layout('components.layouts.app', ['ativo' => 'calendario', 'titulo' => 'Calendário'])]
 class Calendario extends Component
@@ -42,9 +46,13 @@ class Calendario extends Component
     #[Url(as: 'de')]
     public string $data = '';
 
-    // De quem é o calendário: '' = de quem está a ver; o id de outro membro só para quem vê a equipa.
+    // De quem é o calendário: '' = de quem está a ver; o id de outro membro ou 'equipa' (todos) só para
+    // quem vê a equipa.
     #[Url(as: 'pessoa')]
     public string $pessoa = '';
+
+    /** @var list<int> registos de um bloco com várias pessoas, para escolher qual abrir */
+    public array $grupo = [];
 
     /** @var list<string> projetos do filtro ('0' = sem projeto) */
     #[Url(as: 'projetos')]
@@ -71,6 +79,13 @@ class Calendario extends Component
 
     public function updatedPessoa(): void
     {
+        if ($this->pessoa === 'equipa') {
+            if (! Gate::allows('tempos-ver-todos')) {
+                $this->pessoa = '';
+            }
+
+            return;
+        }
         if ($this->pessoa !== '' && $this->quem()->id === auth()->id()) {
             $this->pessoa = '';
         }
@@ -138,8 +153,21 @@ class Calendario extends Component
         }
 
         $quem = $this->quem();
-        $outro = $quem->id !== auth()->id() && Gate::allows('tempos-editar-todos');
+        $outro = ! $this->equipa() && $quem->id !== auth()->id() && Gate::allows('tempos-editar-todos');
         $this->novoDoFormulario($valores + ($outro ? ['tecnico_id' => (string) $quem->id] : []));
+    }
+
+    /** Bloco com várias pessoas: mostra os registos dele para escolher qual abrir. */
+    public function verGrupo(array $ids): void
+    {
+        $this->grupo = RegistoTempo::whereKey(array_map('intval', array_slice($ids, 0, 50)))->get()
+            ->filter(fn (RegistoTempo $r) => Gate::allows('view', $r))->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+    }
+
+    public function abrirDoGrupo(int $id): void
+    {
+        $this->grupo = [];
+        $this->editar($id);
     }
 
     public function render()
@@ -151,6 +179,11 @@ class Calendario extends Component
             : [$de, $ate];
         $dias = $this->dias($gradeDe, $gradeAte, $this->quem());
         $doPeriodo = $dias->filter(fn (array $d) => $d['data']->betweenIncluded($de, $ate));
+        // Legenda (Toda a equipa): quem tem horas no que se vê, com a cor e as iniciais de cada um.
+        $legenda = $this->equipa()
+            ? $doPeriodo->flatMap(fn (array $d) => $d['registos'])->map(fn (RegistoTempo $r) => PessoaNaAgenda::de($r->tecnico))
+                ->unique('id')->sortBy('nome')->values()
+            : collect();
 
         return view('livewire.tempos.calendario', [
             'pessoas' => Gate::allows('tempos-ver-todos')
@@ -165,6 +198,10 @@ class Calendario extends Component
             'mostraHoje' => ! $this->hojeLocal()->betweenIncluded($de, $ate),
             'alturaHora' => self::ALTURA_HORA,
             'vistas' => self::VISTAS,
+            'equipa' => $this->equipa(),
+            'legenda' => $legenda,
+            'doGrupo' => $this->grupo === [] ? collect() : RegistoTempo::whereKey($this->grupo)
+                ->with(['tecnico:id,nome,cor_agenda', 'projeto:id,nome,cor'])->orderBy('inicio')->get(),
             'opcoesProjetos' => [0 => 'Sem projeto'] + ProjetoTempo::visiveisPara(auth()->user())
                 ->orderByRaw('arquivado_em is not null, lower(nome)')->pluck('nome', 'id')->all(),
         ] + $this->dadosDoFormulario());
@@ -178,11 +215,11 @@ class Calendario extends Component
     private function dias(CarbonImmutable $de, CarbonImmutable $ate, User $quem): Collection
     {
         $registos = RegistoTempo::query()
-            ->doTecnico($quem)
+            ->when(! $this->equipa(), fn ($q) => $q->doTecnico($quem))
             ->whereNotNull('fim')
             ->whereBetween('inicio', [$de->utc(), $ate->addDay()->utc()])
             ->when($this->projetos !== [], fn ($q) => $this->filtrarProjetos($q))
-            ->with(['projeto:id,nome,cor,cliente_id', 'projeto.cliente:id,nome'])
+            ->with(['projeto:id,nome,cor,cliente_id', 'projeto.cliente:id,nome', 'tecnico:id,nome,cor_agenda'])
             ->orderBy('inicio')
             ->limit(2000)
             ->get()
@@ -233,6 +270,8 @@ class Calendario extends Component
 
     /**
      * Posição de cada registo no dia (minuto de início, altura e, quando se sobrepõem, lado a lado).
+     * Cada bloco leva quem o fez (`pessoas`); em «Toda a equipa», os registos do mesmo projeto que se
+     * sobrepõem juntam-se num só bloco (`registos`), com uma faixa por pessoa.
      *
      * @param  Collection<int, RegistoTempo>  $registos
      * @return list<array<string, mixed>>
@@ -249,14 +288,21 @@ class Calendario extends Component
 
             return [
                 'registo' => $r,
+                'registos' => [$r],
+                'pessoas' => [PessoaNaAgenda::de($r->tecnico)],
                 'minuto' => $minuto,
                 'minutos' => max(15, min(24 * 60 - $minuto, (int) $de->diffInMinutes($ate))),
                 'inicio' => $de->format('H:i'),
                 'fim' => $r->fim->setTimezone($fuso)->format('H:i'),
+                'fimReal' => $r->fim,
                 'coluna' => 0,
                 'colunas' => 1,
             ];
         })->sortBy('minuto')->values()->all();
+
+        if ($this->equipa()) {
+            $blocos = $this->juntarPorProjeto($blocos);
+        }
 
         // Sobreposições: cada grupo de blocos que se cruzam divide a largura do dia.
         $grupo = [];
@@ -273,6 +319,49 @@ class Calendario extends Component
         $this->arrumarGrupo($blocos, $grupo);
 
         return $blocos;
+    }
+
+    /**
+     * Junta os blocos do mesmo projeto que se sobrepõem (diretamente ou em cadeia) num só: vai do
+     * primeiro início ao último fim e leva todos os registos e as pessoas (sem repetir). Os registos
+     * sem projeto ficam cada um no seu bloco.
+     *
+     * @param  list<array<string, mixed>>  $blocos  ordenados pelo início
+     * @return list<array<string, mixed>>
+     */
+    private function juntarPorProjeto(array $blocos): array
+    {
+        $fuso = config('tempos.fuso');
+        $juntos = [];
+        $aberto = []; // projeto_id => índice do bloco em $juntos
+
+        foreach ($blocos as $b) {
+            $projeto = $b['registo']->projeto_id;
+            $i = $projeto ? ($aberto[$projeto] ?? null) : null;
+
+            if ($i === null || $b['minuto'] >= $juntos[$i]['minuto'] + $juntos[$i]['minutos']) {
+                $juntos[] = $b;
+                if ($projeto) {
+                    $aberto[$projeto] = array_key_last($juntos);
+                }
+
+                continue;
+            }
+
+            $g = &$juntos[$i];
+            $g['registos'][] = $b['registo'];
+            if (! in_array($b['pessoas'][0]['id'], array_column($g['pessoas'], 'id'), true)) {
+                $g['pessoas'][] = $b['pessoas'][0];
+            }
+            $g['minutos'] = max($g['minuto'] + $g['minutos'], $b['minuto'] + $b['minutos']) - $g['minuto'];
+            if ($b['fimReal']->gt($g['fimReal'])) {
+                $g['fimReal'] = $b['fimReal'];
+                $g['fim'] = $b['fimReal']->setTimezone($fuso)->format('H:i');
+            }
+            unset($g);
+        }
+
+        return $juntos;
     }
 
     /**
@@ -299,6 +388,12 @@ class Calendario extends Component
         foreach ($grupo as $i) {
             $blocos[$i]['colunas'] = $total;
         }
+    }
+
+    /** «Toda a equipa»: os registos de todos (só para quem vê a equipa). */
+    private function equipa(): bool
+    {
+        return $this->pessoa === 'equipa' && Gate::allows('tempos-ver-todos');
     }
 
     /** De quem é o calendário mostrado: outra pessoa só para quem vê a equipa; senão, quem está a ver. */

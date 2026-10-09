@@ -1047,3 +1047,13 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - **Relatório partilhado e envio por email**: a exclusão vai nos parâmetros guardados e é lida de lá (como os outros filtros, nunca das propriedades do browser). Sem isto, um Resumo partilhado com «exceto X» mostraria **só** X.
 - Semanal → Detalhado: o link de uma célula leva as exclusões, menos a do filtro do grupo da célula (a célula é de um projeto concreto: nesse filtro passa a incluir só esse).
 - Aspeto: em Excluir o campo fica a vermelho e diz «Exceto: <nome>» (ou «Exceto: N»); nas barras compactas, «Exceto projeto» com o número.
+
+## 75. Calendário: iniciais e «Toda a equipa», com faixas por pessoa como a agenda da IFE (2026-10-09, a pedido)
+
+- Pedido: «iniciais de quem está a fazer o projeto; se forem 2 ou mais, dividir como a agenda do IFE». Escolhas do utilizador: o admin passa a ter **«Toda a equipa»** na escolha da pessoa (os técnicos continuam só com o seu calendário); quando duas ou mais pessoas estão no **mesmo projeto à mesma hora**, os registos juntam-se **num só bloco dividido em faixas verticais, uma cor por pessoa**.
+- Na IFE, um evento com vários técnicos tem o fundo em faixas (`linear-gradient`, `FonteCalendario`/`app.js`). No Suporte cada registo é de uma pessoa, por isso a junção é feita no `Calendario::juntarPorProjeto`: registos com o mesmo `projeto_id` que se cruzam (direta ou em cadeia) dão um bloco do primeiro início ao último fim, com todos os registos e as pessoas sem repetir. Os registos sem projeto não se juntam. Só em «Toda a equipa»; com uma pessoa, cada registo é o seu bloco, como antes.
+- Faixas em tom claro (a cor da pessoa com transparência) para o texto do bloco se ler; as iniciais vão em cheio. Carregar num bloco junto abre a lista dos registos dele para escolher qual alterar.
+- **Cor de cada pessoa = a da agenda da IFE** (`utilizadores.cor_agenda`, coluna da Nexus Infra), para a mesma pessoa ter a mesma cor nas duas agendas. O Suporte **só lê** a coluna: quem ainda não tem cor fica com uma da mesma paleta (`PessoaNaAgenda::PALETA`, cópia da `FonteCalendario::PALETA`, pela mesma ordem) escolhida pelo id, só para mostrar — nada se grava. Texto escuro nas cores claras (o lilás).
+- Iniciais = primeiras letras das duas primeiras palavras do nome, a regra do `x-avatar`.
+- A coluna `cor_agenda` não existia nas bases descartáveis: a migração `2026_10_09_000001` cria-a **só** em `tempos_dev`/`tempos_testing`; em produção não faz nada (a coluna é da IFE e já lá está).
+- Em «Toda a equipa», «Acrescentar tempo» abre o formulário com a escolha do membro (não fica preso a ninguém). A legenda por baixo do calendário lista quem tem horas no que se vê.
