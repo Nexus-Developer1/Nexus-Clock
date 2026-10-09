@@ -61,6 +61,10 @@ class Calendario extends Component
     public function mount(): void
     {
         $this->ajustar($this->lerData($this->data));
+        // Quem só visualiza não tem horas: abre na equipa (notas §77).
+        if ($this->pessoa === '' && auth()->user()->soVisualiza()) {
+            $this->pessoa = 'equipa';
+        }
         $this->updatedPessoa();
         $this->updatedProjetos();
     }

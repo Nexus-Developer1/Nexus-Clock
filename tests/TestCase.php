@@ -73,15 +73,25 @@ abstract class TestCase extends BaseTestCase
         return $this->utilizador('tecnico');
     }
 
+    /**
+     * Quem gere o Suporte: «Administrador e técnico» no portal (`admin_tecnico`). Desde a §77 o papel
+     * `admin` («Administrador») só visualiza — para esse, adminSoVer().
+     */
     protected function admin(?string $email = null): User
     {
-        return $this->utilizador('admin', $email);
+        return $this->utilizador('admin_tecnico', $email);
     }
 
-    /** Administrador que também regista horas («Administrador e técnico» no portal, notas §76). */
+    /** O mesmo que admin(): gere e regista horas (notas §76). */
     protected function adminTecnico(?string $email = null): User
     {
         return $this->utilizador('admin_tecnico', $email);
+    }
+
+    /** «Administrador» no portal: só visualiza o rendimento da equipa (notas §77). */
+    protected function adminSoVer(?string $email = null): User
+    {
+        return $this->utilizador('admin', $email);
     }
 
     protected function cliente(string $nome = ''): Cliente

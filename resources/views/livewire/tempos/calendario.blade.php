@@ -45,7 +45,9 @@
                         @endforeach
                     </div>
                     <span class="text-sm text-texto-medio">{{ $rotuloTotal }} <span class="ml-1 text-lg font-semibold tabular-nums text-texto-forte">{{ PainelTempos::hms($total) }}</span></span>
-                    <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Acrescentar tempo</button>
+                    @unless ($soVer)
+                        <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Acrescentar tempo</button>
+                    @endunless
                 </div>
             </div>
 
@@ -158,6 +160,7 @@
                                  x-data="{
                                      altura: {{ $alturaHora }},
                                      bloqueado: @js($dia['bloqueado']),
+                                     soVer: @js($soVer),
                                      arrastar: false,
                                      de: 0,
                                      ate: 0,
@@ -169,6 +172,8 @@
                                      hhmm(m) { return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); },
                                      comecar(e) {
                                          // Num feriado não se arrasta: o servidor só mostra o aviso.
+                                         // Administrador só para visualizar: não cria tempo (notas §77).
+                                         if (this.soVer) return;
                                          if (this.bloqueado) { $wire.novo({ dia: '{{ $dia['data']->toDateString() }}' }); return; }
                                          this.de = this.minuto(e); this.ate = this.de + 15; this.arrastar = true; },
                                      mover(e) { if (this.arrastar) this.ate = Math.max(this.de + 15, this.minuto(e)); },

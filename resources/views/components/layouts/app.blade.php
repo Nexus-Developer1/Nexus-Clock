@@ -38,8 +38,9 @@
         </div>
     </div>
 
-    {{-- Cronómetro no canto, em todas as páginas menos na do Cronómetro, que tem a barra (notas §69). --}}
-    @if ($ativo !== 'cronometro' && auth()->user()?->temAcesso())
+    {{-- Cronómetro no canto, em todas as páginas menos na do Cronómetro, que tem a barra (notas §69).
+         Não aparece a quem só visualiza, que não regista horas (notas §77). --}}
+    @if ($ativo !== 'cronometro' && auth()->user()?->temAcesso() && ! auth()->user()->soVisualiza())
         <livewire:tempos.mini-cronometro />
     @endif
 
@@ -118,7 +119,10 @@
             }));
         });
     </script>
-    @include('partials.cronometro-js')
+    {{-- Quem só visualiza não tem cronómetro (notas §77). --}}
+    @unless (auth()->user()?->soVisualiza())
+        @include('partials.cronometro-js')
+    @endunless
     @livewireScripts
 </body>
 </html>

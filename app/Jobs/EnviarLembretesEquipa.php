@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Models\LembreteEquipa;
 use App\Models\MembroEquipa;
 use App\Models\RegistoTempo;
-use App\Models\User;
 use App\Notifications\LembreteHoras;
 use App\Services\Tempos\Feriados;
 use Carbon\CarbonImmutable;
@@ -63,7 +62,7 @@ class EnviarLembretesEquipa implements ShouldBeUnique, ShouldQueue
                 continue;
             }
 
-            $membros = MembroEquipa::query()->comAcesso()->whereIn('utilizador_id', User::queRegistamHoras()->select('utilizadores.id'))->with('utilizador')
+            $membros = MembroEquipa::query()->daEquipa()->with('utilizador')
                 ->when($lembrete->destinatarios === 'grupos', fn ($q) => $q->whereHas('grupos', fn ($g) => $g->whereIn('grupos_equipa.id', $lembrete->grupos)))
                 ->get();
 

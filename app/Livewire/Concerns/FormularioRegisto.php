@@ -32,6 +32,13 @@ trait FormularioRegisto
     /** @param array<string, mixed> $valores campos já preenchidos (dia, horas…) */
     public function novo(array $valores = []): void
     {
+        // Administrador só para visualizar (notas §77): não acrescenta tempo.
+        if (auth()->user()->soVisualiza()) {
+            $this->erro = 'Como administrador só para visualizar, não acrescenta tempo.';
+
+            return;
+        }
+
         $this->erro = null;
         $this->resetErrorBag();
         $this->editarId = 0;
@@ -185,6 +192,8 @@ trait FormularioRegisto
         $projetoAtual = (int) ($this->formulario['projeto_id'] ?? 0);
 
         return [
+            // Administrador só para visualizar: a janela abre só para ler (notas §77).
+            'soVer' => auth()->user()->soVisualiza(),
             'membrosDoNovo' => Gate::allows('tempos-editar-todos')
                 ? User::queRegistamHoras()->orderBy('nome')->pluck('nome', 'id')->all()
                 : [auth()->id() => auth()->user()->nome],

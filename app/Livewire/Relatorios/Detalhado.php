@@ -211,7 +211,7 @@ class Detalhado extends Component
             'ate' => $ate,
             'rotuloPeriodo' => $this->rotuloPeriodo($de, $ate),
             'podeVerEquipa' => Gate::allows('tempos-ver-todos'),
-            'podeAnular' => auth()->user()->ehAdminTempos(),
+            'podeAnular' => auth()->user()->podeGerirTempos(),
             'comValor' => $this->valorVisivel(),
             'rotuloValor' => $this->rotuloValor(),
             'opcoes' => $servico->opcoes(auth()->user()),

@@ -52,8 +52,13 @@ class Cronometro extends Component
     #[Url(as: 'projeto')]
     public string $filtroProjeto = '';
 
-    public function mount(): void
+    public function mount()
     {
+        // Quem só visualiza não regista horas: vai para o Painel (notas §77).
+        if (auth()->user()->soVisualiza()) {
+            return $this->redirectRoute('painel', navigate: true);
+        }
+
         $this->semana = $this->segunda($this->semana)->toDateString();
         $this->lerCronometro();
     }

@@ -5,11 +5,11 @@
         <div class="absolute inset-0" wire:click="fecharFormulario"></div>
         <form wire:submit="guardar" class="janela relative w-full max-w-xl rounded-2xl bg-white shadow-2xl">
             <header class="flex items-center justify-between border-b border-borda px-6 py-4">
-                <h2 id="titulo-registo" class="text-lg font-semibold text-texto-forte">{{ $editarId === 0 ? 'Acrescentar tempo' : 'Alterar registo' }}</h2>
+                <h2 id="titulo-registo" class="text-lg font-semibold text-texto-forte">{{ $editarId === 0 ? 'Acrescentar tempo' : (($soVer ?? false) ? 'Registo' : 'Alterar registo') }}</h2>
                 <button type="button" wire:click="fecharFormulario" class="botao-icone" aria-label="Fechar"><x-icone nome="fechar" /></button>
             </header>
 
-            <div class="space-y-4 px-6 py-5">
+            <fieldset @disabled($soVer ?? false) class="space-y-4 px-6 py-5">
                 @error('formulario.geral') <div class="rounded-xl border border-perigo-200 bg-perigo-100 px-4 py-3 text-sm text-perigo-600">{{ $message }}</div> @enderror
 
                 @php($semMembro = ! isset($membrosDoNovo[$formulario['tecnico_id'] ?? '']))
@@ -76,14 +76,18 @@
                         <input type="checkbox" wire:model="formulario.faturavel" class="h-4 w-4 rounded border-borda text-verde-600 focus:ring-verde-500"> Faturável
                     </label>
                 </div>
-            </div>
+            </fieldset>
 
             <footer class="flex items-center justify-end gap-3 rounded-b-2xl border-t border-borda bg-fundo/50 px-6 py-4">
-                @if ($editarId > 0)
-                    <button type="button" wire:click="apagarDoFormulario" wire:confirm="Apagar este registo?" class="botao-secundario mr-auto !text-perigo-600 hover:!border-perigo-200 hover:!bg-perigo-100"><x-icone nome="lixo" /> Apagar</button>
+                @if ($soVer ?? false)
+                    <button type="button" wire:click="fecharFormulario" class="botao-secundario">Fechar</button>
+                @else
+                    @if ($editarId > 0)
+                        <button type="button" wire:click="apagarDoFormulario" wire:confirm="Apagar este registo?" class="botao-secundario mr-auto !text-perigo-600 hover:!border-perigo-200 hover:!bg-perigo-100"><x-icone nome="lixo" /> Apagar</button>
+                    @endif
+                    <button type="button" wire:click="fecharFormulario" class="botao-secundario">Cancelar</button>
+                    <button type="submit" class="botao-primario"><x-icone nome="visto" traco="2" /> {{ $editarId === 0 ? 'Acrescentar' : 'Guardar' }}</button>
                 @endif
-                <button type="button" wire:click="fecharFormulario" class="botao-secundario">Cancelar</button>
-                <button type="submit" class="botao-primario"><x-icone nome="visto" traco="2" /> {{ $editarId === 0 ? 'Acrescentar' : 'Guardar' }}</button>
             </footer>
         </form>
     </div>

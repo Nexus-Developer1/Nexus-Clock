@@ -34,7 +34,9 @@
                         <option value="{{ $valor }}">{{ $rotulo }}</option>
                     @endforeach
                 </select>
-                <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Acrescentar tempo</button>
+                @unless ($soVer)
+                    <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Acrescentar tempo</button>
+                @endunless
             </div>
 
             @if ($erro)

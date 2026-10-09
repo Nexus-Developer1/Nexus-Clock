@@ -38,6 +38,10 @@ class Pagina extends Component
 
     public function mount(): void
     {
+        // Quem só visualiza não tem horas suas: abre na equipa, a não ser que o endereço diga outra coisa (notas §77).
+        if (auth()->user()->soVisualiza() && ! request()->has('quem')) {
+            $this->quem = 'equipa';
+        }
         $this->normalizar();
     }
 

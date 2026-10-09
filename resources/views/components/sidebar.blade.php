@@ -7,7 +7,8 @@
     // páginas está ativa); ['secao' => …] é um título de secção, no menu ou dentro de um submenu.
     $itens = [
         ['id' => 'painel', 'label' => 'Painel', 'icone' => 'inicio', 'url' => route('painel')],
-        ['id' => 'cronometro', 'label' => 'Cronómetro', 'icone' => 'relogio', 'url' => route('cronometro')],
+        // Quem só visualiza não regista horas: sem Cronómetro (notas §77).
+        ...($u?->soVisualiza() ? [] : [['id' => 'cronometro', 'label' => 'Cronómetro', 'icone' => 'relogio', 'url' => route('cronometro')]]),
         ['id' => 'calendario', 'label' => 'Calendário', 'icone' => 'calendario', 'url' => route('calendario')],
         ['id' => 'relatorios', 'label' => 'Relatórios', 'icone' => 'grafico', 'filhos' => [
             ['secao' => 'Tempo'],

@@ -53,11 +53,16 @@ class RegistoTempoPolicy
     // Regra 4: um registo faturado nunca se edita; só se anula, por admin.
     public function anular(User $utilizador, RegistoTempo $registo): bool
     {
-        return $registo->faturado_em !== null && $utilizador->ehAdminTempos();
+        return $registo->faturado_em !== null && $utilizador->podeGerirTempos();
     }
 
     private function podeMexer(User $utilizador, RegistoTempo $registo): bool
     {
+        // Administrador só para visualizar (notas §77): vê, mas não acrescenta, altera nem apaga.
+        if ($utilizador->soVisualiza()) {
+            return false;
+        }
+
         if ($registo->faturado_em !== null) {
             return false;
         }

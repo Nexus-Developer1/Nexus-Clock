@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Painel\Pagina as Painel;
 use App\Livewire\Tempos\Calendario;
-use App\Models\RegistoTempo;
+use App\Models\MembroEquipa;
 use App\Models\User;
+use App\Services\Tempos\GestorDespesas;
 use App\Services\Tempos\PainelTempos;
 use App\Services\Tempos\Presencas;
 use App\Services\Tempos\ResumoTempos;
@@ -32,7 +34,7 @@ class VertentesTest extends TestCase
         parent::setUp();
         Carbon::setTestNow('2026-09-20 21:00:00');
 
-        $this->soAdmin = $this->admin('suporte@nxs.pt');
+        $this->soAdmin = $this->adminSoVer('suporte@nxs.pt');
         $this->soAdmin->update(['nome' => 'Suporte Nexus']);
         $this->ambos = $this->adminTecnico();
         $this->ambos->update(['nome' => 'Joana Santos']);
@@ -50,9 +52,16 @@ class VertentesTest extends TestCase
         $vazio = $this->utilizador('');
         $this->assertSame(['tecnico', false, true], [$vazio->papelTempos(), $vazio->ehAdminTempos(), $vazio->registaHoras()]);
 
-        // As duas vertentes de administrador gerem tudo.
-        $this->assertTrue(Gate::forUser($this->soAdmin)->allows('tempos-ver-todos'));
-        $this->assertTrue(Gate::forUser($this->ambos)->allows('tempos-editar-todos'));
+        // As duas vertentes de administrador veem tudo; só o Administrador e técnico gere (§77).
+        foreach (['tempos-ver-todos', 'tempos-exportar', 'tempos-valores-projetos', 'tempos-ver-despesas'] as $ver) {
+            $this->assertTrue(Gate::forUser($this->soAdmin)->allows($ver), $ver);
+            $this->assertTrue(Gate::forUser($this->ambos)->allows($ver), $ver);
+        }
+        foreach (['tempos-editar-todos', 'tempos-fechar-mes', 'tempos-gerir-tarifas', 'tempos-gerir-equipa', 'tempos-gerir-despesas', 'tempos-gerir-clientes', 'tempos-gerir-projetos'] as $gerir) {
+            $this->assertFalse(Gate::forUser($this->soAdmin)->allows($gerir), $gerir);
+            $this->assertTrue(Gate::forUser($this->ambos)->allows($gerir), $gerir);
+        }
+        $this->assertSame([true, false, false], [$this->soAdmin->soVisualiza(), $this->ambos->soVisualiza(), $this->tecnico->soVisualiza()]);
         $this->assertFalse(Gate::forUser($this->tecnico)->allows('tempos-ver-todos'));
 
         $this->assertEqualsCanonicalizing(
@@ -78,18 +87,56 @@ class VertentesTest extends TestCase
         $this->assertSame(['Joana Santos', 'Rui Costa'], $pessoasDoCalendario->values()->all());
     }
 
-    public function test_quem_e_so_administrador_nao_regista_horas_por_omissao_mas_gere(): void
+    public function test_quem_so_visualiza_ve_a_equipa_mas_nao_altera_nada(): void
     {
-        // Acrescentar tempo: escolhe o membro; os membros são só quem regista horas.
-        Livewire::actingAs($this->soAdmin)->test(Calendario::class)
-            ->call('novo', ['dia' => '2026-09-16', 'hora_inicio' => '09:00', 'hora_fim' => '10:00'])
-            ->assertSet('formulario.tecnico_id', '')
-            ->assertViewHas('membrosDoNovo', fn ($m) => array_values($m) === ['Joana Santos', 'Rui Costa'])
-            ->set('formulario.tecnico_id', (string) $this->tecnico->id)
-            ->set('formulario.projeto_id', '')
-            ->call('guardar')
-            ->assertHasNoErrors();
+        $registo = $this->registo($this->tecnico, $this->cliente('Hospital'), '2026-09-16', 3600, ['descricao' => 'Do Rui']);
 
-        $this->assertSame(1, RegistoTempo::where('tecnico_id', $this->tecnico->id)->count());
+        // Calendário: abre na equipa; não acrescenta tempo; o registo abre só para ler.
+        Livewire::actingAs($this->soAdmin)->test(Calendario::class)
+            ->assertSet('pessoa', 'equipa')
+            ->assertSee('Do Rui')
+            ->assertDontSee('Acrescentar tempo')
+            ->call('novo', ['dia' => '2026-09-16', 'hora_inicio' => '09:00', 'hora_fim' => '10:00'])
+            ->assertSet('editarId', null)
+            ->assertSet('erro', 'Como administrador só para visualizar, não acrescenta tempo.')
+            ->call('editar', $registo->id)
+            ->assertSee('Fechar')
+            ->assertDontSee('Guardar')
+            ->set('formulario.descricao', 'Mudado')
+            ->call('guardar')
+            ->assertHasErrors('formulario.geral');
+
+        $this->assertSame('Do Rui', $registo->fresh()->descricao);
+        $this->assertFalse($this->soAdmin->can('update', $registo));
+        $this->assertFalse($this->soAdmin->can('delete', $registo));
+
+        // Painel: abre na equipa. Cronómetro: fora do menu e o endereço leva ao Painel.
+        Livewire::actingAs($this->soAdmin)->test(Painel::class)->assertSet('quem', 'equipa');
+        $this->actingAs($this->soAdmin)->get('/')->assertRedirect(route('painel'));
+        $this->actingAs($this->soAdmin)->get(route('painel'))->assertOk()->assertDontSee('Cronómetro');
+
+        // Despesas: não lança; mas quem está na lista de aprovação continua a aprovar (notas §44).
+        $this->assertFalse(app(GestorDespesas::class)->podeLancar($this->soAdmin));
+        $this->actingAs($this->soAdmin)->get(route('relatorios.despesas'))->assertOk()->assertDontSee('Nova despesa');
+
+        // Quem gere continua a acrescentar tempo para si (vem escolhido).
+        Livewire::actingAs($this->ambos)->test(Calendario::class)
+            ->call('novo', ['dia' => '2026-09-16', 'hora_inicio' => '09:00', 'hora_fim' => '10:00'])
+            ->assertSet('formulario.tecnico_id', (string) $this->ambos->id);
+        $this->assertTrue($this->ambos->can('update', $registo));
+    }
+
+    public function test_quem_so_visualiza_fica_fora_da_lista_da_equipa_e_dos_lembretes(): void
+    {
+        $this->actingAs($this->ambos)->get(route('equipa'))
+            ->assertOk()
+            ->assertSee('Só visualizam: Suporte Nexus')
+            ->assertSee('Joana Santos')
+            ->assertSee('Rui Costa');
+
+        $this->assertSame(
+            collect([$this->ambos->id, $this->tecnico->id])->sort()->values()->all(),
+            MembroEquipa::query()->daEquipa()->pluck('utilizador_id')->sort()->values()->all()
+        );
     }
 }

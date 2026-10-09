@@ -35,7 +35,7 @@ class AlertasHorasTest extends TestCase
         Carbon::setTestNow('2026-09-14 09:00:00');
         config(['tempos.horas_semana_minimas' => 35]);
 
-        $this->admin = $this->admin();
+        $this->admin = $this->adminSoVer(); // administrador que só visualiza: sem horas, fica de fora dos alertas (notas §77)
         $this->ana = $this->tecnico();
         $this->ana->update(['nome' => 'Ana Martins']);
         $this->bruno = $this->tecnico();

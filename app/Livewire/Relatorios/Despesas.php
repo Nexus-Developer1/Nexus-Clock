@@ -97,6 +97,9 @@ class Despesas extends Component
 
     public function nova(): void
     {
+        if (! app(GestorDespesas::class)->podeLancar(auth()->user())) {
+            return;
+        }
         $this->prepararFormulario();
         $this->editarId = 0;
         $this->formulario = [
@@ -310,6 +313,7 @@ class Despesas extends Component
             'rotuloPeriodo' => $this->rotuloPeriodo($de, $ate),
             'podeVerEquipa' => $gestor->veTodas(auth()->user()), // filtro Equipa e coluna Membro
             'podeDecidir' => $gestor->podeDecidir(auth()->user()), // aprovar, rejeitar, voltar a pendente
+            'podeLancar' => $gestor->podeLancar(auth()->user()),
             'gere' => $gere,
             'gestor' => $gestor,
             'opcoes' => [

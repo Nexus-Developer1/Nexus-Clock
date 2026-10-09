@@ -46,32 +46,37 @@ class AppServiceProvider extends ServiceProvider
             return new GraphTransport($c['tenant_id'], $c['client_id'], $c['client_secret'], $c['sender']);
         });
 
-        // Permissões dos tempos. O papel (admin/técnico) vem do portal (acessos.papel); reabrir exige
-        // além disso estar na lista explícita config('tempos.pode_reabrir').
+        // Permissões dos tempos. O papel vem do portal (acessos.papel, notas §76 e §77): Administrador vê
+        // tudo e não altera nada; Administrador e técnico vê e gere; Técnico vê e mexe no que é seu.
+        // VER fica com ehAdminTempos() (as duas vertentes de administrador); GERIR com podeGerirTempos().
+        // Reabrir exige além disso estar na lista explícita config('tempos.pode_reabrir').
         Gate::define('tempos-ver-todos', fn (User $utilizador) => $utilizador->ehAdminTempos());
-        Gate::define('tempos-editar-todos', fn (User $utilizador) => $utilizador->ehAdminTempos());
-        Gate::define('tempos-fechar-mes', fn (User $utilizador) => $utilizador->ehAdminTempos());
+        Gate::define('tempos-editar-todos', fn (User $utilizador) => $utilizador->podeGerirTempos());
+        Gate::define('tempos-fechar-mes', fn (User $utilizador) => $utilizador->podeGerirTempos());
         Gate::define('tempos-reabrir', fn (User $utilizador) => $utilizador->podeReabrirTempos());
         Gate::define('tempos-exportar', fn (User $utilizador) => $utilizador->ehAdminTempos());
         // Tarifas e horas incluídas dos contratos (condições que pesam na faturação e na margem).
-        Gate::define('tempos-gerir-tarifas', fn (User $utilizador) => $utilizador->ehAdminTempos());
+        Gate::define('tempos-gerir-tarifas', fn (User $utilizador) => $utilizador->podeGerirTempos());
         // Clientes dos Tempos (página Clientes): criar, alterar, arquivar e apagar. Aberto a toda a
         // gente a pedido (2026-09-22, notas §33): os técnicos também precisam de acrescentar clientes.
-        // Para voltar a fechar aos admins basta repor $utilizador->ehAdminTempos() aqui.
-        Gate::define('tempos-gerir-clientes', fn (User $utilizador) => $utilizador->temAcesso());
+        // Para voltar a fechar aos admins basta repor $utilizador->podeGerirTempos() aqui. Quem só
+        // visualiza não mexe (§77).
+        Gate::define('tempos-gerir-clientes', fn (User $utilizador) => $utilizador->temAcesso() && ! $utilizador->soVisualiza());
         // Equipa: papéis, taxas (incluindo custo), membros limitados, grupos e lembretes. Os técnicos
         // veem a equipa sem taxas e sem ações.
-        Gate::define('tempos-gerir-equipa', fn (User $utilizador) => $utilizador->ehAdminTempos());
+        Gate::define('tempos-gerir-equipa', fn (User $utilizador) => $utilizador->podeGerirTempos());
         // Projetos: criar, alterar, arquivar e apagar. Aberto a toda a gente a pedido (2026-10-01, notas
         // §63), como os clientes: cada um só nos projetos que vê (os públicos e os privados de que é
-        // membro). Para voltar a fechar aos admins basta repor $utilizador->ehAdminTempos() aqui.
-        Gate::define('tempos-gerir-projetos', fn (User $utilizador) => $utilizador->temAcesso());
+        // membro). Para voltar a fechar aos admins basta repor $utilizador->podeGerirTempos() aqui. Quem
+        // só visualiza não mexe (§77).
+        Gate::define('tempos-gerir-projetos', fn (User $utilizador) => $utilizador->temAcesso() && ! $utilizador->soVisualiza());
         // A taxa €/h dos projetos e os valores em euros: só admins (separado de gerir na §63).
         Gate::define('tempos-valores-projetos', fn (User $utilizador) => $utilizador->ehAdminTempos());
         // Despesas: cada um lança as suas; quem gere lança para outros, aprova, rejeita e gere categorias.
-        Gate::define('tempos-gerir-despesas', fn (User $utilizador) => $utilizador->ehAdminTempos());
+        Gate::define('tempos-gerir-despesas', fn (User $utilizador) => $utilizador->podeGerirTempos());
         // Aprovar, rejeitar e voltar a pendente: só quem está em config('tempos.aprovam_despesas') — a
-        // pedido, só o Paulo Gouveia; ser admin não chega (notas §44).
+        // pedido, só o Paulo Gouveia; ser admin não chega (notas §44). É uma decisão por pessoa, à parte
+        // da vertente: continua a valer para o Paulo, que é Administrador (só visualiza) — notas §77.
         Gate::define('tempos-aprovar-despesas', fn (User $utilizador) => $utilizador->temAcesso()
             && in_array(strtolower((string) $utilizador->email), config('tempos.aprovam_despesas'), true));
         // Ver as despesas de toda a equipa (só ver: não altera nem decide). Aberto a toda a gente a

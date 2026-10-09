@@ -25,7 +25,9 @@
                     @if ($gere)
                         <button type="button" wire:click="$set('categoriasAbertas', true)" class="botao-secundario print:hidden"><x-icone nome="etiqueta" /> Categorias</button>
                     @endif
-                    <button type="button" wire:click="nova" class="botao-primario print:hidden"><x-icone nome="mais" traco="2" /> Nova despesa</button>
+                    @if ($podeLancar)
+                        <button type="button" wire:click="nova" class="botao-primario print:hidden"><x-icone nome="mais" traco="2" /> Nova despesa</button>
+                    @endif
                 </x-slot:acoes>
             </x-cabecalho-pagina>
 

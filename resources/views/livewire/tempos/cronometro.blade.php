@@ -147,7 +147,9 @@
                             </x-estado-vazio>
                         @else
                             <x-estado-vazio icone="relogio" titulo="Sem horas nesta semana" class="py-16">
-                                <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Acrescentar tempo</button>
+                                @unless ($soVer)
+                                    <button type="button" wire:click="novo" class="botao-primario"><x-icone nome="mais" traco="2" /> Acrescentar tempo</button>
+                                @endunless
                             </x-estado-vazio>
                         @endif
                     </section>

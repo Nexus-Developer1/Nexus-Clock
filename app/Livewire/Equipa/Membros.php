@@ -6,6 +6,7 @@ use App\Enums\PapelEquipa;
 use App\Models\GrupoEquipa;
 use App\Models\MembroEquipa;
 use App\Models\TaxaMembro;
+use App\Models\User;
 use App\Services\Tempos\GestorEquipa;
 use App\Services\Tempos\LeitorDuracao;
 use App\Support\Csv;
@@ -345,11 +346,14 @@ class Membros extends Component
             'membroTaxa' => $membroTaxa,
             'historicoTaxa' => $membroTaxa ? $membroTaxa->taxas->where('tipo', $this->taxaTipo)->sortByDesc(fn ($t) => $t->valido_de->toDateString())->values() : collect(),
             'portalUrl' => rtrim((string) config('app.portal_url'), '/').'/',
+            // Administradores só para visualizar: fora da lista, numa nota por cima dela (notas §77).
+            'soVisualizam' => $this->limitados ? collect() : User::comAcessoAosTempos()->orderBy('nome')->get(['id', 'nome'])
+                ->filter(fn (User $u) => $u->soVisualiza())->pluck('nome')->values(),
             'camposDisponiveis' => $podeGerir ? self::CAMPOS : array_diff_key(self::CAMPOS, ['faturavel' => 1, 'custo' => 1]),
             'ver' => fn (string $campo) => in_array($campo, $this->campos, true) && ($podeGerir || ! in_array($campo, ['faturavel', 'custo'], true)),
             'dias' => MembroEquipa::DIAS,
             'gestores' => MembroEquipa::query()->with('utilizador:id,nome')->where('papel', PapelEquipa::GestorEquipa)
-                ->where(fn ($q) => $q->comAcesso()->orWhere('limitado', true))->get()
+                ->where(fn ($q) => $q->daEquipa()->orWhere('limitado', true))->get()
                 ->sortBy(fn (MembroEquipa $g) => mb_strtolower($g->nomeVisivel()))->values(),
         ]);
     }
@@ -362,7 +366,7 @@ class Membros extends Component
 
         $membros = MembroEquipa::query()
             ->with(['utilizador:id,nome,email', 'grupos:id,nome', 'taxas', 'gestor.utilizador:id,nome'])
-            ->when($this->limitados, fn ($q) => $q->limitados(), fn ($q) => $q->comAcesso())
+            ->when($this->limitados, fn ($q) => $q->limitados(), fn ($q) => $q->daEquipa())
             ->when(PapelEquipa::tryFrom($this->filtroPapel), fn ($q, $p) => $q->where('papel', $p->value))
             ->when(ctype_digit($this->filtroGrupo), fn ($q) => $q->whereHas('grupos', fn ($g) => $g->whereKey((int) $this->filtroGrupo)))
             ->when(ctype_digit($this->filtroInicioSemana), fn ($q) => $q->where('inicio_semana', (int) $this->filtroInicioSemana))

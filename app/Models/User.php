@@ -20,8 +20,9 @@ class User extends Authenticatable
 
     protected $table = 'utilizadores';
 
-    // Os mesmos do formulário de utilizadores do portal (notas §76). 'admin' só gere; 'admin_tecnico'
-    // gere e regista horas; 'tecnico' regista horas.
+    // Os mesmos do formulário de utilizadores do portal (notas §76 e §77). 'admin' só visualiza o
+    // rendimento da equipa (vê tudo, não altera nada); 'admin_tecnico' gere e regista horas; 'tecnico'
+    // regista horas.
     public const PAPEIS = [
         'admin' => 'Administrador',
         'admin_tecnico' => 'Administrador e técnico',
@@ -108,9 +109,25 @@ class User extends Authenticatable
         return isset(self::PAPEIS[$papel]) ? $papel : 'tecnico';
     }
 
+    /** Vê como administrador: as horas e os valores de toda a equipa (Administrador e Administrador e técnico). */
     public function ehAdminTempos(): bool
     {
         return in_array($this->papelTempos(), ['admin', 'admin_tecnico'], true);
+    }
+
+    /** Gere o Suporte (altera horas dos outros, equipa, projetos, clientes, tarifas, despesas, fecho): só Administrador e técnico. */
+    public function podeGerirTempos(): bool
+    {
+        return $this->papelTempos() === 'admin_tecnico';
+    }
+
+    /**
+     * Administrador só para visualizar o rendimento da equipa (notas §77): vê tudo o que um
+     * administrador vê, mas não altera nada — nem regista horas nem lança despesas.
+     */
+    public function soVisualiza(): bool
+    {
+        return $this->papelTempos() === 'admin';
     }
 
     /**
@@ -138,7 +155,7 @@ class User extends Authenticatable
     /** Permissão explícita para reabrir meses e mexer em registos fechados (config tempos.pode_reabrir). */
     public function podeReabrirTempos(): bool
     {
-        return $this->ehAdminTempos()
+        return $this->podeGerirTempos()
             && in_array(strtolower((string) $this->email), config('tempos.pode_reabrir'), true);
     }
 }

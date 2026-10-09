@@ -121,4 +121,13 @@ class MembroEquipa extends Model
     {
         $query->plenos()->whereIn('utilizador_id', User::comAcessoAosTempos()->select('utilizadores.id'));
     }
+
+    /**
+     * A equipa que trabalha: os plenos com acesso, menos os administradores só para visualizar
+     * (notas §77), que não registam horas — não entram na lista da Equipa, nos grupos nem nos lembretes.
+     */
+    public function scopeDaEquipa(Builder $query): void
+    {
+        $query->plenos()->whereIn('utilizador_id', User::queRegistamHoras()->select('utilizadores.id'));
+    }
 }

@@ -128,7 +128,7 @@ class Grupos extends Component
         if ($this->grupoId) {
             $filtro = mb_strtolower(trim($this->pesquisaMembros));
             $candidatos = MembroEquipa::query()->with('utilizador:id,nome,email')
-                ->where(fn ($q) => $q->comAcesso()->orWhere('limitado', true))
+                ->where(fn ($q) => $q->daEquipa()->orWhere('limitado', true))
                 ->get()
                 ->filter(fn (MembroEquipa $m) => $filtro === '' || str_contains(mb_strtolower($m->nomeVisivel()), $filtro))
                 ->sortBy(fn (MembroEquipa $m) => mb_strtolower($m->nomeVisivel()))

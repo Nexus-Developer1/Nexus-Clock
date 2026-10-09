@@ -38,6 +38,10 @@ class GestorDespesas
     /** @param array<string, mixed> $dados */
     public function criar(User $autor, array $dados, ?UploadedFile $recibo = null): DespesaTempo
     {
+        if (! $this->podeLancar($autor)) {
+            throw new AuthorizationException('Como administrador só para visualizar, não lança despesas.');
+        }
+
         $d = new DespesaTempo;
         $d->utilizador_id = $autor->id;
         $this->preencher($autor, $d, $dados + ['data' => '', 'valor' => '', 'categoria_id' => null]);
@@ -201,7 +205,13 @@ class GestorDespesas
      */
     public function podeAlterar(User $autor, DespesaTempo $d): bool
     {
-        return $d->estado !== 'aprovada' && ($this->gere($autor) || (int) $d->utilizador_id === $autor->id);
+        return $d->estado !== 'aprovada' && $this->podeLancar($autor) && ($this->gere($autor) || (int) $d->utilizador_id === $autor->id);
+    }
+
+    /** Lança (e altera) despesas: toda a gente menos quem só visualiza (notas §77). Aprovar é à parte (§44). */
+    public function podeLancar(User $autor): bool
+    {
+        return ! $autor->soVisualiza();
     }
 
     /**

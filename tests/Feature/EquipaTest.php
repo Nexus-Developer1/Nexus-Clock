@@ -148,7 +148,7 @@ class EquipaTest extends TestCase
     {
         Notification::fake();
         $bruno = $this->tecnico();
-        $soAdmin = $this->admin('pgouveia@nxs.pt'); // só gere: não regista horas, não recebe lembretes (notas §76)
+        $soAdmin = $this->adminSoVer('pgouveia@nxs.pt'); // só visualiza: não regista horas, não recebe lembretes (notas §77)
         $this->gestor->sincronizar();
         $cliente = $this->cliente();
         $this->registo($this->ana, $cliente, '2026-09-14', 5 * 3600);
