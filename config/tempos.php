@@ -40,6 +40,10 @@ return [
     // Um cronómetro a correr há mais destas horas manda um email à própria pessoa, uma vez (notas §61).
     'aviso_cronometro_horas' => (int) env('TEMPOS_AVISO_CRONOMETRO_HORAS', 10),
 
+    // Cronómetro esquecido para sozinho a esta hora (Lisboa), no dia em que começou; os começados a
+    // esta hora ou depois param às 23:59 (notas §78). Vazio desliga.
+    'parar_cronometro_as' => env('TEMPOS_PARAR_CRONOMETRO_AS', '19:00'),
+
     // Teto do ZIP dos recibos (página Despesas), em MB: acima disto pede-se um período mais curto.
     'zip_recibos_max_mb' => (int) env('TEMPOS_ZIP_RECIBOS_MAX_MB', 500),
 

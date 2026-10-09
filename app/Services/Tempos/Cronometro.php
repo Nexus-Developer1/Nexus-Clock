@@ -6,9 +6,11 @@ use App\Enums\OrigemRegistoTempo;
 use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\User;
+use App\Services\Auditor;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -113,5 +115,68 @@ class Cronometro
             ?? throw ValidationException::withMessages(['cronometro' => 'Não há nenhum cronómetro a correr.']);
 
         $this->gravador->apagar($autor, $registo);
+    }
+
+    /**
+     * Hora a que um cronómetro esquecido para sozinho (notas §78): às config('tempos.parar_cronometro_as')
+     * (19:00) do dia em que começou; se começou a essa hora ou depois, às 23:59:59 desse dia. Null se a
+     * paragem automática estiver desligada.
+     */
+    public static function limite(RegistoTempo $registo): ?CarbonImmutable
+    {
+        $hora = trim((string) config('tempos.parar_cronometro_as'));
+        if (! preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $hora)) {
+            return null;
+        }
+
+        $fuso = config('tempos.fuso');
+        $inicio = $registo->inicio->setTimezone($fuso);
+        $corte = CarbonImmutable::parse($inicio->toDateString().' '.$hora, $fuso);
+
+        return ($inicio->lt($corte) ? $corte : $inicio->setTime(23, 59, 59))->utc();
+    }
+
+    /**
+     * Para os cronómetros que passaram do limite (corre de 5 em 5 minutos): grava o fim no limite, não
+     * na hora em que isto corre. Com menos de um minuto, descarta, como ao parar à mão. Passa pelo
+     * GravadorRegistos em nome do dono; o que ele recusar (mês fechado, semana entregue…) fica a correr
+     * e vai para o log. Sem email, a pedido.
+     *
+     * @return int quantos parou (ou descartou)
+     */
+    public function pararEsquecidos(?CarbonImmutable $agora = null): int
+    {
+        $agora ??= CarbonImmutable::now();
+        $parados = 0;
+
+        RegistoTempo::query()->whereNull('fim')->with('tecnico')->orderBy('id')->get()
+            ->each(function (RegistoTempo $registo) use ($agora, &$parados) {
+                $limite = self::limite($registo);
+                $dono = $registo->tecnico;
+                if (! $limite || $agora->lt($limite) || ! $dono) {
+                    return;
+                }
+
+                try {
+                    $segundos = (int) $registo->inicio->diffInSeconds($limite, true);
+                    $segundos < self::MINIMO_SEG
+                        ? $this->gravador->apagar($dono, $registo)
+                        : $this->gravador->atualizar($dono, $registo, ['fim' => $limite]);
+                } catch (AuthorizationException|ValidationException $e) {
+                    Log::warning('Cronómetro esquecido não parou sozinho.', ['registo' => $registo->id, 'erro' => $e->getMessage()]);
+
+                    return;
+                }
+
+                Auditor::registar('tempo_cronometro_parado_sozinho', $registo, [
+                    'tecnico_id' => $registo->tecnico_id,
+                    'inicio' => $registo->inicio->toIso8601String(),
+                    'fim' => $limite->toIso8601String(),
+                    'descartado' => $segundos < self::MINIMO_SEG,
+                ]);
+                $parados++;
+            });
+
+        return $parados;
     }
 }

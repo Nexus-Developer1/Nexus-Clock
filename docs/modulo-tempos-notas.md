@@ -1078,3 +1078,10 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - Página Equipa: quem só visualiza sai da lista de membros, dos seletores dos grupos e dos lembretes (`MembroEquipa::daEquipa()`), sem nota nenhuma (a nota «Só visualizam: …» que lá esteve saiu a pedido, 2026-10-09).
 - **Consequência em produção:** no portal, os três administradores do Suporte (suporte@, pgouveia@, jsantos@) estavam como `admin` — com isto os três passam a só ver e **ninguém gere** até alguém ficar «Administrador e técnico» no portal (o formulário já o permite).
 - Testes: o `admin()` do `TestCase` passa a criar quem gere (`admin_tecnico`), que é o que ~100 testes queriam dizer; `adminSoVer()` para quem só visualiza.
+
+## 78. Cronómetro esquecido para sozinho às 19:00 (2026-10-09, a pedido)
+
+- Pedido: «programar o cronómetro para parar às 19h caso alguém se esqueça de o desligar». Escolhas do utilizador: os começados **antes das 19h param às 19:00**; os começados **às 19h ou depois podem correr, mas param às 23:59** desse dia; **sem email** (a pessoa vê o registo na lista).
+- `Cronometro::limite()` diz a hora de cada cronómetro a correr; `Cronometro::pararEsquecidos()` para os que passaram dela. Corre de 5 em 5 minutos (`PararCronometrosEsquecidos`, `tempos-parar-cronometros`). O **fim gravado é o limite** (19:00 ou 23:59:59), não a hora a que o trabalho correu — assim um atraso da fila ou o servidor parado não acrescentam horas; um esquecido desde ontem fica com o fim no limite de ontem.
+- Com menos de um minuto até ao limite (começado às 18:59:30), descarta-se, como ao parar à mão. Passa pelo `GravadorRegistos` em nome do dono; o que ele recusar (mês fechado, semana entregue) fica a correr e vai para o log. Fica na auditoria (`tempo_cronometro_parado_sozinho`).
+- Hora em `config('tempos.parar_cronometro_as')` (`TEMPOS_PARAR_CRONOMETRO_AS`, 19:00 por omissão); vazio desliga. O aviso por email das 10 horas (§61) fica como estava.

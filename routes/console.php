@@ -4,6 +4,7 @@ use App\Jobs\AtualizarConsumoContratos;
 use App\Jobs\AvisarCronometrosEsquecidos;
 use App\Jobs\EnviarLembretesEquipa;
 use App\Jobs\EnviarRelatoriosPartilhados;
+use App\Jobs\PararCronometrosEsquecidos;
 use App\Services\Tempos\RelatorioDespesas;
 use Illuminate\Support\Facades\Schedule;
 
@@ -44,4 +45,12 @@ Schedule::job(new AvisarCronometrosEsquecidos)
     ->name('tempos-cronometros-esquecidos')
     ->timezone('Europe/Lisbon')
     ->hourly()
+    ->onOneServer();
+
+// Cronómetros esquecidos param sozinhos às 19:00 (os começados antes) ou às 23:59 (os de depois), com o
+// fim no limite e não na hora em que isto corre (notas §78).
+Schedule::job(new PararCronometrosEsquecidos)
+    ->name('tempos-parar-cronometros')
+    ->timezone('Europe/Lisbon')
+    ->everyFiveMinutes()
     ->onOneServer();
