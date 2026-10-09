@@ -98,6 +98,7 @@ class Resumo extends Component
             'tipo' => $this->tipo, 'inicio' => $this->inicio, 'fim' => $this->fim,
             'membros' => $this->membros, 'clientes' => $this->clientes, 'projetos' => $this->projetos,
             'etiquetas' => $this->etiquetas, 'estado' => $this->estado, 'descricao' => $this->descricao,
+            'excluir' => $this->excluir,
             'agrupar1' => $this->agrupar1, 'agrupar2' => $this->agrupar2, 'cor' => $this->cor,
             'mostrarValor' => $this->mostrarValor, 'ordem' => $this->ordem, 'estimativa' => $this->estimativa,
         ];

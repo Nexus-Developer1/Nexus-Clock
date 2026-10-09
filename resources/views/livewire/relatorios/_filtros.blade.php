@@ -1,7 +1,7 @@
 {{-- Filtros comuns dos relatórios de tempo (Resumo, Detalhado, Semanal), num cartão como o da
      Nexus Infra (pedido de 2026-09-23): a pesquisa na descrição em cima, a toda a largura; por
      baixo, em colunas iguais e cada um com o seu rótulo, Equipa (se vê a equipa), Cliente,
-     Projeto, Etiqueta e Estado. --}}
+     Projeto, Etiqueta e Estado. Os quatro de escolha múltipla têm «Incluir · Excluir» (FiltrosInversos). --}}
 <section class="cartao relative z-20 mt-6 p-4 sm:p-5 print:hidden">
     <div class="flex flex-wrap items-center gap-3">
         <div class="relative min-w-[14rem] flex-1">
@@ -15,11 +15,11 @@
 
     <div class="mt-4 flex flex-wrap gap-3">
         @if ($podeVerEquipa)
-            <x-filtro-multiplo campo rotulo="Equipa" modelo="membros" :opcoes="$opcoes['membros']" :selecionados="$membros" class="min-w-[11rem] flex-1" />
+            <x-filtro-multiplo campo rotulo="Equipa" modelo="membros" :opcoes="$opcoes['membros']" :selecionados="$membros" inverso :excluido="in_array('membros', $excluir, true)" class="min-w-[11rem] flex-1" />
         @endif
-        <x-filtro-multiplo campo rotulo="Cliente" modelo="clientes" :opcoes="$opcoes['clientes']" :selecionados="$clientes" class="min-w-[11rem] flex-1" />
-        <x-filtro-multiplo campo rotulo="Projeto" modelo="projetos" :opcoes="$opcoes['projetos']" :selecionados="$projetos" class="min-w-[11rem] flex-1" />
-        <x-filtro-multiplo campo rotulo="Etiqueta" modelo="etiquetas" :opcoes="$opcoes['etiquetas']" :selecionados="$etiquetas" class="min-w-[11rem] flex-1" />
+        <x-filtro-multiplo campo rotulo="Cliente" modelo="clientes" :opcoes="$opcoes['clientes']" :selecionados="$clientes" inverso :excluido="in_array('clientes', $excluir, true)" class="min-w-[11rem] flex-1" />
+        <x-filtro-multiplo campo rotulo="Projeto" modelo="projetos" :opcoes="$opcoes['projetos']" :selecionados="$projetos" inverso :excluido="in_array('projetos', $excluir, true)" class="min-w-[11rem] flex-1" />
+        <x-filtro-multiplo campo rotulo="Etiqueta" modelo="etiquetas" :opcoes="$opcoes['etiquetas']" :selecionados="$etiquetas" inverso :excluido="in_array('etiquetas', $excluir, true)" class="min-w-[11rem] flex-1" />
         <div class="min-w-[11rem] flex-1">
             <label for="filtro-estado" class="campo-label">Estado</label>
             <select id="filtro-estado" wire:model.live="estado" class="campo-select {{ $estado ? '!border-verde-300 !bg-verde-50 text-verde-800' : '' }}">

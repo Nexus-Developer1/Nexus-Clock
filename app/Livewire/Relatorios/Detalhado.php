@@ -42,7 +42,7 @@ class Detalhado extends Component
 
     public const ORDENS = ['data', 'duracao', 'membro', 'descricao', 'valor'];
 
-    private const FILTROS = ['tipo', 'inicio', 'fim', 'periodo', 'filtros', 'membros', 'clientes', 'projetos', 'etiquetas', 'estado', 'descricao', 'auditoria'];
+    private const FILTROS = ['tipo', 'inicio', 'fim', 'periodo', 'filtros', 'membros', 'clientes', 'projetos', 'etiquetas', 'estado', 'descricao', 'auditoria', 'excluir'];
 
     #[Url(as: 'auditoria')]
     public string $auditoria = '';

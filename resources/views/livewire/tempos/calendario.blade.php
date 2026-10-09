@@ -32,6 +32,7 @@
                             @endforeach
                         </select>
                     @endif
+                    <x-filtro-multiplo rotulo="Projeto" modelo="projetos" :opcoes="$opcoesProjetos" :selecionados="$projetos" inverso :excluido="in_array('projetos', $excluir, true)" />
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
                     {{-- Dia / Semana / Mês, como na agenda da Nexus Infra (notas §73). --}}

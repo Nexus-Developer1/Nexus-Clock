@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Relatorios\Concerns;
 
+use App\Livewire\Concerns\FiltrosInversos;
 use App\Models\User;
 use App\Services\Tempos\ResumoTempos;
 use App\Support\Csv;
@@ -17,6 +18,8 @@ use Livewire\Attributes\Url;
  */
 trait PeriodoEFiltros
 {
+    use FiltrosInversos;
+
     #[Url(as: 'periodo')]
     public string $tipo = 'semana'; // semana | mes | ano | datas
 
@@ -127,12 +130,24 @@ trait PeriodoEFiltros
 
     public function limparFiltros(): void
     {
-        $this->reset(['membros', 'clientes', 'projetos', 'etiquetas', 'estado', 'descricao']);
+        $this->reset(['membros', 'clientes', 'projetos', 'etiquetas', 'estado', 'descricao', 'excluir']);
         $this->filtrosMudaram('filtros');
     }
 
     /** Chamado quando o período ou um filtro muda (para limpar seleções, voltar à 1.ª página…). */
     protected function filtrosMudaram(string $propriedade): void {}
+
+    /** @return list<string> */
+    protected function filtrosInversiveis(): array
+    {
+        return ResumoTempos::exclusoes(ResumoTempos::INVERSIVEIS, $this->autorVeEquipa());
+    }
+
+    protected function exclusoesMudaram(): void
+    {
+        $this->normalizar();
+        $this->filtrosMudaram('excluir');
+    }
 
     /** De quem são as permissões com que o relatório é calculado (num relatório partilhado, de quem o criou). */
     protected function autor(): User
@@ -155,6 +170,7 @@ trait PeriodoEFiltros
             'etiquetas' => $this->etiquetas,
             'estado' => $this->estado,
             'descricao' => $this->descricao,
+            'excluir' => ResumoTempos::exclusoes($this->excluir, $this->autorVeEquipa()),
         ];
     }
 
@@ -190,6 +206,7 @@ trait PeriodoEFiltros
         }
         $this->etiquetas = array_values(array_unique(array_filter(array_map('strval', (array) $this->etiquetas), fn ($e) => $e !== '')));
         $this->descricao = mb_substr($this->descricao, 0, 200);
+        $this->normalizarExclusoes();
 
         $data = fn (string $texto) => preg_match('/^\d{4}-\d{2}-\d{2}$/', $texto) && ($d = CarbonImmutable::createFromFormat('!Y-m-d', $texto)) && $d->toDateString() === $texto ? $d : null;
         $de = $data($this->inicio) ?? $this->hoje();

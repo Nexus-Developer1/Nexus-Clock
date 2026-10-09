@@ -155,6 +155,7 @@ class Partilhado extends Resumo
             'etiquetas' => array_values(array_unique(array_filter(array_map('strval', (array) ($p['etiquetas'] ?? [])), fn ($e) => $e !== ''))),
             'estado' => isset(ResumoTempos::ESTADOS[$p['estado'] ?? '']) ? $p['estado'] : '',
             'descricao' => mb_substr((string) ($p['descricao'] ?? ''), 0, 200),
+            'excluir' => ResumoTempos::exclusoes($p['excluir'] ?? [], $this->autorVeEquipa()),
         ];
     }
 
@@ -164,7 +165,7 @@ class Partilhado extends Resumo
         $p = $relatorio->parametros;
 
         // Os filtros são os de quem partilhou; o período só muda se não estiver bloqueado.
-        foreach (['membros', 'clientes', 'projetos', 'etiquetas', 'estado', 'descricao'] as $campo) {
+        foreach (['membros', 'clientes', 'projetos', 'etiquetas', 'estado', 'descricao', 'excluir'] as $campo) {
             $this->{$campo} = $p[$campo] ?? (in_array($campo, ['estado', 'descricao'], true) ? '' : []);
         }
         // Custo e lucro são internos: num link, no máximo o faturável (ou nenhum valor).

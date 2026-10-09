@@ -68,6 +68,7 @@ class EnviarRelatoriosPartilhados implements ShouldBeUnique, ShouldQueue
                 'etiquetas' => $p['etiquetas'] ?? [],
                 'estado' => $p['estado'] ?? '',
                 'descricao' => $p['descricao'] ?? '',
+                'excluir' => ResumoTempos::exclusoes($p['excluir'] ?? [], $veEquipa),
             ], $de, $ate, $p['agrupar1'] ?? 'projeto', null);
 
             $comValor = $veEquipa && ($p['mostrarValor'] ?? 'faturavel') === 'faturavel';

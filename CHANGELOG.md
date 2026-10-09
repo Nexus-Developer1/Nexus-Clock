@@ -6,6 +6,10 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ---
 
+## 2026-10-09
+
+- 🧰 **Filtragem inversa: «Incluir · Excluir»** — a pedido: no Resumo, no Detalhado e no Semanal, os filtros Equipa, Cliente, Projeto e Etiqueta têm no menu um interruptor Incluir · Excluir; em Excluir o relatório mostra tudo menos o escolhido e o campo fica a vermelho a dizer «Exceto: …». Os registos sem projeto, sem cliente ou sem etiquetas ficam, a não ser que «Sem …» também esteja escolhido. O Calendário ganha um filtro de Projeto com o mesmo interruptor. A exclusão vai no URL, nos relatórios partilhados e no envio por email; os técnicos não excluem a equipa (continuam a ver só as suas horas). Notas §74. 369 testes.
+
 ## 2026-10-06
 
 - 🧹 **Aviso do PHP nas vistas do Cronómetro e do Calendário** — chamavam um método diretamente do trait do formulário, o que o PHP dá como obsoleto; passam a chamá-lo pela própria página. A aplicação não muda.

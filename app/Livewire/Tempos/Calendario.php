@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Tempos;
 
+use App\Livewire\Concerns\FiltrosInversos;
 use App\Livewire\Concerns\FormularioRegisto;
+use App\Models\ProjetoTempo;
 use App\Models\RegistoTempo;
 use App\Models\User;
 use App\Services\Tempos\Feriados;
@@ -18,11 +20,12 @@ use Livewire\Component;
  * cada dia, arrastar numa coluna para acrescentar tempo e carregar num bloco para o alterar. Os
  * registos sem horas (só duração) ficam numa faixa por cima do dia. Vista de dia, de semana ou de mês,
  * como a agenda da Nexus Infra (notas §73). Quem vê a equipa (tempos-ver-todos) escolhe de quem é o
- * calendário (notas §71).
+ * calendário (notas §71). Filtro de projeto com «Incluir · Excluir» (FiltrosInversos); 0 = sem projeto.
  */
 #[Layout('components.layouts.app', ['ativo' => 'calendario', 'titulo' => 'Calendário'])]
 class Calendario extends Component
 {
+    use FiltrosInversos;
     use FormularioRegisto {
         novo as private novoDoFormulario;
     }
@@ -43,10 +46,27 @@ class Calendario extends Component
     #[Url(as: 'pessoa')]
     public string $pessoa = '';
 
+    /** @var list<string> projetos do filtro ('0' = sem projeto) */
+    #[Url(as: 'projetos')]
+    public array $projetos = [];
+
     public function mount(): void
     {
         $this->ajustar($this->lerData($this->data));
         $this->updatedPessoa();
+        $this->updatedProjetos();
+    }
+
+    public function updatedProjetos(): void
+    {
+        $this->projetos = array_values(array_unique(array_filter(array_map('strval', (array) $this->projetos), 'ctype_digit')));
+        $this->normalizarExclusoes();
+    }
+
+    /** @return list<string> */
+    protected function filtrosInversiveis(): array
+    {
+        return ['projetos'];
     }
 
     public function updatedPessoa(): void
@@ -145,6 +165,8 @@ class Calendario extends Component
             'mostraHoje' => ! $this->hojeLocal()->betweenIncluded($de, $ate),
             'alturaHora' => self::ALTURA_HORA,
             'vistas' => self::VISTAS,
+            'opcoesProjetos' => [0 => 'Sem projeto'] + ProjetoTempo::visiveisPara(auth()->user())
+                ->orderByRaw('arquivado_em is not null, lower(nome)')->pluck('nome', 'id')->all(),
         ] + $this->dadosDoFormulario());
     }
 
@@ -159,6 +181,7 @@ class Calendario extends Component
             ->doTecnico($quem)
             ->whereNotNull('fim')
             ->whereBetween('inicio', [$de->utc(), $ate->addDay()->utc()])
+            ->when($this->projetos !== [], fn ($q) => $this->filtrarProjetos($q))
             ->with(['projeto:id,nome,cor,cliente_id', 'projeto.cliente:id,nome'])
             ->orderBy('inicio')
             ->limit(2000)
@@ -182,6 +205,30 @@ class Calendario extends Component
                 'semHoras' => $doDia->reject(fn (RegistoTempo $r) => self::temHorasReais($r))->values(),
             ];
         })->values();
+    }
+
+    /**
+     * Filtro de projeto (0 = sem projeto). Excluir: tudo menos os escolhidos — os registos sem projeto
+     * ficam, a não ser que «Sem projeto» também esteja escolhido.
+     */
+    private function filtrarProjetos($q)
+    {
+        $lista = array_map('intval', $this->projetos);
+        $ids = array_values(array_filter($lista));
+        $semProjeto = in_array(0, $lista, true);
+
+        if (! $this->excluido('projetos')) {
+            return $q->where(function ($w) use ($ids, $semProjeto) {
+                $w->whereIn('projeto_id', $ids ?: [-1]);
+                if ($semProjeto) {
+                    $w->orWhereNull('projeto_id');
+                }
+            });
+        }
+
+        return $q
+            ->when($ids !== [], fn ($q) => $q->where(fn ($w) => $w->whereNull('projeto_id')->orWhereNotIn('projeto_id', $ids)))
+            ->when($semProjeto, fn ($q) => $q->whereNotNull('projeto_id'));
     }
 
     /**

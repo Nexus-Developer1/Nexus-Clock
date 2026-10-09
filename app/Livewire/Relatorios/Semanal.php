@@ -4,7 +4,6 @@ namespace App\Livewire\Relatorios;
 
 use App\Livewire\Relatorios\Concerns\PeriodoEFiltros;
 use App\Services\Tempos\ResumoTempos;
-use App\Support\Csv;
 use App\Support\Dinheiro;
 use App\Support\Horas;
 use Illuminate\Support\Facades\Gate;
@@ -131,6 +130,7 @@ class Semanal extends Component
                 'membros' => $this->membros, 'clientes' => $this->clientes, 'projetos' => $this->projetos,
                 'etiquetas' => $this->etiquetas, 'estado' => $this->estado, 'descricao' => $this->descricao,
             ]);
+        $excluir = $this->excluir;
 
         foreach ([[$this->agrupar1, $chave1], [$this->agrupar2, $chave2]] as [$agrupar, $chave]) {
             if ($chave === null) {
@@ -145,9 +145,17 @@ class Semanal extends Component
                 'dia' => [$filtros['de'], $filtros['ate']] = [$chave, $chave],
                 default => null,
             };
+            // A célula é de um grupo concreto: nesse filtro passa a incluir só esse grupo.
+            $filtro = ['projeto' => 'projetos', 'cliente' => 'clientes', 'membro' => 'membros', 'etiqueta' => 'etiquetas'][$agrupar] ?? null;
+            if ($filtro && ($agrupar === 'projeto' || $chave !== '')) {
+                $excluir = array_values(array_diff($excluir, [$filtro]));
+            }
         }
 
-        return route('relatorios.detalhado', $filtros);
+        // Só as exclusões de filtros que vão no link (uma exclusão de uma lista vazia não faz nada).
+        $excluir = array_values(array_intersect($excluir, array_keys($filtros)));
+
+        return route('relatorios.detalhado', $filtros + ($excluir ? ['excluir' => $excluir] : []));
     }
 
     private function grelha(): array

@@ -40,9 +40,26 @@ class ResumoTempos
 
     public const GRUPOS_COM_COR = 5;
 
+    // Filtros que se podem inverter («Excluir»: tudo menos o que está marcado).
+    public const INVERSIVEIS = ['membros', 'clientes', 'projetos', 'etiquetas'];
+
     /**
-     * @param  array{membros?: list<int>|null, clientes?: list<int>, projetos?: list<int>, etiquetas?: list<string>, estado?: string, descricao?: string, auditoria?: string}  $filtros
-     *                                                                                                                                                                                   membros null = todos (quem vê a equipa); projeto 0 = sem projeto
+     * Lista de filtros a excluir, limpa: só os inversíveis, sem repetidos. A equipa só se exclui para quem
+     * vê a equipa — quem não vê está sempre limitado às suas horas, e excluir-se a si próprio não faz sentido.
+     *
+     * @return list<string>
+     */
+    public static function exclusoes(mixed $excluir, bool $veEquipa): array
+    {
+        $lista = array_values(array_intersect(self::INVERSIVEIS, array_map('strval', (array) $excluir)));
+
+        return $veEquipa ? $lista : array_values(array_diff($lista, ['membros']));
+    }
+
+    /**
+     * @param  array{membros?: list<int>|null, clientes?: list<int>, projetos?: list<int>, etiquetas?: list<string>, estado?: string, descricao?: string, auditoria?: string, excluir?: list<string>}  $filtros
+     *                                                                                                                                                                                                           membros null = todos (quem vê a equipa); projeto 0 = sem projeto;
+     *                                                                                                                                                                                                           excluir = filtros invertidos (tudo menos os escolhidos)
      * @return array{total: int, faturavel: int, valor: int, custo: int, barras: list<array{rotulo: string, dica: string, total: int, partes: array<string, int>}>, maximo: int, mensal: bool, grupos: list<array<string, mixed>>, series: list<string>, nomes: array<string, string>}
      */
     public function gerar(User $quem, array $filtros, CarbonImmutable $de, CarbonImmutable $ate, string $agrupar1, ?string $agrupar2, string $cor = 'faturabilidade'): array
@@ -303,8 +320,9 @@ class ResumoTempos
         ) as {$alias}");
 
         $membros = $filtros['membros'] ?? null;
-        $projetos = $filtros['projetos'] ?? [];
         $descricao = trim((string) ($filtros['descricao'] ?? ''));
+        $fora = fn (string $filtro) => in_array($filtro, $filtros['excluir'] ?? [], true);
+        $etiquetas = '{'.implode(',', array_map(fn ($e) => '"'.addcslashes($e, '"\\').'"', $filtros['etiquetas'] ?? [])).'}';
 
         return RegistoTempo::query()
             ->terminados()
@@ -314,23 +332,16 @@ class ResumoTempos
             ->leftJoin('membros_equipa as me', 'me.utilizador_id', '=', 'registos_tempo.tecnico_id')
             ->leftJoin($taxa('faturavel', 'tf'), DB::raw('true'), '=', DB::raw('true'))
             ->leftJoin($taxa('custo', 'tc'), DB::raw('true'), '=', DB::raw('true'))
-            ->when($membros !== null, fn ($q) => $q->whereIn('registos_tempo.tecnico_id', $membros))
+            ->when($membros !== null, fn ($q) => $fora('membros')
+                ? $q->whereNotIn('registos_tempo.tecnico_id', $membros)
+                : $q->whereIn('registos_tempo.tecnico_id', $membros))
             // Cliente = o cliente (dos Tempos) do projeto do registo; 0 = sem cliente (sem projeto ou projeto sem cliente).
-            ->when(($filtros['clientes'] ?? []) !== [], fn ($q) => $q->where(function ($w) use ($filtros) {
-                $ids = array_values(array_filter($filtros['clientes']));
-                $w->whereIn('pt.cliente_id', $ids ?: [-1]);
-                if (in_array(0, $filtros['clientes'], true)) {
-                    $w->orWhereNull('pt.cliente_id');
-                }
-            }))
-            ->when($projetos !== [], fn ($q) => $q->where(function ($w) use ($projetos) {
-                $ids = array_values(array_filter($projetos));
-                $w->whereIn('registos_tempo.projeto_id', $ids ?: [-1]);
-                if (in_array(0, $projetos, true)) {
-                    $w->orWhereNull('registos_tempo.projeto_id');
-                }
-            }))
-            ->when(($filtros['etiquetas'] ?? []) !== [], fn ($q) => $q->whereRaw('registos_tempo.etiquetas && ?::text[]', ['{'.implode(',', array_map(fn ($e) => '"'.addcslashes($e, '"\\').'"', $filtros['etiquetas'])).'}']))
+            ->when(($filtros['clientes'] ?? []) !== [], fn ($q) => $this->porLista($q, 'pt.cliente_id', $filtros['clientes'], $fora('clientes')))
+            ->when(($filtros['projetos'] ?? []) !== [], fn ($q) => $this->porLista($q, 'registos_tempo.projeto_id', $filtros['projetos'], $fora('projetos')))
+            ->when(($filtros['etiquetas'] ?? []) !== [], fn ($q) => $fora('etiquetas')
+                // Excluir = não ter nenhuma das escolhidas (os registos sem etiquetas ficam).
+                ? $q->whereRaw('not coalesce(registos_tempo.etiquetas && ?::text[], false)', [$etiquetas])
+                : $q->whereRaw('registos_tempo.etiquetas && ?::text[]', [$etiquetas]))
             ->when($descricao !== '', fn ($q) => $q->where('registos_tempo.descricao', 'ilike', '%'.addcslashes($descricao, '%_\\').'%'))
             ->when(($filtros['auditoria'] ?? '') !== '', fn ($q) => match ($filtros['auditoria']) {
                 'sem_projeto' => $q->whereNull('registos_tempo.projeto_id'),
@@ -346,6 +357,33 @@ class ResumoTempos
                 'por_faturar' => $q->whereNull('registos_tempo.faturado_em')->whereRaw('registos_tempo.faturavel and coalesce(pt.faturavel, true)'),
                 default => $q,
             });
+    }
+
+    /**
+     * Filtro por uma lista de ids numa coluna que pode ser nula, em que 0 = «sem» (coluna nula).
+     * Incluir: a coluna é um dos ids (ou nula, se 0 estiver na lista). Excluir: o contrário — e um
+     * `not in` sozinho deitava fora as linhas nulas (null not in (…) não é verdadeiro), que só saem
+     * quando 0 também está na lista.
+     *
+     * @param  list<int>  $lista
+     */
+    private function porLista(QueryBuilder $q, string $coluna, array $lista, bool $excluir): QueryBuilder
+    {
+        $ids = array_values(array_filter($lista));
+        $semNada = in_array(0, $lista, true);
+
+        if (! $excluir) {
+            return $q->where(function ($w) use ($coluna, $ids, $semNada) {
+                $w->whereIn($coluna, $ids ?: [-1]);
+                if ($semNada) {
+                    $w->orWhereNull($coluna);
+                }
+            });
+        }
+
+        return $q
+            ->when($ids !== [], fn ($q) => $q->where(fn ($w) => $w->whereNull($coluna)->orWhereNotIn($coluna, $ids)))
+            ->when($semNada, fn ($q) => $q->whereNotNull($coluna));
     }
 
     private function expressao(string $agrupar): string
