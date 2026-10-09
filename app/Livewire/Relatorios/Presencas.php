@@ -93,7 +93,7 @@ class Presencas extends Component
             'ate' => $ate,
             'rotuloPeriodo' => $this->rotuloPeriodo($de, $ate),
             'podeVerEquipa' => Gate::allows('tempos-ver-todos'),
-            'opcoes' => ['membros' => User::comAcessoAosTempos()->orderBy('nome')->pluck('nome', 'id')->all()],
+            'opcoes' => ['membros' => User::queRegistamHoras()->orderBy('nome')->pluck('nome', 'id')->all()],
             'situacoes' => ServicoPresencas::SITUACOES,
             'filtrosAtivos' => count($this->membros) + ($this->situacao !== '' ? 1 : 0),
         ]);

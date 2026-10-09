@@ -41,7 +41,7 @@ class EquipaTest extends TestCase
         parent::setUp();
         Carbon::setTestNow('2026-09-15 10:00:00'); // terça-feira, 11:00 em Lisboa
 
-        $this->admin = $this->admin();
+        $this->admin = $this->adminTecnico(); // gere e regista horas: também recebe lembretes (notas §76)
         $this->admin->update(['nome' => 'Suporte Nexus']);
         $this->ana = $this->tecnico();
         $this->ana->update(['nome' => 'Ana Martins']);
@@ -148,6 +148,7 @@ class EquipaTest extends TestCase
     {
         Notification::fake();
         $bruno = $this->tecnico();
+        $soAdmin = $this->admin('pgouveia@nxs.pt'); // só gere: não regista horas, não recebe lembretes (notas §76)
         $this->gestor->sincronizar();
         $cliente = $this->cliente();
         $this->registo($this->ana, $cliente, '2026-09-14', 5 * 3600);
@@ -161,6 +162,7 @@ class EquipaTest extends TestCase
         Notification::assertSentToTimes($this->ana, LembreteHoras::class, 1);
         Notification::assertSentTo($this->admin, LembreteHoras::class, fn ($n) => $n->segundos === 0 && $n->periodo === 'dia 14/09');
         Notification::assertNotSentTo($bruno, LembreteHoras::class);
+        Notification::assertNotSentTo($soAdmin, LembreteHoras::class);
 
         $html = (new LembreteHoras('dia 14/09', 5 * 3600, 8 * 3600))->toMail($this->ana)->render();
         $this->assertStringContainsString('registou <strong style="color:#111827;">5:00</strong> horas', $html);

@@ -255,7 +255,7 @@ class ResumoTempos
     public function opcoes(User $quem): array
     {
         return [
-            'membros' => User::comAcessoAosTempos()->orderBy('nome')->pluck('nome', 'id')->all(),
+            'membros' => User::queRegistamHoras()->orderBy('nome')->pluck('nome', 'id')->all(),
             'clientes' => [0 => 'Sem cliente'] + ClienteTempo::withTrashed()->whereIn('id', ProjetoTempo::withTrashed()->whereNotNull('cliente_id')->select('cliente_id'))->orderByRaw('lower(nome)')->pluck('nome', 'id')->all(),
             'projetos' => [0 => 'Sem projeto'] + ProjetoTempo::visiveisPara($quem)->orderByRaw('arquivado_em is not null, lower(nome)')->pluck('nome', 'id')->all(),
             // Só as etiquetas das horas que a pessoa vê: as dos colegas diziam no que eles andam (notas §52).

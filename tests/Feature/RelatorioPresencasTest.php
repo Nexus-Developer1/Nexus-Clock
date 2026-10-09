@@ -38,7 +38,7 @@ class RelatorioPresencasTest extends TestCase
         // Domingo à noite: a semana 14/09–20/09 já passou toda (os dias que ainda não chegaram não contam, §66).
         Carbon::setTestNow('2026-09-20 21:00:00');
 
-        $this->admin = $this->admin();
+        $this->admin = $this->adminTecnico(); // gere e regista horas: entra nas listas da equipa (notas §76)
         $this->admin->update(['nome' => 'Suporte Nexus']);
         $this->ana = $this->tecnico();
         $this->ana->update(['nome' => 'Ana Martins']);

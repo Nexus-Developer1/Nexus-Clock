@@ -1057,3 +1057,13 @@ Separadores **Membros**, **Limitados**, **Grupos** e **Lembretes** (`/equipa`, `
 - Iniciais = primeiras letras das duas primeiras palavras do nome, a regra do `x-avatar`.
 - A coluna `cor_agenda` não existia nas bases descartáveis: a migração `2026_10_09_000001` cria-a **só** em `tempos_dev`/`tempos_testing`; em produção não faz nada (a coluna é da IFE e já lá está).
 - Em «Toda a equipa», «Acrescentar tempo» abre o formulário com a escolha do membro (não fica preso a ninguém). A legenda por baixo do calendário lista quem tem horas no que se vê.
+
+## 76. Vertentes: Administrador, Administrador e técnico, Técnico (2026-10-09, a pedido)
+
+- Pedido: «o suporte@nxs.pt e o pgouveia@nxs.pt são os admin do Suporte, não são técnicos». O pgouveia@ tinha o papel do Suporte **vazio** no portal (gravado a 2026-10-09 11:23), que o Suporte lê como técnico. Causa: o formulário de utilizadores do **portal** não tinha o Suporte na lista de papéis (`UtilizadorController::PAPEIS`), não mostrava o papel e gravava-o vazio sempre que alguém guardava os acessos de uma pessoa.
+- Correção de dados: `acessos.papel = 'admin'` para o pgouveia@ no Suporte (o suporte@ já o era), com registo na auditoria (`tempo_acesso_papel_corrigido`).
+- **Portal** (repositório `portal`, a pedido): o Suporte entra na lista de papéis com três vertentes — `admin` «Administrador» (só gere), `admin_tecnico` «Administrador e técnico» (gere e regista horas) e `tecnico` «Técnico». Sem papel, o formulário mostra Técnico (antes cairia na 1.ª opção, Administrador). A regra «não deixar um módulo sem administrador» conta as duas vertentes de administrador.
+- **Suporte**: `User::PAPEIS` ganha `admin_tecnico`; `ehAdminTempos()` = `admin` ou `admin_tecnico` (as permissões continuam a vir do portal). Novo `registaHoras()` (tudo menos `admin`) e âmbito `User::queRegistamHoras()`.
+- Quem é **só Administrador** gere tudo como antes, mas não conta como alguém que regista horas: fica fora das Presenças, dos lembretes da equipa, dos alertas de horas (a não ser que tenha registado horas nessa semana), da Atividade da equipa no Painel, das Atribuições, do filtro Equipa dos relatórios, da escolha de pessoa no Calendário e do «Membro» ao acrescentar tempo (onde aparece «Escolha o membro» em vez de vir ele próprio escolhido). Continua nas Despesas, nas tarifas e na página Equipa.
+- Nos testes, o admin que também aparecia nas listas da equipa passou a `adminTecnico()` (novo auxiliar do `TestCase`), que é o que esses testes queriam dizer.
+- Ordem do deploy: primeiro o Suporte (para perceber `admin_tecnico`), depois o portal — ao contrário, quem fosse posto como «Administrador e técnico» ficava técnico no Suporte até ao deploy.

@@ -12,10 +12,15 @@
             <div class="space-y-4 px-6 py-5">
                 @error('formulario.geral') <div class="rounded-xl border border-perigo-200 bg-perigo-100 px-4 py-3 text-sm text-perigo-600">{{ $message }}</div> @enderror
 
-                @if ($editarId === 0 && count($membrosDoNovo) > 1)
+                @php($semMembro = ! isset($membrosDoNovo[$formulario['tecnico_id'] ?? '']))
+                @if ($editarId === 0 && (count($membrosDoNovo) > 1 || $semMembro))
                     <div>
                         <label class="campo-label" for="registo-membro">Membro <span class="text-perigo-500">*</span></label>
                         <select id="registo-membro" wire:model="formulario.tecnico_id" class="campo-select">
+                            {{-- Quem é só Administrador não regista horas: escolhe o membro (notas §76). --}}
+                            @if ($semMembro)
+                                <option value="">Escolha o membro</option>
+                            @endif
                             @foreach ($membrosDoNovo as $id => $nome)
                                 <option value="{{ $id }}">{{ $nome }}</option>
                             @endforeach

@@ -39,9 +39,10 @@ class AlertasHoras
 
         $estados = SemanaTempo::where('semana_inicio', $segunda->toDateString())->pluck('estado', 'tecnico_id');
 
-        // Técnicos; administradores só se registaram horas nessa semana (como na vista Semanas).
+        // Quem regista horas (Técnico, Administrador e técnico); quem é só Administrador só se registou
+        // horas nessa semana (como na vista Semanas).
         $tecnicos = User::comAcessoAosTempos()->orderBy('nome')->get()
-            ->filter(fn (User $u) => $u->papelTempos() === 'tecnico' || $porDia->has($u->id))
+            ->filter(fn (User $u) => $u->registaHoras() || $porDia->has($u->id))
             ->map(function (User $u) use ($porDia, $estados, $minimoSeg) {
                 $dias = $porDia->get($u->id, collect());
                 $segundos = (int) $dias->sum('segundos');

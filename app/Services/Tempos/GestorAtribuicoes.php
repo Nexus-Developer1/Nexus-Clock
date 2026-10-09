@@ -65,7 +65,7 @@ class GestorAtribuicoes
 
         if (array_key_exists('utilizador_id', $dados)) {
             $id = (int) $dados['utilizador_id'];
-            if (! $id || ! User::comAcessoAosTempos()->whereKey($id)->exists()) {
+            if (! $id || ! User::queRegistamHoras()->whereKey($id)->exists()) {
                 $erros['utilizador_id'] = 'Escolha um membro da equipa.';
             }
             $a->utilizador_id = $id ?: null;

@@ -36,7 +36,8 @@ trait FormularioRegisto
         $this->resetErrorBag();
         $this->editarId = 0;
         $this->formulario = $valores + [
-            'tecnico_id' => (string) auth()->id(), 'projeto_id' => '',
+            // Quem é só Administrador não regista horas: escolhe o membro (notas §76).
+            'tecnico_id' => auth()->user()->registaHoras() ? (string) auth()->id() : '', 'projeto_id' => '',
             'dia' => $this->hojeLocal()->toDateString(), 'hora_inicio' => '', 'hora_fim' => '', 'duracao' => '',
             'descricao' => '', 'faturavel' => true, 'etiquetas' => '',
         ];
@@ -185,7 +186,7 @@ trait FormularioRegisto
 
         return [
             'membrosDoNovo' => Gate::allows('tempos-editar-todos')
-                ? User::comAcessoAosTempos()->orderBy('nome')->pluck('nome', 'id')->all()
+                ? User::queRegistamHoras()->orderBy('nome')->pluck('nome', 'id')->all()
                 : [auth()->id() => auth()->user()->nome],
             'projetosDoFormulario' => $aberto
                 ? ProjetoTempo::visiveisPara(auth()->user())->where(fn ($q) => $q->whereNull('arquivado_em')->orWhere('id', $projetoAtual))->with('cliente:id,nome')->orderByRaw('lower(nome)')->get(['id', 'nome', 'cor', 'cliente_id'])
@@ -201,7 +202,7 @@ trait FormularioRegisto
                 throw new AuthorizationException;
             }
 
-            return User::comAcessoAosTempos()->find($id)
+            return User::queRegistamHoras()->find($id)
                 ?? throw ValidationException::withMessages(['tecnico_id' => 'Escolha um membro da equipa.']);
         }
 

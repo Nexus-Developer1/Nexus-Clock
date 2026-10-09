@@ -168,7 +168,7 @@ class Atribuicoes extends Component
             'podeVerEquipa' => $podeVerEquipa,
             'podeGerir' => $podeGerir,
             'opcoes' => [
-                'membros' => User::comAcessoAosTempos()->orderBy('nome')->pluck('nome', 'id')->all(),
+                'membros' => User::queRegistamHoras()->orderBy('nome')->pluck('nome', 'id')->all(),
                 'clientes' => ClienteTempo::orderByRaw('lower(nome)')->pluck('nome', 'id')->all(),
                 'projetos' => ProjetoTempo::visiveisPara(auth()->user())->orderByRaw('arquivado_em is not null, lower(nome)')->pluck('nome', 'id')->all(),
             ],

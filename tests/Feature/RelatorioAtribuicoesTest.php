@@ -41,7 +41,7 @@ class RelatorioAtribuicoesTest extends TestCase
         parent::setUp();
         Carbon::setTestNow('2026-09-17 10:00:00'); // quinta; semana 14/09–20/09
 
-        $this->admin = $this->admin();
+        $this->admin = $this->adminTecnico(); // gere e regista horas: entra nas listas da equipa (notas §76)
         $this->admin->update(['nome' => 'Suporte Nexus']);
         $this->ana = $this->tecnico();
         $this->ana->update(['nome' => 'Ana Martins']);

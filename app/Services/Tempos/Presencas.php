@@ -44,7 +44,7 @@ class Presencas
             return [];
         }
 
-        $pessoas = User::comAcessoAosTempos()
+        $pessoas = User::queRegistamHoras()
             ->when($membros !== null, fn ($q) => $q->whereIn('id', $membros))
             ->orderBy('nome')->get(['id', 'nome']);
         $equipa = MembroEquipa::whereIn('utilizador_id', $pessoas->modelKeys())->get(['utilizador_id', 'capacidade_diaria_seg', 'dias_trabalho'])->keyBy('utilizador_id');

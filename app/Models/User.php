@@ -20,8 +20,11 @@ class User extends Authenticatable
 
     protected $table = 'utilizadores';
 
+    // Os mesmos do formulário de utilizadores do portal (notas §76). 'admin' só gere; 'admin_tecnico'
+    // gere e regista horas; 'tecnico' regista horas.
     public const PAPEIS = [
         'admin' => 'Administrador',
+        'admin_tecnico' => 'Administrador e técnico',
         'tecnico' => 'Técnico',
     ];
 
@@ -107,7 +110,29 @@ class User extends Authenticatable
 
     public function ehAdminTempos(): bool
     {
-        return $this->papelTempos() === 'admin';
+        return in_array($this->papelTempos(), ['admin', 'admin_tecnico'], true);
+    }
+
+    /**
+     * Regista horas (Técnico, ou Administrador e técnico). Quem é só Administrador gere tudo, mas não
+     * conta como alguém da equipa que regista horas: fica fora das presenças, dos lembretes, da
+     * atividade da equipa, das atribuições, do filtro Equipa e da escolha de pessoa (notas §76).
+     */
+    public function registaHoras(): bool
+    {
+        return $this->papelTempos() !== 'admin';
+    }
+
+    /** Pessoas com acesso que registam horas: todas menos as que são só Administrador. */
+    public function scopeQueRegistamHoras(Builder $query): void
+    {
+        $query->comAcessoAosTempos()->whereNotExists(function ($q) {
+            $q->from('acessos')
+                ->join('aplicacoes', 'aplicacoes.id', '=', 'acessos.aplicacao_id')
+                ->whereColumn('acessos.utilizador_id', 'utilizadores.id')
+                ->where('aplicacoes.chave', config('app.chave'))
+                ->where('acessos.papel', 'admin');
+        });
     }
 
     /** Permissão explícita para reabrir meses e mexer em registos fechados (config tempos.pode_reabrir). */

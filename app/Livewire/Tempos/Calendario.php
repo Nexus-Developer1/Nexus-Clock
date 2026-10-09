@@ -187,7 +187,7 @@ class Calendario extends Component
 
         return view('livewire.tempos.calendario', [
             'pessoas' => Gate::allows('tempos-ver-todos')
-                ? User::comAcessoAosTempos()->whereKeyNot(auth()->id())->orderBy('nome')->pluck('nome', 'id')
+                ? User::queRegistamHoras()->whereKeyNot(auth()->id())->orderBy('nome')->pluck('nome', 'id')
                 : collect(),
             'dias' => $dias,
             'semanas' => $this->vista === 'mes' ? $dias->chunk(7) : collect(),

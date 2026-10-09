@@ -115,7 +115,7 @@ class RelatorioAtribuicoes
         // Pessoas sem tempo (nem agendado nem registado), a pedido, quando se agrupa por membro.
         $semTempoIds = [];
         if ($semTempo && $agrupar1 === 'membro') {
-            $semTempoIds = User::comAcessoAosTempos()
+            $semTempoIds = User::queRegistamHoras()
                 ->when($membros !== null, fn ($q) => $q->whereIn('id', $membros))
                 ->whereNotIn('id', $pares->pluck('membro')->unique())
                 ->orderBy('nome')->pluck('nome', 'id')->all();

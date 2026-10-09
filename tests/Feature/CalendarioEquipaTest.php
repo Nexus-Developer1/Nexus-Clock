@@ -140,10 +140,20 @@ class CalendarioEquipaTest extends TestCase
 
     public function test_acrescentar_em_toda_a_equipa_nao_prende_a_pessoa(): void
     {
+        // Quem é só Administrador não regista horas: escolhe o membro (notas §76).
         Livewire::actingAs($this->admin)->test(Calendario::class)
             ->set('pessoa', 'equipa')
             ->call('novo', ['dia' => '2026-09-16', 'hora_inicio' => '09:00', 'hora_fim' => '10:00'])
-            ->assertSet('formulario.tecnico_id', (string) $this->admin->id)
-            ->assertSee('Membro');
+            ->assertSet('formulario.tecnico_id', '')
+            ->assertSee('Escolha o membro')
+            ->assertSee('Ana Martins');
+
+        // Quem é Administrador e técnico fica escolhido.
+        $ambos = $this->adminTecnico();
+        Livewire::actingAs($ambos)->test(Calendario::class)
+            ->set('pessoa', 'equipa')
+            ->call('novo', ['dia' => '2026-09-16', 'hora_inicio' => '09:00', 'hora_fim' => '10:00'])
+            ->assertSet('formulario.tecnico_id', (string) $ambos->id)
+            ->assertDontSee('Escolha o membro');
     }
 }

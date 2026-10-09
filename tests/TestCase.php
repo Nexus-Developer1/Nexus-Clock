@@ -78,6 +78,12 @@ abstract class TestCase extends BaseTestCase
         return $this->utilizador('admin', $email);
     }
 
+    /** Administrador que também regista horas («Administrador e técnico» no portal, notas §76). */
+    protected function adminTecnico(?string $email = null): User
+    {
+        return $this->utilizador('admin_tecnico', $email);
+    }
+
     protected function cliente(string $nome = ''): Cliente
     {
         return Cliente::create(['nome' => $nome ?: 'Cliente de teste '.(++self::$seq), 'ativo' => true]);

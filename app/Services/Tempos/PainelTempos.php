@@ -118,7 +118,7 @@ class PainelTempos
      */
     public function equipa(CarbonImmutable $de, CarbonImmutable $ate): array
     {
-        $membros = User::comAcessoAosTempos()->orderBy('nome')->get(['id', 'nome']);
+        $membros = User::queRegistamHoras()->orderBy('nome')->get(['id', 'nome']);
         $horas = RegistoTempo::query()->terminados()->noPeriodo($de, $ate)->toBase()
             ->groupBy('tecnico_id')->selectRaw('tecnico_id, sum(duracao_seg) as segundos')->pluck('segundos', 'tecnico_id');
         $aCorrer = RegistoTempo::query()->whereNull('fim')->with('projeto:id,nome,cor')->get()->keyBy('tecnico_id');
