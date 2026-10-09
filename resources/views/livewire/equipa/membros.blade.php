@@ -44,11 +44,6 @@
                 @endif
             </x-equipa-separadores>
 
-            @if ($soVisualizam->isNotEmpty())
-                {{-- Administradores só para visualizar o rendimento da equipa: não são da equipa (notas §77). --}}
-                <p class="mt-4 flex items-center gap-2 text-sm text-texto-medio"><x-icone nome="olho" class="h-4 w-4 shrink-0 text-texto-fraco" /> Só visualizam: {{ $soVisualizam->implode(', ') }}</p>
-            @endif
-
             @if ($erro)
                 <div class="mt-4 flex items-center gap-2 rounded-xl border border-perigo-200 bg-perigo-100 px-4 py-3 text-sm text-perigo-600"><x-icone nome="aviso" class="shrink-0" /> {{ $erro }}</div>
             @endif

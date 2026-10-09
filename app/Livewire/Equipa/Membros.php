@@ -6,7 +6,6 @@ use App\Enums\PapelEquipa;
 use App\Models\GrupoEquipa;
 use App\Models\MembroEquipa;
 use App\Models\TaxaMembro;
-use App\Models\User;
 use App\Services\Tempos\GestorEquipa;
 use App\Services\Tempos\LeitorDuracao;
 use App\Support\Csv;
@@ -346,9 +345,6 @@ class Membros extends Component
             'membroTaxa' => $membroTaxa,
             'historicoTaxa' => $membroTaxa ? $membroTaxa->taxas->where('tipo', $this->taxaTipo)->sortByDesc(fn ($t) => $t->valido_de->toDateString())->values() : collect(),
             'portalUrl' => rtrim((string) config('app.portal_url'), '/').'/',
-            // Administradores só para visualizar: fora da lista, numa nota por cima dela (notas §77).
-            'soVisualizam' => $this->limitados ? collect() : User::comAcessoAosTempos()->orderBy('nome')->get(['id', 'nome'])
-                ->filter(fn (User $u) => $u->soVisualiza())->pluck('nome')->values(),
             'camposDisponiveis' => $podeGerir ? self::CAMPOS : array_diff_key(self::CAMPOS, ['faturavel' => 1, 'custo' => 1]),
             'ver' => fn (string $campo) => in_array($campo, $this->campos, true) && ($podeGerir || ! in_array($campo, ['faturavel', 'custo'], true)),
             'dias' => MembroEquipa::DIAS,

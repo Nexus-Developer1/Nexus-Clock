@@ -130,7 +130,7 @@ class VertentesTest extends TestCase
     {
         $this->actingAs($this->ambos)->get(route('equipa'))
             ->assertOk()
-            ->assertSee('Só visualizam: Suporte Nexus')
+            ->assertDontSee('Suporte Nexus')
             ->assertSee('Joana Santos')
             ->assertSee('Rui Costa');
 

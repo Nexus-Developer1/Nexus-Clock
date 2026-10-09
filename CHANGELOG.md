@@ -8,7 +8,7 @@ _(itens de infra vivem no servidor e não têm commit)._
 
 ## 2026-10-09
 
-- 🔒 **«Administrador» só visualiza** — a pedido: quem é Administrador no portal (o suporte@ e o pgouveia@) vê tudo — Painel e Calendário da equipa, relatórios com valores, Presenças, despesas, exportar — mas não altera nada e sai da lista da Equipa (fica numa nota «Só visualizam»). Gerir passa a ser de quem é «Administrador e técnico». Sem Cronómetro, sem «Acrescentar tempo», sem «Nova despesa»; os registos abrem só para ler. O Paulo continua a aprovar despesas (lista própria, notas §44). Notas §77. 378 testes.
+- 🔒 **«Administrador» só visualiza** — a pedido: quem é Administrador no portal (o suporte@ e o pgouveia@) vê tudo — Painel e Calendário da equipa, relatórios com valores, Presenças, despesas, exportar — mas não altera nada e sai da lista da Equipa. Gerir passa a ser de quem é «Administrador e técnico». Sem Cronómetro, sem «Acrescentar tempo», sem «Nova despesa»; os registos abrem só para ler. O Paulo continua a aprovar despesas (lista própria, notas §44). Notas §77. 378 testes.
 
 - 🔒 **Vertentes: Administrador, Administrador e técnico, Técnico** — a pedido: o pgouveia@ tinha perdido o admin do Suporte porque o formulário de utilizadores do portal não tinha papéis para o Suporte e gravava-o vazio; corrigido o acesso dele e, no portal, o Suporte passa a ter as três vertentes (sem papel mostra Técnico). No Suporte, «Administrador e técnico» é administrador; quem é só Administrador gere tudo mas deixa de aparecer como alguém que regista horas (Presenças, lembretes, Painel, Atribuições, filtro Equipa, Calendário, «Membro» ao acrescentar tempo). Notas §76. 377 testes.
 
