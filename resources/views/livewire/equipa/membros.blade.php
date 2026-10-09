@@ -74,14 +74,7 @@
                         </div>
                     </div>
     
-                    @if ($ver('papel'))
-                        <select wire:model.live="filtroPapel" class="campo-select campo-barra w-full sm:w-40" aria-label="Papel">
-                            <option value="">Papel</option>
-                            @foreach ($papeis as $p)
-                                <option value="{{ $p->value }}">{{ $p->rotulo() }}</option>
-                            @endforeach
-                        </select>
-                    @endif
+                    {{-- Sem filtro de Papel, a pedido (2026-10-09): a coluna fica (é lá que se escolhe o Gestor de equipa). --}}
                     @if ($ver('grupo'))
                         <select wire:model.live="filtroGrupo" class="campo-select campo-barra w-full sm:w-40" aria-label="Grupo">
                             <option value="">Grupo</option>

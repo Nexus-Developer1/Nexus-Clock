@@ -131,6 +131,7 @@ class VertentesTest extends TestCase
         $this->actingAs($this->ambos)->get(route('equipa'))
             ->assertOk()
             ->assertDontSee('Suporte Nexus')
+            ->assertDontSeeHtml('wire:model.live="filtroPapel"')   // sem filtro de Papel (a coluna fica)
             ->assertSee('Joana Santos')
             ->assertSee('Rui Costa');
 
